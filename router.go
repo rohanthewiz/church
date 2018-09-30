@@ -1,4 +1,4 @@
-package chweb
+package church
 
 import (
 	"github.com/labstack/echo"
@@ -10,12 +10,12 @@ import (
 	"github.com/rohanthewiz/church/admin_controller"
 	"github.com/rohanthewiz/church/user_controller"
 	"github.com/rohanthewiz/church/event_controller"
-	"github.com/rohanthewiz/church/chweb/config"
-	"github.com/rohanthewiz/church/chweb/sermon_controller"
-	"github.com/rohanthewiz/church/chweb/article_controller"
-	"github.com/rohanthewiz/church/chweb/page"
-	"github.com/rohanthewiz/church/chweb/menu_controller"
-	"github.com/rohanthewiz/church/chweb/resource/calendar"
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/sermon_controller"
+	"github.com/rohanthewiz/church/article_controller"
+	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/menu_controller"
+	"github.com/rohanthewiz/church/resource/calendar"
 )
 
 func Serve() {
