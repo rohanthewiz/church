@@ -1,16 +1,16 @@
 package basectlr
 
 import (
-	"github.com/rohanthewiz/church/chweb/page"
+	"github.com/rohanthewiz/church/page"
 	"github.com/labstack/echo"
-	"github.com/rohanthewiz/church/chweb/flash"
-	"github.com/rohanthewiz/church/chweb/template"
+	"github.com/rohanthewiz/church/flash"
+	"github.com/rohanthewiz/church/template"
 	"bytes"
 	"fmt"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
-	"github.com/rohanthewiz/church/chweb/config"
-	"github.com/rohanthewiz/church/chweb/app"
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/app"
 )
 
 const recoverMsg = "Oops, we encountered a server error. Try refreshing the page."

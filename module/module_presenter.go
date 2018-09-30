@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"strconv"
 	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/chweb/config"
+	"github.com/rohanthewiz/church/config"
 )
 
 // This is the module 'base class'

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/rohanthewiz/serr"
 	"github.com/rohanthewiz/church/models"
-	"github.com/rohanthewiz/church/chweb/config"
+	"github.com/rohanthewiz/church/config"
 	"errors"
-	"github.com/rohanthewiz/church/chweb/resource/auth"
+	"github.com/rohanthewiz/church/resource/auth"
 	"gopkg.in/nullbio/null.v6"
 	"time"
 )

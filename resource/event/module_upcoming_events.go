@@ -3,7 +3,7 @@ package event
 import (
 	"strconv"
 	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/chweb/module"
+	"github.com/rohanthewiz/church/module"
 )
 
 const ModuleTypeUpcomingEvents = "events_upcoming"

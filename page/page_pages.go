@@ -2,10 +2,10 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/chweb/module"
+	"github.com/rohanthewiz/church/module"
 	//"github.com/rohanthewiz/church/util/string_util"
-	"github.com/rohanthewiz/church/chweb/util/stringops"
-	"github.com/rohanthewiz/church/chweb/resource/article"
+	"github.com/rohanthewiz/church/util/stringops"
+	"github.com/rohanthewiz/church/resource/article"
 )
 // Possible format for page slug: title(snakecased).yyyy-mmdd-randstr
 

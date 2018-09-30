@@ -4,7 +4,7 @@ import (
 	"github.com/rohanthewiz/church/models"
 	"strconv"
 	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/chweb/db"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/serr"
 	"fmt"
 	. "github.com/vattle/sqlboiler/queries/qm"

@@ -8,7 +8,7 @@ import (
 	"time"
 	"errors"
 	"fmt"
-	"github.com/rohanthewiz/church/chweb/config"
+	"github.com/rohanthewiz/church/config"
 )
 
 // Fixup Received data for Presenter

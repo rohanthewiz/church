@@ -3,10 +3,10 @@ package page
 import (
 	"errors"
 	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/chweb/module"
-	"github.com/rohanthewiz/church/chweb/errormodule"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/errormodule"
 	"fmt"
-	"github.com/rohanthewiz/church/chweb/util/stringops"
+	"github.com/rohanthewiz/church/util/stringops"
 )
 
 // Future think of a way to automatically register a module

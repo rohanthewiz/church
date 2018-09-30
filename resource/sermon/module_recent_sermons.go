@@ -3,7 +3,7 @@ package sermon
 import (
 	"strconv"
 	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/chweb/module"
+	"github.com/rohanthewiz/church/module"
 )
 
 const ModuleTypeRecentSermons = "sermons_recent"

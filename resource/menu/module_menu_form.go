@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"github.com/rohanthewiz/serr"
 	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/chweb/module"
-	"github.com/rohanthewiz/church/chweb/app"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/app"
 	"encoding/json"
 	"github.com/rohanthewiz/element"
 )

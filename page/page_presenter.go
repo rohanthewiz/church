@@ -6,8 +6,8 @@ import (
 	"strconv"
 	. "github.com/rohanthewiz/logger"
 	"strings"
-	"github.com/rohanthewiz/church/chweb/module"
-	"github.com/rohanthewiz/church/chweb/util/stringops"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/util/stringops"
 )
 
 // Store Page definition

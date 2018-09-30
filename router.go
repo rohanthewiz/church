@@ -2,14 +2,14 @@ package chweb
 
 import (
 	"github.com/labstack/echo"
-	"github.com/rohanthewiz/church/chweb/admin"
+	"github.com/rohanthewiz/church/admin"
 
-	"github.com/rohanthewiz/church/chweb/page_controller"
-	customctx "github.com/rohanthewiz/church/chweb/context"
-	"github.com/rohanthewiz/church/chweb/auth_controller"
-	"github.com/rohanthewiz/church/chweb/admin_controller"
-	"github.com/rohanthewiz/church/chweb/user_controller"
-	"github.com/rohanthewiz/church/chweb/event_controller"
+	"github.com/rohanthewiz/church/page_controller"
+	customctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/auth_controller"
+	"github.com/rohanthewiz/church/admin_controller"
+	"github.com/rohanthewiz/church/user_controller"
+	"github.com/rohanthewiz/church/event_controller"
 	"github.com/rohanthewiz/church/chweb/config"
 	"github.com/rohanthewiz/church/chweb/sermon_controller"
 	"github.com/rohanthewiz/church/chweb/article_controller"

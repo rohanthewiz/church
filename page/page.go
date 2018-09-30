@@ -2,7 +2,7 @@ package page
 // A page is essentially an arrangement of modules
 import (
 	"strings"
-	"github.com/rohanthewiz/church/chweb/module"
+	"github.com/rohanthewiz/church/module"
 	"strconv"
 )
 

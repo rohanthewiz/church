@@ -2,11 +2,11 @@ package event
 
 import (
 	"github.com/rohanthewiz/church/models"
-	"github.com/rohanthewiz/church/chweb/db"
+	"github.com/rohanthewiz/church/db"
 	. "github.com/vattle/sqlboiler/queries/qm"
 	. "github.com/rohanthewiz/logger"
 	"fmt"
-	"github.com/rohanthewiz/church/chweb/util/stringops"
+	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/serr"
 	"strconv"
 )

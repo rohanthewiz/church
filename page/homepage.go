@@ -1,11 +1,11 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/chweb/resource/article"
-	"github.com/rohanthewiz/church/chweb/resource/sermon"
-	"github.com/rohanthewiz/church/chweb/resource/event"
-	"github.com/rohanthewiz/church/chweb/module"
-	"github.com/rohanthewiz/church/chweb/util/stringops"
+	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/resource/sermon"
+	"github.com/rohanthewiz/church/resource/event"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/util/stringops"
 )
 
 // Let's keep this as a hardwired home page in case we lose the DB

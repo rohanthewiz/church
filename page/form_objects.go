@@ -1,7 +1,7 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/chweb/module"
+	"github.com/rohanthewiz/church/module"
 	"encoding/json"
 	"strings"
 	"github.com/rohanthewiz/logger"

@@ -1,17 +1,17 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/chweb/resource/article"
-	"github.com/rohanthewiz/church/chweb/resource/event"
-	"github.com/rohanthewiz/church/chweb/resource/sermon"
-	"github.com/rohanthewiz/church/chweb/module"
-	"github.com/rohanthewiz/church/chweb/resource/menu"
-	"github.com/rohanthewiz/church/chweb/resource/user"
+	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/resource/event"
+	"github.com/rohanthewiz/church/resource/sermon"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/menu"
+	"github.com/rohanthewiz/church/resource/user"
 	"strings"
-	"github.com/rohanthewiz/church/chweb/slick_carousel"
+	"github.com/rohanthewiz/church/slick_carousel"
 	"sort"
-	"github.com/rohanthewiz/church/chweb/resource/content"
-	"github.com/rohanthewiz/church/chweb/resource/calendar"
+	"github.com/rohanthewiz/church/resource/content"
+	"github.com/rohanthewiz/church/resource/calendar"
 )
 
 const numOfModules = 15

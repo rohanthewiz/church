@@ -5,8 +5,8 @@ import (
 	"github.com/rohanthewiz/church/models"
 	"time"
 	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/chweb/config"
-	"github.com/rohanthewiz/church/chweb/resource/content"
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/resource/content"
 )
 
 type Presenter struct {

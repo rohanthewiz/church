@@ -2,7 +2,7 @@ package menu
 
 import (
 	"github.com/rohanthewiz/church/models"
-	theDB "github.com/rohanthewiz/church/chweb/db"
+	theDB "github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 	"fmt"

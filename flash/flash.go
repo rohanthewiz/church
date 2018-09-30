@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"github.com/labstack/echo"
 	"bytes"
-	"github.com/rohanthewiz/church/chweb/resource/cookie"
+	"github.com/rohanthewiz/church/resource/cookie"
 )
 
 const flash_cookie_name = "flash_cookie"

@@ -2,8 +2,8 @@ package admin
 
 import (
 	"errors"
-	"github.com/rohanthewiz/church/chweb/resource/auth"
-	"github.com/rohanthewiz/church/chweb/resource/user"
+	"github.com/rohanthewiz/church/resource/auth"
+	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/logger"
 	"gopkg.in/nullbio/null.v6"
 	"io/ioutil"

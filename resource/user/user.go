@@ -6,7 +6,7 @@ import (
 	. "github.com/rohanthewiz/logger"
 	. "github.com/vattle/sqlboiler/queries/qm"
 	"github.com/rohanthewiz/church/models"
-	"github.com/rohanthewiz/church/chweb/db"
+	"github.com/rohanthewiz/church/db"
 )
 
 func AllUsers() (models.UserSlice, error) {

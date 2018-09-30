@@ -1,9 +1,9 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/chweb/resource/article"
-	"github.com/rohanthewiz/church/chweb/module"
-	"github.com/rohanthewiz/church/chweb/util/stringops"
+	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/util/stringops"
 )
 
 // Full view of a single article

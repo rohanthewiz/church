@@ -2,7 +2,7 @@ package event
 
 import (
 	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/chweb/module"
+	"github.com/rohanthewiz/church/module"
 	"fmt"
 	"strings"
 	"errors"

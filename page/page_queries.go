@@ -2,7 +2,7 @@ package page
 
 import (
 	"fmt"
-	"github.com/rohanthewiz/church/chweb/db"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	. "github.com/vattle/sqlboiler/queries/qm"
 	. "github.com/rohanthewiz/logger"

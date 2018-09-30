@@ -1,9 +1,9 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/chweb/util/stringops"
-	"github.com/rohanthewiz/church/chweb/module"
-	"github.com/rohanthewiz/church/chweb/resource/menu"
+	"github.com/rohanthewiz/church/util/stringops"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/menu"
 )
 
 func MenuForm() (*Page, error) {

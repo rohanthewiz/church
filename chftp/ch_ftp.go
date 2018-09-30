@@ -1,11 +1,11 @@
 package chftp
 
 import (
-	"github.com/rohanthewiz/church/chweb/util/timeutil"
+	"github.com/rohanthewiz/church/util/timeutil"
 	"github.com/rohanthewiz/roftp"
 	"github.com/rohanthewiz/serr"
 	"github.com/jlaffaye/ftp"
-	"github.com/rohanthewiz/church/chweb/config"
+	"github.com/rohanthewiz/church/config"
 	"net/url"
 	"path"
 	"github.com/rohanthewiz/logger"

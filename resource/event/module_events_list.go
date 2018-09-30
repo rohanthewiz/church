@@ -3,9 +3,9 @@ package event
 import (
 	"strings"
 	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/chweb/module"
-	"github.com/rohanthewiz/church/chweb/config"
-	"github.com/rohanthewiz/church/chweb/agrid"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/agrid"
 	"encoding/json"
 	"github.com/rohanthewiz/element"
 )

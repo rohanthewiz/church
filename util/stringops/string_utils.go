@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"crypto/sha1"
 	"time"
-	"github.com/rohanthewiz/church/chweb/util/stringops/slugify"
+	"github.com/rohanthewiz/church/util/stringops/slugify"
 	"strings"
 	"github.com/pierrec/xxHash/xxHash64"
 )

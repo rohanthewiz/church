@@ -2,7 +2,7 @@ package menu
 
 import (
 	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/chweb/util/stringops"
+	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/serr"
 	"github.com/rohanthewiz/church/models"
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"gopkg.in/nullbio/null.v6"
 	"errors"
-	"github.com/rohanthewiz/church/chweb/config"
+	"github.com/rohanthewiz/church/config"
 )
 
 // This is a interim struct that sits closer to the database

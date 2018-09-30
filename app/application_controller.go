@@ -4,11 +4,11 @@ import (
 	"github.com/rohanthewiz/roredis"
 	"net/http"
 	"github.com/labstack/echo"
-	"github.com/rohanthewiz/church/chweb/resource/auth"
+	"github.com/rohanthewiz/church/resource/auth"
 	"time"
-	"github.com/rohanthewiz/church/chweb/flash"
+	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/serr"
-	"github.com/rohanthewiz/church/chweb/context"
+	"github.com/rohanthewiz/church/context"
 )
 
 // Note on Redirect: the SeeOther code (303) is the preferred code when redirecting after a post
