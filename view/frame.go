@@ -23,11 +23,7 @@ func (f frame) GetBanner() (out string) {
 	if f.banner != "" { return f.banner } // return cached
 
 	e := element.New
-	out = e("div", "id", "banner", "class", "theme-" + config.Options.Theme).R(
-		e("h1").R("Your Church or Business"),
-		e("h3").R("We are full of life"),
-		e("img", "class", "logo-right", "src", "/assets/images/bible_white_bkgnd.png").R(),
-	)
+	out = e("div", "id", "banner", "class", "theme-" + config.Options.Theme).R(config.Options.BannerInnerHTML)
 	return
 }
 
@@ -35,8 +31,8 @@ func (f frame) GetBanner() (out string) {
 func (f frame) GetCopyright() (out string) {
 	if f.copyright != "" { return f.copyright } // cached
 
-	return  element.New("div", "id", "credit").R(
-		"&copy; " + time.Now().Format("2006") + " Churh or Business",
+	return  element.New("div", "id", "copyright").R(
+		"&copy; " + time.Now().Format("2006") + " " + config.Options.CopyrightOwner,
 	)
 	return
 }

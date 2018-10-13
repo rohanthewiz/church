@@ -42,6 +42,8 @@ type ConfigAll struct {
 // This maps an environment section of the yaml config
 type EnvConfig struct {
 	Theme string `yaml:"theme"`
+	BannerInnerHTML string `yaml:"banner_inner_html"`
+	CopyrightOwner string `yaml:"copyright_owner"`
 	AppTimeout int64 `yaml:"app_timeout"`  // App max time in minutes
 	Server struct {
 		Port string `yaml:"port"`

@@ -20,6 +20,10 @@ The project started from the need to build a sustainable website for a small chu
 - BTW Bootstrap is only used in the online editor Summer Note. I therefore limit Bootstrap CSS to just form scope.
 - And don't worry, Docker will come. Let's just everything jiving smoothly first.  
 
+## STOP !!! The platform has drastically changed!
+Church is now a **Go module**, so some of the below may not apply. Give me a bit to update the README.
+In the meantime see github.com/rohanthewiz/church_example for usage. Thanks!
+
 ## General Workflow
 1. Make a fork of the 'github.com/rohanthewiz/church_example' project and clone your fork to local
 1. Check out the `master` branch
@@ -27,7 +31,7 @@ The project started from the need to build a sustainable website for a small chu
 
 ## Platform Setup
 The project requires
-- Go 1.7 or greater
+- Go 1.11 or greater
 - Postgres around 9.5 or later
 - Redis
 - VIPS image library (optional - only for image resizing)
@@ -154,16 +158,6 @@ vips -v
 - Make sure project_root/sqlboiler.toml has proper creds for your postgres database
 - From the project root run `sqlboiler postgres`
 
-#### Install Glide
-```bash
-mkdir -p go/src/github.com/Masterminds
-cd go/src/github.com/Masterminds/
-git clone https://github.com/Masterminds/glide.git
-cd glide
-make build
-mv glide ~/bin/ # ~/bin is a good place to store exe's - make sure it is added to $PATH
-```
-
 ## App Setup
 
 ### Migrations
@@ -195,9 +189,6 @@ mkdir -p ~/go/src/github.com/rohanthewiz/
 cd ~/go/src/github.com/rohanthewiz/
 git clone <the-project-clone-url>
 cd church
-rm -rf vendor
-glide install
-glide status
 go build
 ```
 
