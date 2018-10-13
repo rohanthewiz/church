@@ -1,0 +1,7 @@
+[postgres]
+dbname = "church_development"
+user = "myuser"
+pass = "secret"
+host = "localhost"
+port = 5432
+sslmode = "disable"
