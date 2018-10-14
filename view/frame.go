@@ -23,7 +23,20 @@ func (f frame) GetBanner() (out string) {
 	if f.banner != "" { return f.banner } // return cached
 
 	e := element.New
-	out = e("div", "id", "banner", "class", "theme-" + config.Options.Theme).R(config.Options.BannerInnerHTML)
+	out = e("div", "id", "banner", "class", "theme-" + config.Options.Theme).R(
+		e("div", "class", "banner-wrapper").R(
+			config.Options.BannerInnerHTML,
+		),
+		e("div", "id", "logo-extension").R(
+			//"Join us on Sundays at 9:45",
+			//e("a", "href", "/pages/contact-us").R("Contact Us"),
+			//e("a", "href", "https://www.facebook.com/calvaryeastmetro2024").R(
+			//	e("img", "src", "/assets/images/facebook_icon.svg", "class", "fb-icon",
+			//		"title", "Go to CCEM Facebook page").R(),
+			//),
+		),
+	)
+
 	return
 }
 

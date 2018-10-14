@@ -199,6 +199,7 @@ go build
  `server.domain/super?username=mysuperuser&password=secret&token=theTokenblahblah.`
 - The slug of the Main menu should be hardwired to "main-menu". For now manually update that DB entry
 - The slug for the Footer menu also should be hardwired to "footer-menu"
+- One page must be made the home page with a slug of "home"
 
 ### Install RunIt process supervisor (Optional) for running the app
 sudo apt-get install runit
