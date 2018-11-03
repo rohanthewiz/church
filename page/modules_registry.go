@@ -7,8 +7,9 @@ import (
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/menu"
 	"github.com/rohanthewiz/church/resource/user"
+	"github.com/rohanthewiz/church/standalone_modules/easy_tabs"
 	"strings"
-	"github.com/rohanthewiz/church/slick_carousel"
+	"github.com/rohanthewiz/church/standalone_modules/slick_carousel"
 	"sort"
 	"github.com/rohanthewiz/church/resource/content"
 	"github.com/rohanthewiz/church/resource/calendar"
@@ -87,6 +88,8 @@ func RegisterModules() {
 
 	addToRegistry(slick_carousel.ModuleTypeSlickCarousel, "carousel", slick_carousel.NewModuleSlickCarousel)
 	moduleContentBy[slick_carousel.ModuleTypeSlickCarousel] = content.ModuleContentByMultiId
+	addToRegistry(easy_tabs.ModuleTypeEasyTabs, "easytabs", easy_tabs.NewModuleEasyTabs)
+	moduleContentBy[easy_tabs.ModuleTypeEasyTabs] = content.ModuleContentByMultiId
 }
 
 // List Available Modules for dynamic pages
