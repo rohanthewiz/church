@@ -43,7 +43,7 @@ func Sha1WithUnixTimeShort(data []byte) string {
 
 func SlugWithRandomString(title string) string {
 	slug := slugify.Marshal(strings.ToLower(title))
-	timestr := time.Now().Format("2006-0102")
+	timestr := time.Now().Format("0612154")
 	return slug + "-" + timestr + "-" + Sha1WithUnixTimeShort([]byte(slug))
 }
 
