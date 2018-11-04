@@ -59,7 +59,7 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 				func() (str string) {
 					for _, art := range articles {
 						str += e("li").R(
-							e("a", "href", "#" + stringops.Slugify(art.Summary)).R(art.Body), // Put the tab id in the article summary
+							e("a", "href", "#" + stringops.Slugify(art.Summary)).R(art.Summary), // Put the tab id in the article summary
 						)
 					}
 					return
