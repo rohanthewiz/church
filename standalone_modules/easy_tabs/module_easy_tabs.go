@@ -83,16 +83,16 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
             $.fn.easyTabs = function (option) {
                 var param = jQuery.extend({fadeSpeed: "fast", defaultContent: 1, activeClass: 'active'}, option);
                 $(this).each(function () {
-                    var thisId = "#" + this.id;
+                    var thisClass = "." + this.className;
                     if (param.defaultContent == '') {
                         param.defaultContent = 1;
                     }
                     if (typeof param.defaultContent == "number") {
-                        var defaultTab = $(thisId + " .tabs li:eq(" + (param.defaultContent - 1) + ") a").attr('href').substr(1);
+                        var defaultTab = $(thisClass + " .tabs li:eq(" + (param.defaultContent - 1) + ") a").attr('href').substr(1);
                     } else {
                         var defaultTab = param.defaultContent;
                     }
-                    $(thisId + " .tabs li a").each(function () {
+                    $(thisClass + " .tabs li a").each(function () {
                         var tabToHide = $(this).attr('href').substr(1);
                         $("#" + tabToHide).addClass('easytabs-tab-content');
                     });
@@ -100,21 +100,21 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
                     changeContent(defaultTab);
 
                     function hideAll() {
-                        $(thisId + " .easytabs-tab-content").hide();
+                        $(thisClass + " .easytabs-tab-content").hide();
                     }
 
                     function changeContent(tabId) {
                         hideAll();
-                        $(thisId + " .tabs li").removeClass(param.activeClass);
-                        $(thisId + " .tabs li a[href=#" + tabId + "]").closest('li').addClass(param.activeClass);
+                        $(thisClass + " .tabs li").removeClass(param.activeClass);
+                        $(thisClass + " .tabs li a[href=#" + tabId + "]").closest('li').addClass(param.activeClass);
                         if (param.fadeSpeed != "none") {
-                            $(thisId + " #" + tabId).fadeIn(param.fadeSpeed);
+                            $(thisClass + " #" + tabId).fadeIn(param.fadeSpeed);
                         } else {
-                            $(thisId + " #" + tabId).show();
+                            $(thisClass + " #" + tabId).show();
                         }
                     }
 
-                    $(thisId + " .tabs li").click(function () {
+                    $(thisClass + " .tabs li").click(function () {
                         var tabId = $(this).find('a').attr('href').substr(1);
                         changeContent(tabId);
                         return false;
