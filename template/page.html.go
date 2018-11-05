@@ -25,7 +25,7 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
     <link rel="stylesheet" href="/assets/css/slick-theme.css">
     <link rel="stylesheet" href="/assets/css/summernote.min.css">
     <meta charset="utf-8">
-	<script type="text/javascript" src="/assets/js/jquery-3.2.1.min.js"></script>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
 	<script type="text/javascript" src="/assets/js/moment.min.js"></script>
 	<script type="text/javascript" src="/assets/js/fullcalendar.min.js"></script>
 	<script type="text/javascript" src="/assets/js/slick-1.8.1.min.js"></script>
@@ -90,3 +90,4 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 
 	w(`</body></html>`)
 }
+//assets/js/jquery-3.2.1.min.js
