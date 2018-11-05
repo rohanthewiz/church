@@ -88,7 +88,7 @@ func RegisterModules() {
 
 	addToRegistry(slick_carousel.ModuleTypeSlickCarousel, "carousel", slick_carousel.NewModuleSlickCarousel)
 	moduleContentBy[slick_carousel.ModuleTypeSlickCarousel] = content.ModuleContentByMultiId
-	addToRegistry(easy_tabs.ModuleTypeEasyTabs, "easytabs", easy_tabs.NewModuleEasyTabs)
+	addToRegistry(easy_tabs.ModuleTypeEasyTabs, "easy-tabs", easy_tabs.NewModuleEasyTabs)
 	moduleContentBy[easy_tabs.ModuleTypeEasyTabs] = content.ModuleContentByMultiId
 }
 
