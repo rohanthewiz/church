@@ -52,22 +52,28 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 		return
 	}
 
-	if len(articles) > 0 {
+	if ln := len(articles); ln > 0 {
+		// Create random ids for each article
+		ids := make([]string, ln)
+		for i, art := range articles {
+			ids[i] = stringops.SlugWithRandomString(art.Id)
+		}
+
 		e := element.New
 		out = e("div", "class", "ch-module-wrapper ch-" + ModuleTypeEasyTabs).R(
 			e("ul", "class", "tabs").R(
 				func() (str string) {
-					for _, art := range articles {
+					for i, art := range articles {
 						str += e("li").R(
-							e("a", "href", "#" + stringops.Slugify(art.Summary)).R(art.Summary), // Put the tab id in the article summary
+							e("a", "href", "#" + ids[i]).R(art.Summary), // Put the tab id in the article summary
 						)
 					}
 					return
 				}(),
 			),
 			func() (str string) {
-				for _, art := range articles {
-					str += e("div", "id", stringops.Slugify(art.Summary)).R(art.Body)
+				for i, art := range articles {
+					str += e("div", "id", ids[i]).R(art.Body)
 				}
 				return
 			}(),
@@ -116,7 +122,11 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
                 });
             }
         })(jQuery);`,
-	)}
+        `$(document).ready(function() {
+			$('.ch-easy-tabs').easyTabs({defaultContent:1});
+		});`,
+        )
+	}
 
 	return
 }
