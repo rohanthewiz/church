@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/resource/auth"
 	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
@@ -53,15 +54,16 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 	}
 
 	if ln := len(articles); ln > 0 {
+		// Create unique class for module
+		modId := stringops.SlugWithRandomString(auth.RandomString()) // this needs to be more random
 		// Create random ids for each article
 		ids := make([]string, ln)
 		for i, art := range articles {
 			ids[i] = stringops.SlugWithRandomString(art.Id)
 		}
-
 		e := element.New
-		out = e("div", "class", "ch-module-wrapper ch-" + ModuleTypeEasyTabs).R(
-			e("ul", "class", "tabs").R(
+		out = e("div", "id", modId, "class", "ch-module-wrapper ch-" + ModuleTypeEasyTabs).R(
+			e("ul", "class", "eztabs").R(
 				func() (str string) {
 					for i, art := range articles {
 						str += e("li").R(
@@ -73,7 +75,7 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 			),
 			func() (str string) {
 				for i, art := range articles {
-					str += e("div", "id", ids[i]).R(art.Body)
+					str += e("div", "class", ids[i]).R(art.Body)
 				}
 				return
 			}(),
@@ -81,40 +83,44 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 		out +=	e("script", "type", "text/javascript").R(
 			`(function ($) {
             $.fn.easyTabs = function (option) {
-                var param = jQuery.extend({fadeSpeed: "fast", defaultContent: 1, activeClass: 'active'}, option);
+                var param = jQuery.extend({fadeSpeed: "slow", defaultContent: 1, activeClass: 'active'}, option);
                 $(this).each(function () {
-                    var thisClass = "." + this.className;
-                    if (param.defaultContent == '') {
+                    const thisId = '#' + $(this).attr('id');
+                    const tabItems = $(thisId + " .eztabs > li");
+
+                    if (param.defaultContent === '') {
                         param.defaultContent = 1;
                     }
-                    if (typeof param.defaultContent == "number") {
-                        var defaultTab = $(thisClass + " .tabs li:eq(" + (param.defaultContent - 1) + ") a").attr('href').substr(1);
-                    } else {
-                        var defaultTab = param.defaultContent;
+                    let defaultTab = param.defaultContent;
+                    if (typeof param.defaultContent === "number") {
+                        defaultTab = $(thisId + " .eztabs li:eq(" + (param.defaultContent - 1) + ") a").attr('href').substr(1);
                     }
-                    $(thisClass + " .tabs li a").each(function () {
-                        var tabToHide = $(this).attr('href').substr(1);
-                        $("#" + tabToHide).addClass('easytabs-tab-content');
+
+                    $(thisId + " .eztabs li a").each(function () {
+                        const tab = $(this).attr('href').substr(1);
+                        $(thisId + " ." + tab).addClass('easytabs-tab-content');
                     });
-                    hideAll();
                     changeContent(defaultTab);
 
-                    function hideAll() {
-                        $(thisClass + " .easytabs-tab-content").hide();
-                    }
-
                     function changeContent(tabId) {
-                        hideAll();
-                        $(thisClass + " .tabs li").removeClass(param.activeClass);
-                        $(thisClass + " .tabs li a[href=#" + tabId + "]").closest('li').addClass(param.activeClass);
+                        $(thisId + " .easytabs-tab-content").hide();
+                        tabItems.removeClass(param.activeClass);
+                        $(thisId + " .eztabs > li a[href=#" + tabId + "]").closest('li').addClass(param.activeClass);
+                        // Show the corresponding content
                         if (param.fadeSpeed != "none") {
-                            $(thisClass + " #" + tabId).fadeIn(param.fadeSpeed);
+                            $(thisId + " ." + tabId).fadeIn(param.fadeSpeed);
                         } else {
-                            $(thisClass + " #" + tabId).show();
+                            $(thisId + " ." + tabId).show();
                         }
                     }
 
-                    $(thisClass + " .tabs li").click(function () {
+                    tabItems.hover(function () {
+                        var tabId = $(this).find('a').attr('href').substr(1);
+                        //console.log("Switching to this tab: " + tabId);
+                        changeContent(tabId);
+                        return false;
+                    });
+                    tabItems.click(function () {
                         var tabId = $(this).find('a').attr('href').substr(1);
                         changeContent(tabId);
                         return false;
