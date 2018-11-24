@@ -108,11 +108,11 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 						// Hide all content
                         $(thisId + " .easytabs-tab-content").hide();
                         // Show the corresponding content
-                        if (param.fadeSpeed != "none") {
-                            $(thisId + " ." + tabId).fadeIn(param.fadeSpeed);
-                        } else {
+                        //if (param.fadeSpeed != "none") {
+                        //    $(thisId + " ." + tabId).fadeIn(param.fadeSpeed);
+                        //} else {
                             $(thisId + " ." + tabId).show();
-                        }
+                        //}
                     }
 
                     tabItems.hover(function () {
