@@ -83,7 +83,7 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 		out +=	e("script", "type", "text/javascript").R(
 			`(function ($) {
             $.fn.easyTabs = function (option) {
-                var param = jQuery.extend({fadeSpeed: "slow", defaultContent: 1, activeClass: 'active'}, option);
+                var param = jQuery.extend({fadeSpeed: "fast", defaultContent: 1, activeClass: 'active'}, option);
                 $(this).each(function () {
                     const thisId = '#' + $(this).attr('id');
                     const tabItems = $(thisId + " .eztabs > li");
@@ -103,9 +103,10 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
                     changeContent(defaultTab);
 
                     function changeContent(tabId) {
-                        $(thisId + " .easytabs-tab-content").hide();
                         tabItems.removeClass(param.activeClass);
                         $(thisId + " .eztabs > li a[href=#" + tabId + "]").closest('li').addClass(param.activeClass);
+						// Hide all content
+                        $(thisId + " .easytabs-tab-content").hide();
                         // Show the corresponding content
                         if (param.fadeSpeed != "none") {
                             $(thisId + " ." + tabId).fadeIn(param.fadeSpeed);
