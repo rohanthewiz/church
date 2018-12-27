@@ -3,6 +3,7 @@ package church
 import (
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/admin"
+	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/rohanthewiz/church/page_controller"
 	customctx "github.com/rohanthewiz/church/context"
@@ -124,5 +125,17 @@ func Serve() {
 	ad.POST("/menus/update/:id", menu_controller.UpsertMenu)  // update
 	ad.GET("/menus/delete/:id", menu_controller.DeleteMenu)
 
-	e.Logger.Fatal(e.Start(":" + config.Options.Server.Port))
+	if config.AppEnv != "development" && config.Options.Server.UseTLS {
+		startAutoTLS(e)
+	} else {
+		e.Logger.Fatal(e.Start(":" + config.Options.Server.Port))
+	}
+
+}
+
+func startAutoTLS(e *echo.Echo) {
+	const port = "443" // Todo ! configize
+	e.AutoTLSManager.Cache = autocert.DirCache("./certs")
+	e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(config.Options.Server.Domain)
+	e.Logger.Fatal(e.StartAutoTLS(":" + port))
 }
