@@ -146,7 +146,7 @@ func UpsertSermon(c echo.Context) error {
 
 	if config.Options.FTP.Main.Enabled && fileUploaded { // Transfer to main sermon archive
 		go func() {
-			time.Sleep(time.Second * 8) // todo adj
+			time.Sleep(time.Second * 40) // todo adj
 			upl := chftp.NewCemaUploader(localFilePath, sermonAudio.Filename)
 			println("Transferring", localFilePath, "to Main FTP server")
 			err := upl.Run()

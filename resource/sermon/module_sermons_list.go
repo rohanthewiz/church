@@ -1,13 +1,14 @@
 package sermon
 
 import (
-	"github.com/rohanthewiz/church/module"
-	"strings"
-	"github.com/rohanthewiz/church/config"
-	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/agrid"
 	"encoding/json"
+	"github.com/rohanthewiz/church/agrid"
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
+	"github.com/rohanthewiz/logger"
+	"strconv"
+	"strings"
 )
 
 const ModuleTypeSermonsList = "sermons_list"
@@ -65,6 +66,10 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 		logger.LogErr(err, "Error obtaining data in module", "module_slug",  m.Opts.Slug,
 			"module_type", m.Opts.ModuleType)
 		return ""
+	}
+	if len(sermons) == 0 { logger.Log("Warn", "No sermons found")
+	} else {
+		logger.Log("Info", strconv.Itoa(len(sermons)) + " sermon(s) found")
 	}
 
 
@@ -152,7 +157,7 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 			}(),
 		),
 		e("div", "class", "ch-sermons-list-wrapper").R(
-			e("div", "class", "sermons-list-grid ag-theme-material", "style", `width: 100%; height: 100%`).R(),
+			e("div", "class", "sermons-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 310px)`).R(),
 			e("script", "type", "text/javascript").R(
 				jsConvertColumnDefs, jsConvertRowData, gridOptions, //sermonsListRenderer,
 				`$(document).ready(function() {` + scriptBody + `});`),
