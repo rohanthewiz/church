@@ -1,20 +1,27 @@
 package sermon
 
 import (
-	"os"
-	"github.com/rohanthewiz/logger"
-	"fmt"
-	"regexp"
-	"strings"
-	"strconv"
 	"bufio"
+	"fmt"
+	"github.com/rohanthewiz/logger"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
 	//"github.com/rohanthewiz/church/util/stringops"
 )
 
+// Returns JSON as []byte
 func CCSWMSermonImport() (byts []byte) {
+	byts = []byte(`{"success": false}`)
+	const audioPrefix = "http://mediasave.org/ccswm/sermons/"
+
 	csvFile, err := os.Open("jos_content.csv")
 	if err != nil {
-		println("Error on import"); return []byte(`{"success": false}`)
+		println("Error on import");
+		return
 	}
 	scanner := bufio.NewScanner(csvFile)
 
@@ -22,40 +29,83 @@ func CCSWMSermonImport() (byts []byte) {
 
 	for scanner.Scan() { // splits on lines by default
 		row := strings.Split(scanner.Text(), "|")
-		fmt.Printf("Row[0]: %#v\n", row[0])
-		if len(row) < 3 { println("short row (", strings.Join(row, "||"), ")"); continue }
+		//fmt.Printf("Row[0]: %#v\n", row[0]) // date and title
 
-		// Prep and fixup
-		re := regexp.MustCompile("^[[:space:]]*([[:digit:]].+?([[:digit:]]) )?(.*)")
-		fmt.Printf("%s\n", re.FindStringSubmatch(row[0]))
+		if len(row) < 2 {
+			logger.Log("Error", "short row -> ", strings.Join(row, "||"))
+			continue
+		}
 
-//		pres := Presenter{}
-//		pres.Title = row[0]
-//		pres.Summary = row[1]
-//		pres.ScriptureRefs = stringops.StringSplitAndTrim(row[2], ",")
-//		pres.Teacher =  row[4]
-//		pres.DateTaught = strings.SplitN(row[5], " ", 2)[0]
-//		pres.PlaceTaught = row[6]
-//		pres.AudioLink =  transformAudioLink(row[7])
-//		pres.Categories = stringops.StringSplitAndTrim(row[8], ",")
-//		pres.UpdatedBy = "Importer"
-//		pres.CreateSlug()
-//
+		// Parse Title and Date Taught
+		re0 := regexp.MustCompile("^[[:space:]]*([[:digit:]].+?([[:digit:]]) )?(.*)")
+		arr := re0.FindStringSubmatch(row[0])
+		fmt.Printf("%q\n", arr) // debug - Todo ! remove
+		if len(arr) < 3 {
+			logger.Log("Error", fmt.Sprintf("Parse of date and title yielded less than 3 parts -> %q\n", arr))
+			continue // probably some other content
+		}
+		dateTaught, err := parseDateTaught(arr[1])
+		if err != nil {
+			logger.Log("Error", "Unable to parse date taught -> "+arr[1])
+			continue // no good without a date, probably some other content
+		}
+		title := strings.TrimSpace(arr[2])
+
+		// Parse Audio
+		re1 := regexp.MustCompile("{s5_mp3}(.*){/s5_mp3}")
+		arr1 := re1.FindStringSubmatch(row[1])
+		if len(arr) < 2 {
+			logger.Log("Error", "Could not parse audio link in: " + row[1])
+			continue
+		}
+		audioLink := arr1[1]
+		aarr := strings.Split(audioLink, "/")
+		if len(aarr) < 3 {
+			logger.Log("Error", "Could not find enough tokens in audio link: " + audioLink)
+			continue
+		}
+		audioLinkNew := audioPrefix + strings.Join(aarr[len(aarr)-2:], "/") // year and filename
+
+		// Teacher
+		re2 := regexp.MustCompile("Preached by:(.+)?<")
+		arr2 := re2.FindStringSubmatch(row[1])
+		if len(arr) < 2 {
+			logger.Log("Error", "Could not find preacher in" + row[1])
+			continue
+		}
+		teacher := arr2[1]
+
+		pres := Presenter{}
+		pres.Title = title
+		pres.Summary = ""
+		pres.ScriptureRefs = []string{} // todo //stringops.StringSplitAndTrim(row[2], ",")
+		pres.Teacher = teacher          // todo
+		pres.DateTaught = dateTaught.Format("2006-01-02")
+		pres.PlaceTaught = "Burleson"
+		pres.AudioLink = audioLinkNew
+		pres.Categories = []string{}
+		pres.UpdatedBy = "Importer"
+		pres.CreateSlug()
+
 		count++
-		if count == 1 { continue }  // skip heading
-//
-		if count == 8 { break }  // todo - limit for dev
-//
-//		fmt.Printf("Presenter: %#v\n", pres)
-//		//if _, err = pres.Upsert(); err != nil {
-//		//	return []byte(`{"success": false}`)
-//		//}
+		if count == 1 {
+			continue // skip heading
+		}
+		//
+		if count == 8 {
+			break // todo - remove limit for dev
+		}
+		//
+		//		fmt.Printf("Presenter: %#v\n", pres)
+		//		//if _, err = pres.Upsert(); err != nil {
+		//		//	return []byte(`{"success": false}`)
+		//		//}
 	}
 	if err := scanner.Err(); err != nil {
 		logger.LogErr(err, "Error while scanning sermons csv file")
 	}
 
-	return []byte(`{"success": true, "count": ` + strconv.Itoa(count - 1) + `}`)
+	return []byte(`{"success": true, "count": ` + strconv.Itoa(count-1) + `}`)
 }
 
 //func transformAudioLink(iLink string) (oLink string) {
@@ -78,3 +128,44 @@ func CCSWMSermonImport() (byts []byte) {
 //	}
 //	return
 //}
+
+func parseDateTaught(strDate string) (dateTaught time.Time, err error) {
+	strDate = strings.TrimSpace(strDate)
+	if strings.Contains(strDate, "/") {
+		dateTaught, err = time.Parse("1/2/2006", strDate)
+		if err != nil {
+			dateTaught, err = time.Parse("1/02/2006", strDate)
+			if err != nil {
+				dateTaught, err = time.Parse("01/02/2006", strDate)
+				if err != nil {
+					dateTaught, err = time.Parse("1/2/06", strDate)
+					if err != nil {
+						dateTaught, err = time.Parse("1/02/06", strDate)
+						if err != nil {
+							dateTaught, err = time.Parse("01/02/06", strDate)
+						}
+					}
+				}
+			}
+		}
+	} else { // assume dashes
+		dateTaught, err = time.Parse("1-2-2006", strDate)
+		if err != nil {
+			dateTaught, err = time.Parse("1-02-2006", strDate)
+			if err != nil {
+				dateTaught, err = time.Parse("01-02-2006", strDate)
+				if err != nil {
+					dateTaught, err = time.Parse("1-2-06", strDate)
+					if err != nil {
+						dateTaught, err = time.Parse("1-02-06", strDate)
+						if err != nil {
+							dateTaught, err = time.Parse("01-02-06", strDate)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return
+}
