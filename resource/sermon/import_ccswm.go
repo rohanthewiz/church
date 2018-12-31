@@ -81,7 +81,7 @@ func CCSWMSermonImport() (byts []byte) {
 		audioLinkNew := audioPrefix + strings.Join(aarr[len(aarr)-2:], "/") // year and filename
 
 		// Teacher
-		re2 := regexp.MustCompile("Preached by:[[:space:]]*(.+)?<br")
+		re2 := regexp.MustCompile("Preached by:[[:space:]]*(.+?)<")
 		arr2 := re2.FindStringSubmatch(row[1])
 		if len(arr) < 2 {
 			logger.Log("Error", "Could not find preacher in" + row[1])
