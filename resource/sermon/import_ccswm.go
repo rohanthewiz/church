@@ -46,19 +46,38 @@ func CCSWMSermonImport() (byts []byte) {
 		}
 
 		// Parse Title and Date Taught
-		re0 := regexp.MustCompile("^[[:space:]]*([[:digit:]].+?([[:digit:]]) )?(.*)")
-		arr := re0.FindStringSubmatch(row[0])
-		fmt.Printf("%q\n", arr) // debug - Todo ! remove
-		if len(arr) < 4 {
-			logger.Log("Error", fmt.Sprintf("Parse of date and title yielded less than 4 parts -> %q\n", arr))
-			continue // probably some other content
+		title := ""; dateTaught := time.Now()
+
+		if strings.Contains(row[0], " - ") {
+			arr := strings.SplitN(row[0], " - ", 2)
+			if len(arr) == 2 {
+				dateTaught, err = parseDateTaught(arr[0])
+				if err != nil {
+					logger.LogErr(err, "Error parsing dateTaught with ' - '")
+					continue
+				}
+				title = strings.TrimSpace(arr[1])
+			} else {
+				logger.Log("Error", "could not parse dateTaught-Title with ' - '")
+				continue
+			}
+		} else {
+			re0 := regexp.MustCompile("^[[:space:]]*([[:digit:]].+?([[:digit:]]) )?(.*)")
+			arr := re0.FindStringSubmatch(row[0])
+			fmt.Printf("%q\n", arr)
+			// debug - Todo ! remove
+			if len(arr) < 4 {
+				logger.Log("Error", fmt.Sprintf("Parse of date and title yielded less than 4 parts -> %q\n", arr))
+				continue // probably some other content
+			}
+			dateTaught, err = parseDateTaught(arr[1])
+			if err != nil {
+				logger.Log("Error", "Unable to parse date taught -> "+arr[1])
+				continue // no good without a date, probably some other content
+			}
+			title = strings.TrimSpace(arr[3])
 		}
-		dateTaught, err := parseDateTaught(arr[1])
-		if err != nil {
-			logger.Log("Error", "Unable to parse date taught -> "+arr[1])
-			continue // no good without a date, probably some other content
-		}
-		title := strings.TrimSpace(arr[3])
+		// Not enough cases to justify the below
 		//arrTitle := strings.SplitN(title, "-", 2) // Just split off the scripture ref
 		//if len(arrTitle) == 2 {
 		//	mainScripture = strings.TrimSpace(arrTitle[0])
