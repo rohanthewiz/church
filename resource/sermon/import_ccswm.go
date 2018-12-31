@@ -89,7 +89,7 @@ func CCSWMSermonImport() (byts []byte) {
 		pres.DateTaught = dateTaught.Format("2006-01-02")
 		pres.PlaceTaught = "Burleson"
 		pres.AudioLink = audioLinkNew
-		pres.Categories = []string{}
+		pres.Categories = []string{""}
 		pres.UpdatedBy = "Importer"
 		pres.Published = true
 		pres.CreateSlug()
