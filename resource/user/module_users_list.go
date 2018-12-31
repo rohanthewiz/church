@@ -134,7 +134,7 @@ func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn b
 			}(),
 		),
 		e("div", "class", "list-wrapper").R(
-			e("div", "class", "users-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 310px)`).R(),
+			e("div", "class", "users-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 264px)`).R(),
 			e("script", "type", "text/javascript").R(
 				jsConvertColumnDefs, jsConvertRowData, gridOptions,
 				`$(document).ready(function() {` + scriptBody + `});`),

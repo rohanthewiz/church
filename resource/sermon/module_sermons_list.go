@@ -157,7 +157,7 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 			}(),
 		),
 		e("div", "class", "ch-sermons-list-wrapper").R(
-			e("div", "class", "sermons-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 310px)`).R(),
+			e("div", "class", "sermons-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 264px)`).R(),
 			e("script", "type", "text/javascript").R(
 				jsConvertColumnDefs, jsConvertRowData, gridOptions, //sermonsListRenderer,
 				`$(document).ready(function() {` + scriptBody + `});`),
