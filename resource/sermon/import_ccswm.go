@@ -28,6 +28,14 @@ func CCSWMSermonImport() (byts []byte) {
 	var count int
 
 	for scanner.Scan() { // splits on lines by default
+		count++
+		if count == 1 {
+			continue // skip heading
+		}
+		if count == 8 {
+			break // todo !! - remove limit for dev
+		}
+
 		row := strings.Split(scanner.Text(), "|")
 		//fmt.Printf("Row[0]: %#v\n", row[0]) // date and title
 
@@ -93,15 +101,6 @@ func CCSWMSermonImport() (byts []byte) {
 		pres.UpdatedBy = "Importer"
 		pres.Published = true
 		pres.CreateSlug()
-
-		count++
-		if count == 1 {
-			continue // skip heading
-		}
-		//
-		if count == 8 {
-			break // todo !! - remove limit for dev
-		}
 		//
 		fmt.Printf("Presenter: %#v\n", pres)
 		if _, err = pres.Upsert(); err != nil {
