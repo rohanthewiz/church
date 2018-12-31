@@ -32,15 +32,16 @@ func CCSWMSermonImport() (byts []byte) {
 		if count == 1 {
 			continue // skip heading
 		}
-		if count == 8 {
-			break // todo !! - remove limit for dev
-		}
+		//if count == 8 {
+		//	break // todo !! - remove limit for dev
+		//}
 
 		row := strings.Split(scanner.Text(), "|")
 		//fmt.Printf("Row[0]: %#v\n", row[0]) // date and title
 
-		if len(row) < 2 {
-			logger.Log("Error", "short row -> " + strings.Join(row, "||"))
+		if ln := len(row); ln < 2 {
+			logger.Log("Error", "short row -> '" + strings.Join(row, "||") + "'", "Row count:", strconv.Itoa(count),
+				"number of columns:", strconv.Itoa(ln))
 			continue
 		}
 
