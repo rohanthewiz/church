@@ -32,7 +32,7 @@ func CCSWMSermonImport() (byts []byte) {
 		//fmt.Printf("Row[0]: %#v\n", row[0]) // date and title
 
 		if len(row) < 2 {
-			logger.Log("Error", "short row -> ", strings.Join(row, "||"))
+			logger.Log("Error", "short row -> " + strings.Join(row, "||"))
 			continue
 		}
 
@@ -50,6 +50,12 @@ func CCSWMSermonImport() (byts []byte) {
 			continue // no good without a date, probably some other content
 		}
 		title := strings.TrimSpace(arr[3])
+		arrTitle := strings.SplitN(title, "-", 2) // Just split off the scripture ref
+		mainScripture := ""
+		if len(arrTitle) == 2 {
+			mainScripture = strings.TrimSpace(arrTitle[0])
+			title = strings.TrimSpace(arrTitle[1])
+		}
 
 		// Parse Audio
 		re1 := regexp.MustCompile("{s5_mp3}(.*){/s5_mp3}")
@@ -67,7 +73,7 @@ func CCSWMSermonImport() (byts []byte) {
 		audioLinkNew := audioPrefix + strings.Join(aarr[len(aarr)-2:], "/") // year and filename
 
 		// Teacher
-		re2 := regexp.MustCompile("Preached by:(.+)?<")
+		re2 := regexp.MustCompile("Preached by:[[:space:]]*(.+)?<br")
 		arr2 := re2.FindStringSubmatch(row[1])
 		if len(arr) < 2 {
 			logger.Log("Error", "Could not find preacher in" + row[1])
@@ -78,13 +84,14 @@ func CCSWMSermonImport() (byts []byte) {
 		pres := Presenter{}
 		pres.Title = title
 		pres.Summary = ""
-		pres.ScriptureRefs = []string{} // todo //stringops.StringSplitAndTrim(row[2], ",")
-		pres.Teacher = teacher          // todo
+		pres.ScriptureRefs = []string{mainScripture}
+		pres.Teacher = teacher
 		pres.DateTaught = dateTaught.Format("2006-01-02")
 		pres.PlaceTaught = "Burleson"
 		pres.AudioLink = audioLinkNew
 		pres.Categories = []string{}
 		pres.UpdatedBy = "Importer"
+		pres.Published = true
 		pres.CreateSlug()
 
 		count++
@@ -93,13 +100,13 @@ func CCSWMSermonImport() (byts []byte) {
 		}
 		//
 		if count == 8 {
-			break // todo - remove limit for dev
+			break // todo !! - remove limit for dev
 		}
 		//
-				fmt.Printf("Presenter: %#v\n", pres)
-		//		//if _, err = pres.Upsert(); err != nil {
-		//		//	return []byte(`{"success": false}`)
-		//		//}
+		fmt.Printf("Presenter: %#v\n", pres)
+		if _, err = pres.Upsert(); err != nil {
+			return []byte(`{"success": false}`)
+		}
 	}
 	if err := scanner.Err(); err != nil {
 		logger.LogErr(err, "Error while scanning sermons csv file")
