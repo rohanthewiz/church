@@ -20,7 +20,7 @@ func CCSWMSermonImport() (byts []byte) {
 
 	csvFile, err := os.Open("jos_content.csv")
 	if err != nil {
-		println("Error on import");
+		logger.LogErr(err, "Error opening jos_content.csv")
 		return
 	}
 	scanner := bufio.NewScanner(csvFile)
@@ -40,8 +40,8 @@ func CCSWMSermonImport() (byts []byte) {
 		re0 := regexp.MustCompile("^[[:space:]]*([[:digit:]].+?([[:digit:]]) )?(.*)")
 		arr := re0.FindStringSubmatch(row[0])
 		fmt.Printf("%q\n", arr) // debug - Todo ! remove
-		if len(arr) < 3 {
-			logger.Log("Error", fmt.Sprintf("Parse of date and title yielded less than 3 parts -> %q\n", arr))
+		if len(arr) < 4 {
+			logger.Log("Error", fmt.Sprintf("Parse of date and title yielded less than 4 parts -> %q\n", arr))
 			continue // probably some other content
 		}
 		dateTaught, err := parseDateTaught(arr[1])
@@ -49,7 +49,7 @@ func CCSWMSermonImport() (byts []byte) {
 			logger.Log("Error", "Unable to parse date taught -> "+arr[1])
 			continue // no good without a date, probably some other content
 		}
-		title := strings.TrimSpace(arr[2])
+		title := strings.TrimSpace(arr[3])
 
 		// Parse Audio
 		re1 := regexp.MustCompile("{s5_mp3}(.*){/s5_mp3}")
@@ -96,7 +96,7 @@ func CCSWMSermonImport() (byts []byte) {
 			break // todo - remove limit for dev
 		}
 		//
-		//		fmt.Printf("Presenter: %#v\n", pres)
+				fmt.Printf("Presenter: %#v\n", pres)
 		//		//if _, err = pres.Upsert(); err != nil {
 		//		//	return []byte(`{"success": false}`)
 		//		//}
