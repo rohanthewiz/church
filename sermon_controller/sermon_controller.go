@@ -36,7 +36,7 @@ func NewSermon(c echo.Context) error {
 }
 
 func Import(c echo.Context) error {
-	c.JSONBlob(200, sermon.Import())
+	c.JSONBlob(200, sermon.CCSWMSermonImport())
 	return nil
 }
 
