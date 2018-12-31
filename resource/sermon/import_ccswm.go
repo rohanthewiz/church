@@ -59,17 +59,16 @@ func CCSWMSermonImport() (byts []byte) {
 			continue // no good without a date, probably some other content
 		}
 		title := strings.TrimSpace(arr[3])
-		arrTitle := strings.SplitN(title, "-", 2) // Just split off the scripture ref
-		mainScripture := ""
-		if len(arrTitle) == 2 {
-			mainScripture = strings.TrimSpace(arrTitle[0])
-			title = strings.TrimSpace(arrTitle[1])
-		}
+		//arrTitle := strings.SplitN(title, "-", 2) // Just split off the scripture ref
+		//if len(arrTitle) == 2 {
+		//	mainScripture = strings.TrimSpace(arrTitle[0])
+		//	title = strings.TrimSpace(arrTitle[1])
+		//}
 
 		// Parse Audio
 		re1 := regexp.MustCompile("{s5_mp3}(.*){/s5_mp3}")
 		arr1 := re1.FindStringSubmatch(row[1])
-		if len(arr) < 2 {
+		if len(arr1) < 2 {
 			logger.Log("Error", "Could not parse audio link in: " + row[1])
 			continue
 		}
@@ -84,11 +83,20 @@ func CCSWMSermonImport() (byts []byte) {
 		// Teacher
 		re2 := regexp.MustCompile("Preached by:[[:space:]]*(.+?)<")
 		arr2 := re2.FindStringSubmatch(row[1])
-		if len(arr) < 2 {
+		if len(arr2) < 2 {
 			logger.Log("Error", "Could not find preacher in" + row[1])
 			continue
 		}
-		teacher := arr2[1]
+		teacher := strings.TrimSpace(arr2[1])
+
+		// Main Scripture
+		re3 := regexp.MustCompile("Main passage:[[:space:]]*(.+?)<")
+		arr3 := re3.FindStringSubmatch(row[1])
+		if len(arr3) < 2 {
+			logger.Log("Error", "Could not find preacher in" + row[1])
+			continue
+		}
+		mainScripture := strings.TrimSpace(arr3[1])
 
 		pres := Presenter{}
 		pres.Title = title
