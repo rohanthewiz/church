@@ -18,13 +18,14 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	w(`<!DOCTYPE html>
 <html lang="en">
 <head>
+    <meta charset="utf-8">
     <link rel="stylesheet" href="/assets/css/app.css">
     <link rel="stylesheet" href="/assets/css/bootstrap_scoped.css">
     <link rel="stylesheet" href="/assets/css/fullcalendar.min.css">
     <link rel="stylesheet" href="/assets/css/slick.css">
     <link rel="stylesheet" href="/assets/css/slick-theme.css">
     <link rel="stylesheet" href="/assets/css/summernote.min.css">
-    <meta charset="utf-8">
+	<link href="https://fonts.googleapis.com/css?family=Cormorant+SC:700|Courgette" rel="stylesheet">
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
 	<script type="text/javascript" src="/assets/js/moment.min.js"></script>
 	<script type="text/javascript" src="/assets/js/fullcalendar.min.js"></script>
