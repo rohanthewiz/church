@@ -150,7 +150,7 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 			}(),
 		),
 		e("div", "class", "list-wrapper").R(
-			e("div", "class", "events-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 264px)`).R(),
+			e("div", "class", "events-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
 			e("script", "type", "text/javascript").R(
 				jsConvertColumnDefs, jsConvertRowData, gridOptions, //eventsListRenderer,
 				`$(document).ready(function() {` + scriptBody + `});`),
