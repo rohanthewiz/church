@@ -62,6 +62,7 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 	if ser.Published {
 		published.AddAttributes("checked", "checked")
 	}
+	audioLinkOvrd := e("input", "type", "checkbox", "name", "audio-link-ovrd")
 
 	out := e("div", "class", "wrapper-material-form").R(
 		e("h3", "class", "page-title").R(operation + " " + m.Name.Singular),
@@ -137,13 +138,23 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 					e("i", "class", "bar").R(),
 				),
 			),
-			e("div", "class", "checkbox").R(
-				e("label").R(
-					published.R(),
-					e("i", "class", "helper").R(),
-					"Published",
-				),
-				e("i", "class", "bar").R(),
+			e("div", "class", "form-inline").R(
+    			e("div", "class", "checkbox").R(
+    				e("label").R(
+    					published.R(),
+    					e("i", "class", "helper").R(),
+    					"Published",
+    				),
+    				e("i", "class", "bar").R(),
+    			),
+    			e("div", "class", "checkbox").R(
+    				e("label").R(
+    					audioLinkOvrd.R(),
+    					e("i", "class", "helper").R(),
+    					"Audio Link Override (webmaster only)",
+    				),
+    				e("i", "class", "bar").R(),
+    			),
 			),
 
 			e("div", "class", "form-group").R(

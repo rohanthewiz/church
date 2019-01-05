@@ -124,7 +124,12 @@ func UpsertSermon(c echo.Context) error {
 		serPres.AudioLink = fmt.Sprintf("/" + initialUrlPath) // todo URL encode on store
 		logger.Log("info", "New sermon file uploaded", "upload_path", serPres.AudioLink)
 	} else {
-		fmt.Println("*|* sermon file not updated")
+		if c.FormValue("audio-link-ovrd") == "on" {
+			serPres.AudioLink = c.FormValue("audio_link")
+			logger.Log("Info", "Audio link manually overidden to: " + serPres.AudioLink)
+		} else {
+			logger.Log("Debug", "Sermon updated, but audio file not updated")
+		}
 	}
 
 	serPres.Categories = strings.Split(c.FormValue("categories"), ",")
