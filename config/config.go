@@ -46,7 +46,9 @@ type EnvConfig struct {
 	CopyrightOwner string `yaml:"copyright_owner"`
 	AppTimeout int64 `yaml:"app_timeout"`  // App max time in minutes
 	Server struct {
+		Domain string `yaml:"domain"`
 		Port string `yaml:"port"`
+		UseTLS bool `yaml:"use_tls"`
 	} `yaml:"server"`
 	Log struct {
 		Level string `yaml:"level"`
