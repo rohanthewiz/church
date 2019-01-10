@@ -134,8 +134,7 @@ func Serve() {
 }
 
 func startAutoTLS(e *echo.Echo) {
-	const port = "443" // Todo ! configize
-	e.AutoTLSManager.Cache = autocert.DirCache("./certs")
 	e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(config.Options.Server.Domain)
-	e.Logger.Fatal(e.StartAutoTLS(":" + port))
+	e.AutoTLSManager.Cache = autocert.DirCache("/var/certs")
+	e.Logger.Fatal(e.StartAutoTLS(":" + config.Options.Server.Port))
 }
