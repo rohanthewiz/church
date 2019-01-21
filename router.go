@@ -24,7 +24,7 @@ func Serve() {
 	page.RegisterModules()
 
 	e := echo.New()
-	e.Pre(middleware.HTTPSRedirect())
+	//e.Pre(middleware.HTTPSWWWRedirect())
 
 	e.Static("/assets", "dist")
 	e.Static("/media", "sermons")
