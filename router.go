@@ -2,7 +2,6 @@ package church
 
 import (
 	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
 	"github.com/rohanthewiz/church/admin"
 
 	"github.com/rohanthewiz/church/page_controller"
