@@ -2,6 +2,7 @@ package church
 
 import (
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	"github.com/rohanthewiz/church/admin"
 
 	"github.com/rohanthewiz/church/page_controller"
@@ -23,6 +24,7 @@ func Serve() {
 	page.RegisterModules()
 
 	e := echo.New()
+	e.Pre(middleware.HTTPSRedirect())
 
 	e.Static("/assets", "dist")
 	e.Static("/media", "sermons")

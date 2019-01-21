@@ -9,7 +9,7 @@ require (
 	github.com/go-sql-driver/mysql v0.0.0-20181001072239-361f66ef3b53
 	github.com/h2non/bimg v1.0.18
 	github.com/jlaffaye/ftp v0.0.0-20181011150954-fe787349a520
-	github.com/labstack/echo v0.0.0-20181106020225-2e9f4ea4e010
+	github.com/labstack/echo v0.0.0-20181123063703-c7eb8da9ec73
 	github.com/lestrrat/go-strftime v0.0.0-20180220042222-ba3bf9c1d042
 	github.com/lib/pq v1.0.0
 	github.com/mattn/go-colorable v0.0.9
