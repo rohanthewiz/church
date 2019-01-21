@@ -49,6 +49,8 @@ type EnvConfig struct {
 		Domain string `yaml:"domain"`
 		Port string `yaml:"port"`
 		UseTLS bool `yaml:"use_tls"`
+		CertFile string `yaml:"cert_file"`
+		KeyFile string `yaml:"key_file"`
 	} `yaml:"server"`
 	Log struct {
 		Level string `yaml:"level"`
