@@ -2,8 +2,8 @@ package church
 
 import (
 	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
 	"github.com/rohanthewiz/church/admin"
-	"golang.org/x/crypto/acme/autocert"
 
 	"github.com/rohanthewiz/church/page_controller"
 	customctx "github.com/rohanthewiz/church/context"
@@ -24,6 +24,7 @@ func Serve() {
 	page.RegisterModules()
 
 	e := echo.New()
+	e.Pre(middleware.HTTPSRedirect())
 
 	e.Static("/assets", "dist")
 	e.Static("/media", "sermons")
@@ -126,16 +127,20 @@ func Serve() {
 	ad.GET("/menus/delete/:id", menu_controller.DeleteMenu)
 
 	if config.AppEnv != "development" && config.Options.Server.UseTLS {
-		startAutoTLS(e)
+		startTLS(e)
 	} else {
 		e.Logger.Fatal(e.Start(":" + config.Options.Server.Port))
 	}
 
 }
 
-func startAutoTLS(e *echo.Echo) {
-	const port = "443" // Todo ! configize
-	e.AutoTLSManager.Cache = autocert.DirCache("./certs")
-	e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(config.Options.Server.Domain)
-	e.Logger.Fatal(e.StartAutoTLS(":" + port))
+func startTLS(e *echo.Echo) {
+	e.Logger.Fatal(e.StartTLS("0.0.0.0:" + config.Options.Server.Port,
+		config.Options.Server.CertFile, config.Options.Server.KeyFile))
 }
+
+//func startAutoTLS(e *echo.Echo) {
+//	e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(config.Options.Server.Domain)
+//	e.AutoTLSManager.Cache = autocert.DirCache("/var/certs")
+//	e.Logger.Fatal(e.StartAutoTLS(":" + config.Options.Server.Port))
+//}
