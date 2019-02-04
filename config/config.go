@@ -80,6 +80,9 @@ type EnvConfig struct {
 		Host string `yaml:"host"`
 		Port string `yaml:"port"`
 	} `yaml:"redis"`
+	Stripe struct {
+		Token string `yaml:"token"`
+	} `yaml:"stripe"`
 }
 
 type FTPConfig struct {

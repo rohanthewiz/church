@@ -2,6 +2,7 @@ package payment
 
 import (
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/serr"
@@ -31,7 +32,6 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 		m.SetId(opts)
 	}
 	e := element.New
-
 	out = e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
 		e("div", "class", "form-row").R(
 			e("label", "for", "card-element").R("Credit or Debit card"),
@@ -40,8 +40,10 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 		),
 		e("button", "class", "submit-button").R("Submit Payment"),
 
-		e("script", "type", "text/javascript").R(
-			`$(document).ready(function(){
+		e("script", "type", "text/javascript").R(`
+			var stripe = Stripe('` + config.Options.Stripe.Token + `');
+			var elements = stripe.elements();
+			$(document).ready(function(){
 				var style = {
 					base: {
 						fontSize: '15px',
