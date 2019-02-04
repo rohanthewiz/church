@@ -34,6 +34,7 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 	e := element.New
 	out = e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
 		e("div", "class", "form-row").R(
+			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 			e("label", "for", "card-element").R("Credit or Debit card"),
 			e("div", "id", "card-element").R(),
 			e("div", "id", "card-errors", "role", "alert").R(),
