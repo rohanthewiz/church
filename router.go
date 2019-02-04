@@ -3,6 +3,7 @@ package church
 import (
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/admin"
+	"github.com/rohanthewiz/church/payment_controller"
 
 	"github.com/rohanthewiz/church/page_controller"
 	customctx "github.com/rohanthewiz/church/context"
@@ -59,6 +60,17 @@ func Serve() {
 	evt.Use(auth_controller.StoreSessionInContext) // store authentication in custom context
 	evt.GET("", event_controller.ListEvents)
 	evt.GET("/:id", event_controller.ShowEvent)
+
+	// Payments
+	pay := e.Group("payments")
+	pay.Use(customctx.UseCustomNonAdminContext)
+	pay.Use(auth_controller.StoreSessionInContext) // store authentication in custom context
+	//pay.GET("", payment_controller.ListPayments)
+	//pay.GET("/:id", payment_controller.ShowPayment)
+	pay.GET("/new", payment_controller.NewPayment)
+	pay.POST("/create", payment_controller.UpsertPayment)  // create
+	//pay.GET("/payments/edit/:id", payment_controller.EditPayment)
+	//pay.POST("/payments/update/:id", payment_controller.UpsertPayment)  // update
 
 	// Sermons
 	ser := e.Group("sermons")

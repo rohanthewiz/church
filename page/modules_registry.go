@@ -3,6 +3,7 @@ package page
 import (
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/event"
+	"github.com/rohanthewiz/church/resource/payment"
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/menu"
@@ -90,12 +91,16 @@ func RegisterModules() {
 	moduleContentBy[slick_carousel.ModuleTypeSlickCarousel] = content.ModuleContentByMultiId
 	addToRegistry(easy_tabs.ModuleTypeEasyTabs, "easy-tabs", easy_tabs.NewModuleEasyTabs)
 	moduleContentBy[easy_tabs.ModuleTypeEasyTabs] = content.ModuleContentByMultiId
+
+	addToRegistry(payment.ModuleTypePaymentForm, "payment-form", payment.NewModulePaymentForm)
+	moduleContentBy[payment.ModuleTypePaymentForm] = content.ModuleContentByForm
 }
 
 // List Available Modules for dynamic pages
 func availableModuleTypes() (types []string) {
 	for k := range moduleTypeToName {
 		lwrModType := strings.ToLower(k)
+		// Don't show administrative modules - we hardwire these into admin pages
 		if strings.Contains(lwrModType, "form") ||
 			strings.Contains(lwrModType, "user") ||
 			strings.Contains(lwrModType, "page") ||
