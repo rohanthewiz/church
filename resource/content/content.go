@@ -26,6 +26,6 @@ type ModuleContentType string // How to filter module content
 const (
 	ModuleContentByForm       ModuleContentType = "Form"
 	ModuleContentBySingleId   ModuleContentType = "SingleId"
-	ModuleContentByMultiId    ModuleContentType = "MultiId"
+	ModuleContentByMultiId    ModuleContentType = "MultiId" // How this module receives article content
 	ModuleContentByPagination ModuleContentType = "Pagination"
 )

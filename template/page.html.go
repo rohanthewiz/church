@@ -27,6 +27,7 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
     <link rel="stylesheet" href="/assets/css/summernote.min.css">
 	<link href="https://fonts.googleapis.com/css?family=Cormorant+SC:700|Courgette|Katibeh" rel="stylesheet">
 	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+	<script type="text/javascript" src="https://js.stripe.com/v3/"></script>
 	<script type="text/javascript" src="/assets/js/moment.min.js"></script>
 	<script type="text/javascript" src="/assets/js/fullcalendar.min.js"></script>
 	<script type="text/javascript" src="/assets/js/slick-1.8.1.min.js"></script>
