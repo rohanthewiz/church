@@ -80,7 +80,7 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 				hInput.setAttribute('type', 'hidden');
 				hInput.setAttribute('name', 'stripeToken');
 				hInput.setAttribute('value', token.id);
-				form.appendChild(hiddenInput);
+				form.appendChild(hInput);
 				form.submit();
 			}`,
 		),
