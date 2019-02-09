@@ -14,10 +14,6 @@ import (
 	"strconv"
 )
 
-func init() {
-	stripe.Key = config.Options.Stripe.PrivKey // Todo! create env var override //os.Getenv("STRIPE_PRIV_KEY")
-}
-
 func NewPayment(c echo.Context) error {
 	pg, err := page.PaymentForm()
 	if err != nil { c.Error(err); return err }
@@ -44,6 +40,7 @@ func UpsertPayment(c echo.Context) error {
 		return err
 	}
 	// Make the Charge
+	stripe.Key = config.Options.Stripe.PrivKey // Todo! create env var override //os.Getenv("STRIPE_PRIV_KEY")
 	chgParams := &stripe.ChargeParams{
 		Amount: stripe.Int64(int64(amt * 10.0)),
 		Currency: stripe.String(string(stripe.CurrencyUSD)),
