@@ -44,7 +44,7 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 		e("button", "class", "submit-button").R("Submit Payment"),
 
 		e("script", "type", "text/javascript").R(`
-			var stripe = Stripe('` + config.Options.Stripe.Token + `');
+			var stripe = Stripe('` + config.Options.Stripe.PubKey+ `');
 			var elements = stripe.elements();
 			$(document).ready(function(){
 				var style = {

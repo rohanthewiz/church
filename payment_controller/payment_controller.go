@@ -6,16 +6,16 @@ import (
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
+	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/logger"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
-	"os"
 	"strconv"
 )
 
 func init() {
-	stripe.Key = os.Getenv("STRIPE_PRIV_KEY")
+	stripe.Key = config.Options.Stripe.PrivKey // Todo! create env var override //os.Getenv("STRIPE_PRIV_KEY")
 }
 
 func NewPayment(c echo.Context) error {
