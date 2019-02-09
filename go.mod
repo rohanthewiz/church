@@ -26,6 +26,7 @@ require (
 	github.com/rohanthewiz/serr v1.0.0-rc.3
 	github.com/satori/go.uuid v0.0.0-20180103174451-36e9d2ebbde5
 	github.com/sirupsen/logrus v1.0.6
+	github.com/stripe/stripe-go v55.14.0+incompatible
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4
 	github.com/vattle/sqlboiler v2.5.0+incompatible

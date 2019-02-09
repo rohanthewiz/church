@@ -81,7 +81,8 @@ type EnvConfig struct {
 		Port string `yaml:"port"`
 	} `yaml:"redis"`
 	Stripe struct {
-		Token string `yaml:"token"`
+		PubKey string `yaml:"pub_key"`
+		PrivKey string `yaml:"priv_key"`
 	} `yaml:"stripe"`
 }
 

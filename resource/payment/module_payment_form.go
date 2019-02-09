@@ -35,6 +35,8 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 	out = e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
 		e("div", "class", "form-row").R(
 			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
+			e("label", "for", "amount").R("Giving amount"),
+			e("input", "name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
 			e("label", "for", "card-element").R("Credit or Debit card"),
 			e("div", "id", "card-element").R(),
 			e("div", "id", "card-errors", "role", "alert").R(),
@@ -42,7 +44,7 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 		e("button", "class", "submit-button").R("Submit Payment"),
 
 		e("script", "type", "text/javascript").R(`
-			var stripe = Stripe('` + config.Options.Stripe.Token + `');
+			var stripe = Stripe('` + config.Options.Stripe.PubKey+ `');
 			var elements = stripe.elements();
 			$(document).ready(function(){
 				var style = {
