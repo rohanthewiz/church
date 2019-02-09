@@ -42,7 +42,7 @@ func UpsertPayment(c echo.Context) error {
 	// Make the Charge
 	stripe.Key = config.Options.Stripe.PrivKey // Todo! create env var override //os.Getenv("STRIPE_PRIV_KEY")
 	chgParams := &stripe.ChargeParams{
-		Amount: stripe.Int64(int64(amt * 10.0)),
+		Amount: stripe.Int64(int64(amt * 100.0)), // Todo! Verify amount is expressed as cents
 		Currency: stripe.String(string(stripe.CurrencyUSD)),
 		Description: stripe.String("Test charge"),
 	}
