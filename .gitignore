@@ -4,3 +4,5 @@
 church
 
 vendor/
+
+sqlboiler.toml

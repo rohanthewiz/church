@@ -1,0 +1,19 @@
+Fields we would like to persist
+// Todo - payment form lockout submit button after initial submit
+// On form say: "Amount in USD"
+
+Charge Table
+- Charge Id
+- Amount (int)
+- CustomerName
+- Description
+- Customer Id (nullable)
+- Captured (bool)
+- Paid (bool)
+- PaymentToken
+- Refunded (bool)
+- AmountRefunded (int)
+- ReceiptNumber (text)
+- ReceiptURL
+- CreatedAt
+- ModifiedAt (nullable date)
