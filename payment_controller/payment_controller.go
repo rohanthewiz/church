@@ -8,6 +8,7 @@ import (
 	base "github.com/rohanthewiz/church/basectlr"
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/payment"
 	"github.com/rohanthewiz/logger"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
@@ -30,8 +31,8 @@ func UpsertPayment(c echo.Context) error {
 		c.Error(err)
 		return err
 	}
-	stripeToken := c.FormValue("stripeToken")
-	logger.Log("Info", fmt.Sprintf("Stripe token: '%s'", stripeToken))
+	paymentToken := c.FormValue("stripeToken")
+	logger.Log("Info", fmt.Sprintf("Stripe token: '%s'", paymentToken))
 	strAmount := c.FormValue("amount")
 	amt, err := strconv.ParseFloat(strAmount, 64)
 	if err != nil {
@@ -46,21 +47,43 @@ func UpsertPayment(c echo.Context) error {
 		Currency: stripe.String(string(stripe.CurrencyUSD)),
 		Description: stripe.String("Test charge"),
 	}
-	err = chgParams.SetSource(stripeToken)
+	err = chgParams.SetSource(paymentToken)
 	if err != nil {
-		logger.LogErr(err, "Stripe: unable to set token source", "token", stripeToken)
+		logger.LogErr(err, "Stripe: unable to set token source", "token", paymentToken)
 		c.Error(err)
 		return err
 	}
-	ch, err := charge.New(chgParams)
+	chgResult, err := charge.New(chgParams)
 	if err != nil {
-		logger.LogErr(err, "Stripe: unable to charge donation amount: " + strAmount, "token", stripeToken)
+		logger.LogErr(err, "Stripe: unable to charge donation amount: " + strAmount, "token", paymentToken)
 		c.Error(err)
 		return err
 	}
-	logger.Log("Info", "Stripe payment charged", "charge", fmt.Sprintf("%#v", ch))
+	logger.Log("Info", "Stripe payment charged", "charge", fmt.Sprintf("%#v", chgResult))
+
+	// Record the charge in local DB
+	chg := payment.ChargePresenter{}
+	chg.AmtPaid = chgResult.Amount  // *chgParams.Amount
+	// chg.CustomerName = ?
+	chg.Description = *chgParams.Description
+	chg.PaymentToken = paymentToken
+	chg.Captured = chgResult.Captured
+	chg.Paid = chgResult.Paid
+	chg.Refunded = chgResult.Refunded
+	chg.AmtRefunded = chgResult.AmountRefunded
+	chg.CustomerId = chgResult.Customer.ID
+	chg.ReceiptNumber = chgResult.ReceiptNumber
+	chg.ReceiptURL = chgResult.ReceiptURL
+
+	updateOp, err := chg.Upsert()
+	if err != nil {
+		logger.LogErr(err, "Error saving charge/payment record")
+		c.Error(err)
+		return err
+	}
 
 	msg := "Created"
+	if updateOp { msg = "Updated" }
 	//if efs.Id != "0" && efs.Id != "" {
 	//	msg = "Updated"
 	//}

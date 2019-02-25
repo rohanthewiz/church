@@ -41,7 +41,7 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 			e("div", "id", "card-element").R(),
 			e("div", "id", "card-errors", "role", "alert").R(),
 		),
-		e("button", "class", "submit-button").R("Submit Payment"),
+		e("button", "id", "payment_form_submit_btn", "class", "submit-button").R("Submit Payment"),
 
 		e("script", "type", "text/javascript").R(`
 			var stripe = Stripe('` + config.Options.Stripe.PubKey+ `');
@@ -66,6 +66,8 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 				// Create a token or display error on form submission
 				var form = document.getElementById('payment-form');
 				form.addEventListener('submit', function(event) {
+					sbtn := document.getElementById("payment_form_submit_btn")
+					sbtn.InnerHTML = "Processing..."
 					event.preventDefault();
 					stripe.createToken(card).then( function(result) {
 						if (result.error) {

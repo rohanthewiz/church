@@ -26,16 +26,17 @@ type Charge struct {
 	ID             int64       `boil:"id" json:"id" toml:"id" yaml:"id"`
 	CreatedAt      null.Time   `boil:"created_at" json:"created_at,omitempty" toml:"created_at" yaml:"created_at,omitempty"`
 	UpdatedAt      null.Time   `boil:"updated_at" json:"updated_at,omitempty" toml:"updated_at" yaml:"updated_at,omitempty"`
-	CustomerID     null.Int64  `boil:"customer_id" json:"customer_id,omitempty" toml:"customer_id" yaml:"customer_id,omitempty"`
+	CustomerID     null.String `boil:"customer_id" json:"customer_id,omitempty" toml:"customer_id" yaml:"customer_id,omitempty"`
 	CustomerName   string      `boil:"customer_name" json:"customer_name" toml:"customer_name" yaml:"customer_name"`
-	Description    string      `boil:"description" json:"description" toml:"description" yaml:"description"`
+	Description    null.String `boil:"description" json:"description,omitempty" toml:"description" yaml:"description,omitempty"`
 	ReceiptNumber  null.String `boil:"receipt_number" json:"receipt_number,omitempty" toml:"receipt_number" yaml:"receipt_number,omitempty"`
 	ReceiptURL     null.String `boil:"receipt_url" json:"receipt_url,omitempty" toml:"receipt_url" yaml:"receipt_url,omitempty"`
 	PaymentToken   string      `boil:"payment_token" json:"payment_token" toml:"payment_token" yaml:"payment_token"`
 	Captured       null.Bool   `boil:"captured" json:"captured,omitempty" toml:"captured" yaml:"captured,omitempty"`
 	Paid           null.Bool   `boil:"paid" json:"paid,omitempty" toml:"paid" yaml:"paid,omitempty"`
+	AmountPaid     null.Int64  `boil:"amount_paid" json:"amount_paid,omitempty" toml:"amount_paid" yaml:"amount_paid,omitempty"`
 	Refunded       null.Bool   `boil:"refunded" json:"refunded,omitempty" toml:"refunded" yaml:"refunded,omitempty"`
-	AmountRefunded null.Int    `boil:"amount_refunded" json:"amount_refunded,omitempty" toml:"amount_refunded" yaml:"amount_refunded,omitempty"`
+	AmountRefunded null.Int64  `boil:"amount_refunded" json:"amount_refunded,omitempty" toml:"amount_refunded" yaml:"amount_refunded,omitempty"`
 	Meta           null.String `boil:"meta" json:"meta,omitempty" toml:"meta" yaml:"meta,omitempty"`
 
 	R *chargeR `boil:"-" json:"-" toml:"-" yaml:"-"`
@@ -54,6 +55,7 @@ var ChargeColumns = struct {
 	PaymentToken   string
 	Captured       string
 	Paid           string
+	AmountPaid     string
 	Refunded       string
 	AmountRefunded string
 	Meta           string
@@ -69,6 +71,7 @@ var ChargeColumns = struct {
 	PaymentToken:   "payment_token",
 	Captured:       "captured",
 	Paid:           "paid",
+	AmountPaid:     "amount_paid",
 	Refunded:       "refunded",
 	AmountRefunded: "amount_refunded",
 	Meta:           "meta",
@@ -82,8 +85,8 @@ type chargeR struct {
 type chargeL struct{}
 
 var (
-	chargeColumns               = []string{"id", "created_at", "updated_at", "customer_id", "customer_name", "description", "receipt_number", "receipt_url", "payment_token", "captured", "paid", "refunded", "amount_refunded", "meta"}
-	chargeColumnsWithoutDefault = []string{"created_at", "updated_at", "customer_id", "customer_name", "description", "receipt_number", "receipt_url", "payment_token", "amount_refunded", "meta"}
+	chargeColumns               = []string{"id", "created_at", "updated_at", "customer_id", "customer_name", "description", "receipt_number", "receipt_url", "payment_token", "captured", "paid", "amount_paid", "refunded", "amount_refunded", "meta"}
+	chargeColumnsWithoutDefault = []string{"created_at", "updated_at", "customer_id", "customer_name", "description", "receipt_number", "receipt_url", "payment_token", "amount_paid", "amount_refunded", "meta"}
 	chargeColumnsWithDefault    = []string{"id", "captured", "paid", "refunded"}
 	chargePrimaryKeyColumns     = []string{"id"}
 )
