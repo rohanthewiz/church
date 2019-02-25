@@ -35,13 +35,18 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 	out = e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
 		e("div", "class", "form-row").R(
 			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
-			e("label", "for", "amount").R("Giving amount"),
-			e("input", "name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
+
+			e("label", "for", "fullname").R("First and last name"),
+			e("input", "name", "fullname", "type", "text").R(),
+
 			e("label", "for", "card-element").R("Credit or Debit card"),
 			e("div", "id", "card-element").R(),
 			e("div", "id", "card-errors", "role", "alert").R(),
+
+			e("label", "for", "amount").R("Giving amount"),
+			e("input", "name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
 		),
-		e("button", "class", "submit-button").R("Submit Payment"),
+		e("button", "id", "payment_form_submit_btn", "class", "submit-button").R("Submit Payment"),
 
 		e("script", "type", "text/javascript").R(`
 			var stripe = Stripe('` + config.Options.Stripe.PubKey+ `');
@@ -66,6 +71,8 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 				// Create a token or display error on form submission
 				var form = document.getElementById('payment-form');
 				form.addEventListener('submit', function(event) {
+					sbtn = document.getElementById("payment_form_submit_btn")
+					sbtn.InnerHTML = "Processing..."
 					event.preventDefault();
 					stripe.createToken(card).then( function(result) {
 						if (result.error) {
