@@ -73,7 +73,10 @@ func UpsertPayment(c echo.Context) error {
 	chg.Paid = chgResult.Paid
 	chg.Refunded = chgResult.Refunded
 	chg.AmtRefunded = chgResult.AmountRefunded
-	chg.CustomerId = chgResult.Customer.ID
+	cust := chgResult.Customer
+	if cust != nil {
+		chg.CustomerId = cust.ID
+	}
 	chg.ReceiptNumber = chgResult.ReceiptNumber
 	chg.ReceiptURL = chgResult.ReceiptURL
 
