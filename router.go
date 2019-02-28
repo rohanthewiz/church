@@ -19,7 +19,7 @@ import (
 	"github.com/rohanthewiz/church/resource/calendar"
 )
 
-// todo setup cert renew on a chron job
+// todo !! setup cert renew on a chron job
 
 func Serve() {
 	admin.AuthBootstrap()
