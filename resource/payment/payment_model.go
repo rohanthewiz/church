@@ -102,7 +102,7 @@ func modelFromPresenter(cp ChargePresenter) (chgMod *models.Charge, create_op bo
 	if chgMod.ID < 1 {
 		create_op = true
 	}
-	chgMod.CustomerID = null.NewInt64(cp.CustomerId, true)
+	chgMod.CustomerID = null.NewString(cp.CustomerId, true)
 
 	if custName := strings.TrimSpace(cp.CustomerName); custName != "" {
 		chgMod.CustomerName = custName

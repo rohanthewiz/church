@@ -32,8 +32,9 @@ func UpsertPayment(c echo.Context) error {
 		return err
 	}
 	paymentToken := c.FormValue("stripeToken")
-	logger.Log("Info", fmt.Sprintf("Stripe token: '%s'", paymentToken))
 	strAmount := c.FormValue("amount")
+	fullname := c.FormValue("fullname")
+	logger.Log("Info", fmt.Sprintf("Stripe token: '%s'", paymentToken))
 	amt, err := strconv.ParseFloat(strAmount, 64)
 	if err != nil {
 		logger.LogErr(err, "Unable to parse donation amount")
@@ -63,6 +64,7 @@ func UpsertPayment(c echo.Context) error {
 
 	// Record the charge in local DB
 	chg := payment.ChargePresenter{}
+	chg.CustomerName = fullname
 	chg.AmtPaid = chgResult.Amount  // *chgParams.Amount
 	// chg.CustomerName = ?
 	chg.Description = *chgParams.Description
@@ -84,6 +86,8 @@ func UpsertPayment(c echo.Context) error {
 
 	msg := "Created"
 	if updateOp { msg = "Updated" }
+	logger.Log("Info", "Charge " + msg, "customer_name", chg.CustomerName, "amount_paid (cents)", strAmount,
+			"receipt_number", chg.ReceiptNumber)
 	//if efs.Id != "0" && efs.Id != "" {
 	//	msg = "Updated"
 	//}
