@@ -21,7 +21,7 @@ import (
 
 // todo !! setup cert renew on a chron job
 
-//go:generate go run pack/packer/main.go
+//go:generate go run pack/packer.go
 
 func Serve() {
 	admin.AuthBootstrap()
