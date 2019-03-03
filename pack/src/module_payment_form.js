@@ -1,7 +1,11 @@
-var stripe = Stripe('` + config.Options.Stripe.PubKey+ `');
-var elements = stripe.elements();
+// We can put required variable (dummy) declarations here before "// PACKER START"
+// These are not packed
+// Actual variable definitions must be in place where the asset is included
+var stripe;
+var elements;
 
-// ROPACKER START ModulePaymentForm_js
+// The format is PACKER START <varname_to_hold_contents>
+// PACKER START ModulePaymentForm_js
 $(document).ready(function() {
     var style = {
         base: {
@@ -46,4 +50,4 @@ function stripeTokenHandler(token) {
     form.appendChild(hInput);
     form.submit();
 }
-// ROPACKER END
+// PACKER END
