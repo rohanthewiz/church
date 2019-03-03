@@ -41,6 +41,8 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 	}
 	e := element.New
 	out = e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
+		e("h2", "class", "form-title").R("Give Securely Online"),
+		e("p", "class", "subtitle").R("Transactions are securely processed by Stripe (https://stripe.com/about)"),
 		e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 		e("div", "class", "form-row").R(
 			e("label", "for", "fullname").R("First and last name"),
