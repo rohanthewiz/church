@@ -10,6 +10,7 @@ import (
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/payment"
 	ctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/resource/session"
 	"github.com/rohanthewiz/logger"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
@@ -99,7 +100,7 @@ func UpsertPayment(c echo.Context) error {
 	if updateOp { msg = "Payment Updated" }
 	logger.Log("Info", "Charge " + msg, "customer_name", chg.CustomerName, "amount_paid (cents)", strAmount,
 			"receipt_number", chg.ReceiptNumber)
-	
+	session.SetLastDonationURL(c, chg.ReceiptURL) // store in session so can be picked up by the receipt page
 	app.Redirect(c, "/payments/receipt", msg)
 	return nil
 }
