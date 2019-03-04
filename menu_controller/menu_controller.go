@@ -106,7 +106,7 @@ func UpsertMenu(c echo.Context) error {
 		mnu.Items = append(mnu.Items, menuItemDef)
 	}
 
-	mnu.UpdatedBy = c.(*ctx.CustomContext).Username
+	mnu.UpdatedBy = c.(*ctx.CustomContext).Session.Username
 	fmt.Printf("*|* menu: %#v\n", mnu)
 
 	err = menu.UpsertMenu(mnu)

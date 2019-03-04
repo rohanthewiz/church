@@ -9,6 +9,7 @@ import (
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/payment"
+	ctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/logger"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
@@ -20,6 +21,13 @@ func NewPayment(c echo.Context) error {
 	if err != nil { c.Error(err); return err }
 	_ = c.HTMLBlob(200, base.RenderPageNew(pg, c))
 	return  nil
+}
+
+func PaymentReceipt(c echo.Context) (err error) {
+	pg, err := page.PaymentReceipt(c.(*ctx.CustomContext).Session.LastGivingReceiptURL)
+	if err != nil { c.Error(err); return err }
+	_ = c.HTMLBlob(200, base.RenderPageNew(pg, c))
+	return
 }
 
 func UpsertPayment(c echo.Context) error {
@@ -87,14 +95,12 @@ func UpsertPayment(c echo.Context) error {
 		return err
 	}
 
-	msg := "Created"
-	if updateOp { msg = "Updated" }
+	msg := "Thank you! Your payment of $" + strAmount + " processed successfully"
+	if updateOp { msg = "Payment Updated" }
 	logger.Log("Info", "Charge " + msg, "customer_name", chg.CustomerName, "amount_paid (cents)", strAmount,
 			"receipt_number", chg.ReceiptNumber)
-	//if efs.Id != "0" && efs.Id != "" {
-	//	msg = "Updated"
-	//}
-	app.Redirect(c, "/", "Payment " + msg)
+	
+	app.Redirect(c, "/payments/receipt", msg)
 	return nil
 }
 

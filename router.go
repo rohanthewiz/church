@@ -4,6 +4,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/admin"
 	"github.com/rohanthewiz/church/payment_controller"
+	"github.com/rohanthewiz/church/resource/session"
 
 	"github.com/rohanthewiz/church/page_controller"
 	customctx "github.com/rohanthewiz/church/context"
@@ -73,6 +74,7 @@ func Serve() {
 	//pay.GET("/:id", payment_controller.ShowPayment)
 	pay.GET("/new", payment_controller.NewPayment)
 	pay.POST("/create", payment_controller.UpsertPayment)  // create
+	pay.GET("/receipt", payment_controller.PaymentReceipt)  // create
 	//pay.GET("/payments/edit/:id", payment_controller.EditPayment)
 	//pay.POST("/payments/update/:id", payment_controller.UpsertPayment)  // update
 
@@ -87,7 +89,7 @@ func Serve() {
 	ad := e.Group(config.AdminPrefix)
 	ad.Use(func(handler echo.HandlerFunc) echo.HandlerFunc {  // use custom context
 		return func(c echo.Context) error {
-					cc := &customctx.CustomContext{ c, false, "administrator", "" }
+					cc := &customctx.CustomContext{ c, false, session.Session{ Username: "administrator" } }
 					return handler(cc)
 				}
 	})

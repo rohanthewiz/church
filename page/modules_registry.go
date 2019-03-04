@@ -27,6 +27,7 @@ var singularToPlural map[string]string
 
 // Map module creator functions to moduleType
 // Register modules once before the web server starts
+// ModuleContentBy is the kind of module, thus what options to enable in page form
 func RegisterModules() {
 	modulesRegistry = make(map[string]func(module.Presenter) (module.Module, error), numOfModules)
 	moduleTypeToName = make(map[string]module.Name, numOfModules)
@@ -94,6 +95,8 @@ func RegisterModules() {
 
 	addToRegistry(payment.ModuleTypePaymentForm, "payment-form", payment.NewModulePaymentForm)
 	moduleContentBy[payment.ModuleTypePaymentForm] = content.ModuleContentByForm
+	addToRegistry(payment.ModuleTypePaymentReceipt, "payment-receipt", payment.NewModulePaymentReceipt)
+	moduleContentBy[payment.ModuleTypePaymentReceipt] = content.ModuleContentBySingleId
 }
 
 // List Available Modules for dynamic pages

@@ -2,19 +2,19 @@ package auth_controller
 
 import (
 	"bytes"
-	"strconv"
-	"net/http"
-	"gopkg.in/nullbio/null.v6"
 	"github.com/labstack/echo"
-	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/flash"
+	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/auth"
+	"github.com/rohanthewiz/church/resource/cookie"
 	"github.com/rohanthewiz/church/resource/session"
 	"github.com/rohanthewiz/church/resource/user"
-	"github.com/rohanthewiz/church/app"
-	"github.com/rohanthewiz/church/resource/auth"
 	"github.com/rohanthewiz/church/template"
-	"github.com/rohanthewiz/church/resource/cookie"
-	"github.com/rohanthewiz/church/page"
-	"github.com/rohanthewiz/church/flash"
+	. "github.com/rohanthewiz/logger"
+	"gopkg.in/nullbio/null.v6"
+	"net/http"
+	"strconv"
 )
 
 // GET /login - Login Form
@@ -71,7 +71,7 @@ func LogoutHandler(c echo.Context) (error) {  // don't ever send an error back t
 		app.Redirect(c, "/pages/home", "Hmm, tried to log you out, but you weren't logged in, or something else is quirky.")
 		return nil
 	}
-	err = DestroySession(sessVal)
+	err = session.DestroySession(sessVal)
 	cookie.Clear(c, session.CookieSession)
 	app.Redirect(c, "/pages/home", "Logged out")
 	return nil

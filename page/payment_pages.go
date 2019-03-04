@@ -20,19 +20,29 @@ func PaymentForm() (*Page, error) {
 			IsAdmin:    true,
 			Published:    true,
 			IsMainModule: true,
-			//LayoutColumn: "center",
-			//ItemId:     1, // Item id is passed via URL Param
 		},
 	}
-	//modulePres2 := module.Presenter{
-	//	Opts: module.Opts{
-	//		Title:      "Recent Payments",
-	//		ModuleType: payment.ModuleTypeRecentPayments,
-	//		Published:    true,
-	//		LayoutColumn: "right",
-	//		Limit: 8,
-	//	},
-	//}
+	pgdef.Modules = []module.Presenter{modulePres1} //, modulePres2
+	return pageFromPresenter(pgdef), nil
+}
+
+func PaymentReceipt(meta string) (*Page, error) {
+	title := "Giving Receipt"
+	pgdef := Presenter{
+		Title: title, Slug: stringops.Slugify(title),
+		IsAdmin: false,
+		AvailablePositions: []string{"center"},
+	}
+	modulePres1 := module.Presenter{
+		Opts: module.Opts{
+			Title:      "Giving Receipt",
+			ModuleType: payment.ModuleTypePaymentReceipt,
+			IsAdmin:    false,
+			Published:    true,
+			IsMainModule: true,
+			Meta: meta,
+		},
+	}
 	pgdef.Modules = []module.Presenter{modulePres1} //, modulePres2
 	return pageFromPresenter(pgdef), nil
 }

@@ -23,7 +23,7 @@ func CreateTestEvents(c echo.Context) error {
 	if err != nil {
 		c.Error(err); return err
 	}
-	username := c.(*ctx.CustomContext).Username
+	username := c.(*ctx.CustomContext).Session.Username
 	dte, err := time.Parse("01/02/2006 -07", "06/15/2017 -05")
 	if err != nil {
 		return errors.New("Error parsing provided event values")

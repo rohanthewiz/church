@@ -17,6 +17,7 @@ const ttlSeconds = 1800
 type Session struct {
 	Username string `json:"username"`
 	FormReferrer string `json:"formReferrer"` // where to return the user to after a form
+	LastGivingReceiptURL string `json:"lastGivingReceiptURL"`
 }
 
 func (sess Session) Marshal() (data string, err error) {

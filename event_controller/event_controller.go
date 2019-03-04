@@ -1,18 +1,18 @@
 package event_controller
 
 import (
-	"github.com/labstack/echo"
-	ctx "github.com/rohanthewiz/church/context"
-	"github.com/rohanthewiz/church/resource/event"
-	"github.com/rohanthewiz/church/app"
 	"errors"
-	"github.com/rohanthewiz/church/page"
-	"strings"
-	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/util/stringops"
 	"fmt"
+	"github.com/labstack/echo"
+	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
-	"github.com/rohanthewiz/church/auth_controller"
+	ctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/event"
+	"github.com/rohanthewiz/church/resource/session"
+	"github.com/rohanthewiz/church/util/stringops"
+	"github.com/rohanthewiz/logger"
+	"strings"
 )
 
 func NewEvent(c echo.Context) error {
@@ -47,7 +47,7 @@ func AdminListEvents(c echo.Context) error {
 func EditEvent(c echo.Context) error {
 	pg, err := page.EventForm()
 	if err != nil { c.Error(err); return err }
-	auth_controller.SetFormReferrer(c) // save the referrer calling for edit
+	session.SetFormReferrer(c) // save the referrer calling for edit
 	c.HTMLBlob(200, base.RenderPageSingle(pg, c))
 	return  nil
 }
@@ -77,7 +77,7 @@ func UpsertEvent(c echo.Context) error {
 	efs.Summary = c.FormValue("event_summary")
 	efs.Body = c.FormValue("event_body")
 	efs.Categories = stringops.StringSplitAndTrim(c.FormValue("categories"), ",")
-	efs.UpdatedBy = c.(*ctx.CustomContext).Username
+	efs.UpdatedBy = c.(*ctx.CustomContext).Session.Username
 	if c.FormValue("published") == "on" {
 		efs.Published = true
 	}
@@ -94,8 +94,8 @@ func UpsertEvent(c echo.Context) error {
 	}
 
 	redirectTo := "/admin/events"
-	if cc, ok := c.(*ctx.CustomContext); ok && cc.FormReferrer != "" {
-		redirectTo = cc.FormReferrer // return to the form caller
+	if cc, ok := c.(*ctx.CustomContext); ok && cc.Session.FormReferrer != "" {
+		redirectTo = cc.Session.FormReferrer // return to the form caller
 	}
 	app.Redirect(c, redirectTo, "Event " + msg)
 	return nil

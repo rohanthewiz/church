@@ -122,7 +122,7 @@ func UpsertPage(c echo.Context) error {
 		c.Error(err); return err
 	}
 	pg.Modules = page.ModulePresentersFromJson(formJson)
-	pg.UpdatedBy = c.(*ctx.CustomContext).Username
+	pg.UpdatedBy = c.(*ctx.CustomContext).Session.Username
 	logger.LogAsync("Debug", "Page Presenter from form", "page", fmt.Sprintf("%#v", pg))
 	fmt.Sprintf("Preparted page object from form: %#v", pg)
 	pgUrl, err := page.UpsertPage(pg)

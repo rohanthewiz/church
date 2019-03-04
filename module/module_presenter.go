@@ -44,6 +44,7 @@ type Opts struct {
 	ShowUnpublished bool    `json:"show_unpublished"` // only admin can show unpublished
 	Ascending       bool    `json:"ascending"`        // false - normally descending - only needed for multiple
 	IsLoggedIn	bool `json:"-"`
+	Meta string `json:"-"` // custom data for module
 }
 
 func (m Presenter) IsAdminModule() bool {

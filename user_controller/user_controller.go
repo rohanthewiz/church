@@ -52,7 +52,7 @@ func UpsertUser(c echo.Context) error {
 	efs.Summary = c.FormValue("user_summary")
 	efs.Password = c.FormValue("password")  // do not trim space!
 	efs.PasswordConfirmation = c.FormValue("password_confirm")  // do not trim space!
-	efs.UpdatedBy = c.(*ctx.CustomContext).Username
+	efs.UpdatedBy = c.(*ctx.CustomContext).Session.Username
 	role, err := strconv.ParseInt(c.FormValue("role"), 10, 64)
 	if err != nil { logger.LogErr(err, "Error converting role"); return err }
 	efs.Role = int(role)

@@ -52,8 +52,7 @@ func StoreSessionInContext(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		//Log("Info", "We have a valid (admin) session. Setting `Admin = true` on context")
 		cc.Admin = true
-		cc.Username = sess.Username
-		cc.FormReferrer = sess.FormReferrer
+		cc.Session = sess
 		//Log("Info", "Extending session", "username", username, "session_key", sessKey)
 		sess.Extend(sessKey)
 		return next(c)

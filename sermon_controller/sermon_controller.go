@@ -1,26 +1,26 @@
 package sermon_controller
 
 import (
-	"github.com/labstack/echo"
-	"github.com/rohanthewiz/church/page"
-	"github.com/rohanthewiz/church/flash"
 	"bytes"
-	"github.com/rohanthewiz/church/template"
-	"github.com/rohanthewiz/church/app"
-	ctx "github.com/rohanthewiz/church/context"
-	"strings"
 	"errors"
-	"github.com/rohanthewiz/church/resource/sermon"
-	"os"
-	"io"
-	"path"
 	"fmt"
-	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/config"
+	"github.com/labstack/echo"
+	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
 	"github.com/rohanthewiz/church/chftp"
+	"github.com/rohanthewiz/church/config"
+	ctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/flash"
+	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/sermon"
+	"github.com/rohanthewiz/church/resource/session"
+	"github.com/rohanthewiz/church/template"
+	"github.com/rohanthewiz/logger"
+	"io"
+	"os"
+	"path"
+	"strings"
 	"time"
-	"github.com/rohanthewiz/church/auth_controller"
 )
 
 func NewSermon(c echo.Context) error {
@@ -65,7 +65,7 @@ func AdminListSermons(c echo.Context) error {
 func EditSermon(c echo.Context) error {
 	pg, err := page.SermonForm()
 	if err != nil { c.Error(err); return err }
-	auth_controller.SetFormReferrer(c) // save the referrer calling for edit
+	session.SetFormReferrer(c) // save the referrer calling for edit
 	c.HTMLBlob(200, base.RenderPageSingle(pg, c))
 	return  nil
 }
@@ -134,7 +134,7 @@ func UpsertSermon(c echo.Context) error {
 
 	serPres.Categories = strings.Split(c.FormValue("categories"), ",")
 	serPres.ScriptureRefs = strings.Split(c.FormValue("scripture_refs"), ",")
-	serPres.UpdatedBy = c.(*ctx.CustomContext).Username
+	serPres.UpdatedBy = c.(*ctx.CustomContext).Session.Username
 	if c.FormValue("published") == "on" {
 		serPres.Published = true
 	}
@@ -174,8 +174,8 @@ func UpsertSermon(c echo.Context) error {
 	}
 		// Backup will be similar
 	redirectTo := "/admin/sermons"
-	if cc, ok := c.(*ctx.CustomContext); ok && cc.FormReferrer != "" {
-		redirectTo = cc.FormReferrer // return to the form caller
+	if cc, ok := c.(*ctx.CustomContext); ok && cc.Session.FormReferrer != "" {
+		redirectTo = cc.Session.FormReferrer // return to the form caller
 	}
 	app.Redirect(c, redirectTo, "Sermon " + msg)
 	return nil
