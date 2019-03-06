@@ -4,6 +4,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/resource/cookie"
 	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 // This is currently NU because the whole session is retrieved and stored in the custom context
@@ -38,13 +39,17 @@ func SetFormReferrer(c echo.Context) (err error) {
 
 func SetLastDonationURL(c echo.Context, url string) (err error) {
 	key, err := cookie.Get(c, CookieSession)
-	if err != nil || key == "" {
-		return err
+	if err != nil {
+		return serr.Wrap(err, "Unable to get value of session cookie")
+	}
+
+	if key == "" {
+		return serr.Wrap(err, "Session cookie is empty")
 	}
 
 	sess, err := GetSession(key)
 	if err != nil {
-		return err
+		return serr.Wrap(err, "Unable to obtain session", "key", key)
 	}
 
 	sess.LastGivingReceiptURL = url

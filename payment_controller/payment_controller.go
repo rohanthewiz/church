@@ -7,9 +7,9 @@ import (
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
 	"github.com/rohanthewiz/church/config"
+	ctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/payment"
-	ctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/resource/session"
 	"github.com/rohanthewiz/logger"
 	"github.com/stripe/stripe-go"
@@ -26,7 +26,11 @@ func NewPayment(c echo.Context) error {
 
 func PaymentReceipt(c echo.Context) (err error) {
 	pg, err := page.PaymentReceipt(c.(*ctx.CustomContext).Session.LastGivingReceiptURL)
-	if err != nil { c.Error(err); return err }
+	if err != nil {
+		logger.LogErr(err, "Error obtaining payment receipt")
+		c.Error(err)
+		return err
+	}
 	_ = c.HTMLBlob(200, base.RenderPageNew(pg, c))
 	return
 }
@@ -100,7 +104,13 @@ func UpsertPayment(c echo.Context) error {
 	if updateOp { msg = "Payment Updated" }
 	logger.Log("Info", "Charge " + msg, "customer_name", chg.CustomerName, "amount_paid (cents)", strAmount,
 			"receipt_number", chg.ReceiptNumber)
-	session.SetLastDonationURL(c, chg.ReceiptURL) // store in session so can be picked up by the receipt page
+	err = session.SetLastDonationURL(c, chg.ReceiptURL) // store in session so can be picked up by the receipt page
+	if err != nil {
+		logger.LogErr(err, "Unable to set last donation receipt url into session",
+			"url", chgResult.ReceiptURL)
+	} else {
+		logger.Log("Info", "Saved receipt url into session", "url", chgResult.ReceiptURL)
+	}
 	app.Redirect(c, "/payments/receipt", msg)
 	return nil
 }

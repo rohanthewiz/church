@@ -74,7 +74,7 @@ func Serve() {
 	//pay.GET("/:id", payment_controller.ShowPayment)
 	pay.GET("/new", payment_controller.NewPayment)
 	pay.POST("/create", payment_controller.UpsertPayment)  // create
-	pay.GET("/receipt", payment_controller.PaymentReceipt)  // create
+	pay.GET("/receipt", payment_controller.PaymentReceipt)
 	//pay.GET("/payments/edit/:id", payment_controller.EditPayment)
 	//pay.POST("/payments/update/:id", payment_controller.UpsertPayment)  // update
 

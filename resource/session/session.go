@@ -15,8 +15,8 @@ const ttlSeconds = 1800
 // Note: We will treat the actual session store as a simple key - value, so
 //	we can easily swap out stores
 type Session struct {
-	Username string `json:"username"`
-	FormReferrer string `json:"formReferrer"` // where to return the user to after a form
+	Username             string `json:"username"`
+	FormReferrer         string `json:"formReferrer"` // where to return the user to after a form
 	LastGivingReceiptURL string `json:"lastGivingReceiptURL"`
 }
 
@@ -32,9 +32,13 @@ func (sess Session) Marshal() (data string, err error) {
 func (sess Session) Save(key string) (err error) {
 	errorStage := " when saving session"
 	data, err := sess.Marshal()
-	if err != nil { return serr.Wrap(err, "Error" + errorStage) }
-	err = roredis.Set(key, data, ttlSeconds * time.Second)
-	if err != nil { return serr.Wrap(err, "Error saving to session store") }
+	if err != nil {
+		return serr.Wrap(err, "Error"+errorStage)
+	}
+	err = roredis.Set(key, data, ttlSeconds*time.Second)
+	if err != nil {
+		return serr.Wrap(err, "Error saving to session store")
+	}
 	return err
 }
 
@@ -44,7 +48,9 @@ func (sess Session) Extend(key string) (err error) {
 
 func GetSession(key string) (sess Session, err error) {
 	str, err := roredis.Get(key)
-	if err != nil { return sess, serr.Wrap(err, "Error obtaining session for key: " + key) }
+	if err != nil {
+		return sess, serr.Wrap(err, "Error obtaining session", "key", key)
+	}
 	err = json.Unmarshal([]byte(str), &sess)
 	if err != nil {
 		return sess, serr.Wrap(err, "Error unmarshalling session", "key", key, "rawData", str)
