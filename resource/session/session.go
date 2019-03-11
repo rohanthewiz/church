@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-const CookieSession = "church_session"
+const CookieName = "church_session"
 const ttlSeconds = 1800
 
 // Store attributes about the user's session. We will serialize the session under the session key.

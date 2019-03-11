@@ -9,24 +9,31 @@ import (
 )
 
 // Creates a new session for the user -- usually done on login
-func CreateSession(username string, c echo.Context) error {
-	oldKey, err := cookie.Get(c, session.CookieSession)
-	if err == nil {
-		session.DestroySession(oldKey) // destroy any existing session
-	}
-	newKey := auth.RandomKey()
-	Log("Debug", "Creating new session cookie", "name", session.CookieSession, "value", newKey)
-	cookie.Set(c, session.CookieSession, newKey)
-	// For session cookie, don't set an expiration so it might be removed on browser window close
-	// cookie.Expires = time.Now().Add(24 * time.Hour)
+func CreateSession(username string, c echo.Context) (err error) {
+	key := EnsureSessionCookie(c)
 
 	sess := session.Session{ Username: username }
-	err = sess.Save(newKey)
+	err = sess.Save(key)
 	if err != nil {
-		LogErr(err, "Error creating session", "username", username, "key", newKey)
+		LogErr(err, "Error creating session", "username", username, "key", key)
 		return err
 	}
-	Log("Info", "Session created successfully", "username", username, "key", newKey)
-	return err
+	Log("Info", "Session created successfully", "username", username, "key", key)
+	return
 }
 
+
+// Ensure we have a cookie with a session key
+func EnsureSessionCookie(c echo.Context) (key string) {
+	var err error
+	key, err = cookie.Get(c, session.CookieName)
+	if err == nil && key != "" { return }
+
+	key = auth.RandomKey()
+	// TODO !!! Be sure loglevel is somewhere above DEBUG in production
+	Log("Debug", "Setting new session key in cookie", "cookie_name", session.CookieName, "value", key)
+	cookie.Set(c, session.CookieName, key)
+	// For session cookie, don't set an expiration so it might be removed on browser window close
+	// cookie.Expires = time.Now().Add(24 * time.Hour)
+	return
+}

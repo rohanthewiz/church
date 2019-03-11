@@ -65,14 +65,14 @@ func AuthHandler(c echo.Context) error {
 
 // GET /logout
 func LogoutHandler(c echo.Context) (error) {  // don't ever send an error back to Echo - redirect instead
-	sessVal, err := cookie.Get(c, session.CookieSession)
+	sessVal, err := cookie.Get(c, session.CookieName)
 	if err != nil {
 		Log("Info", "Couldn't retrieve session cookie", "when", "logout")
 		app.Redirect(c, "/pages/home", "Hmm, tried to log you out, but you weren't logged in, or something else is quirky.")
 		return nil
 	}
 	err = session.DestroySession(sessVal)
-	cookie.Clear(c, session.CookieSession)
+	cookie.Clear(c, session.CookieName)
 	app.Redirect(c, "/pages/home", "Logged out")
 	return nil
 }

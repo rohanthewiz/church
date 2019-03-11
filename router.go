@@ -49,39 +49,39 @@ func Serve() {
 	// Non-admin dynamic pages (the majority of the pages) are handled here
 	pgs := e.Group("pages")
 	pgs.Use(customctx.UseCustomNonAdminContext)
-	pgs.Use(auth_controller.StoreSessionInContext) // check if logged in and store on our custom context
+	pgs.Use(auth_controller.LoadSessionIntoNonAdminContext) // check if logged in and store on our custom context
 	pgs.GET("/:slug", page_controller.PageHandler)
 
 	// Articles
 	art := e.Group("articles")
 	art.Use(customctx.UseCustomNonAdminContext)
-	art.Use(auth_controller.StoreSessionInContext) // check if logged in and store on our custom context
+	art.Use(auth_controller.LoadSessionIntoNonAdminContext) // check if logged in and store on our custom context
 	art.GET("", article_controller.ListArticles)
 	art.GET("/:id", article_controller.ShowArticle)
 
 	// Events
 	evt := e.Group("events")
 	evt.Use(customctx.UseCustomNonAdminContext)
-	evt.Use(auth_controller.StoreSessionInContext) // store authentication in custom context
+	evt.Use(auth_controller.LoadSessionIntoNonAdminContext) // store authentication in custom context
 	evt.GET("", event_controller.ListEvents)
 	evt.GET("/:id", event_controller.ShowEvent)
 
 	// Payments
 	pay := e.Group("payments")
 	pay.Use(customctx.UseCustomNonAdminContext)
-	pay.Use(auth_controller.StoreSessionInContext) // store authentication in custom context
-	//pay.GET("", payment_controller.ListPayments)
-	//pay.GET("/:id", payment_controller.ShowPayment)
+	pay.Use(auth_controller.LoadSessionIntoNonAdminContext) // store authentication in custom context
 	pay.GET("/new", payment_controller.NewPayment)
 	pay.POST("/create", payment_controller.UpsertPayment)  // create
 	pay.GET("/receipt", payment_controller.PaymentReceipt)
+	//pay.GET("", payment_controller.ListPayments)
+	//pay.GET("/:id", payment_controller.ShowPayment)
 	//pay.GET("/payments/edit/:id", payment_controller.EditPayment)
 	//pay.POST("/payments/update/:id", payment_controller.UpsertPayment)  // update
 
 	// Sermons
 	ser := e.Group("sermons")
 	ser.Use(customctx.UseCustomNonAdminContext)
-	ser.Use(auth_controller.StoreSessionInContext) // store authentication in custom context
+	ser.Use(auth_controller.LoadSessionIntoNonAdminContext) // store authentication in custom context
 	ser.GET("", sermon_controller.ListSermons)
 	ser.GET("/:id", sermon_controller.ShowSermon)
 
@@ -93,8 +93,8 @@ func Serve() {
 					return handler(cc)
 				}
 	})
-	ad.Use(auth_controller.StoreSessionInContext) // store authentication in custom context
-	ad.Use(auth_controller.AuthAdmin)             // require admin privileges in admin
+	ad.Use(auth_controller.LoadSessionIntoContext) // store authentication in custom context
+	ad.Use(auth_controller.AuthAdmin)              // require admin privileges in admin
 	ad.GET("/home", admin_controller.AdminHandler)
 
 	ad.GET("/logout", auth_controller.LogoutHandler)
