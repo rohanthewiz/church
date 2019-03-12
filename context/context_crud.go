@@ -1,6 +1,7 @@
 package context
 
 import (
+	"fmt"
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/resource/cookie"
 	"github.com/rohanthewiz/church/resource/session"
@@ -57,6 +58,7 @@ func SetLastDonationURL(c echo.Context, url string) (err error) {
 	//}
 	sess := cc.Session
 	sess.LastGivingReceiptURL = url
+	fmt.Printf("Session -> %#v\n", sess)
 	return sess.Save(sess.Key)
 }
 
