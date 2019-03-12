@@ -2,6 +2,7 @@ package session
 
 import (
 	"encoding/json"
+	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/roredis"
 	"github.com/rohanthewiz/serr"
 	"time"
@@ -15,6 +16,7 @@ const ttlSeconds = 1800
 // Note: We will treat the actual session store as a simple key - value, so
 //	we can easily swap out stores
 type Session struct {
+	Key string `json:"key"`
 	Username             string `json:"username"`
 	FormReferrer         string `json:"formReferrer"` // where to return the user to after a form
 	LastGivingReceiptURL string `json:"lastGivingReceiptURL"`
@@ -60,4 +62,16 @@ func GetSession(key string) (sess Session, err error) {
 
 func DeleteSession(key string) error {
 	return roredis.Del(key)
+}
+
+// Given a session cookie name, delete it's session from the store
+func DestroySession(sess_val string) (err error) {
+	if sess_val != "" {
+		err = DeleteSession(sess_val) // Delete the session from the store - it should expire anyway
+		if err != nil {
+			logger.Log("Info", "Unable to delete session", "session_key", sess_val, "Error", err.Error())
+		}
+		//Log("Info", "Logout", "stage", "Deleted Session from store")
+	}
+	return
 }

@@ -9,7 +9,6 @@ import (
 	ctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/event"
-	"github.com/rohanthewiz/church/resource/session"
 	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/logger"
 	"strings"
@@ -47,7 +46,7 @@ func AdminListEvents(c echo.Context) error {
 func EditEvent(c echo.Context) error {
 	pg, err := page.EventForm()
 	if err != nil { c.Error(err); return err }
-	session.SetFormReferrer(c) // save the referrer calling for edit
+	ctx.SetFormReferrer(c) // save the referrer calling for edit
 	c.HTMLBlob(200, base.RenderPageSingle(pg, c))
 	return  nil
 }

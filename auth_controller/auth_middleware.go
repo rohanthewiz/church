@@ -53,6 +53,7 @@ func LoadSessionIntoContext(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		//Log("Info", "We have a valid (admin) session. Setting `Admin = true` on context")
 		cc.Admin = true
+		sess.Key = sessKey
 		cc.Session = sess
 		//Log("Info", "Extending session", "username", username, "session_key", sessKey)
 		sess.Extend(sessKey)
@@ -87,6 +88,7 @@ func LoadSessionIntoNonAdminContext(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		//Log("Info", "We have a valid (admin) session. Setting `Admin = true` on context")
 		//cc.Admin = true
+		sess.Key = sessKey
 		cc.Session = sess
 		//Log("Info", "Extending session", "username", username, "session_key", sessKey)
 		sess.Extend(sessKey)

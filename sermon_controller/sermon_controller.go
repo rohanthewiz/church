@@ -13,7 +13,6 @@ import (
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/sermon"
-	"github.com/rohanthewiz/church/resource/session"
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/logger"
 	"io"
@@ -65,7 +64,7 @@ func AdminListSermons(c echo.Context) error {
 func EditSermon(c echo.Context) error {
 	pg, err := page.SermonForm()
 	if err != nil { c.Error(err); return err }
-	session.SetFormReferrer(c) // save the referrer calling for edit
+	ctx.SetFormReferrer(c) // save the referrer calling for edit
 	c.HTMLBlob(200, base.RenderPageSingle(pg, c))
 	return  nil
 }

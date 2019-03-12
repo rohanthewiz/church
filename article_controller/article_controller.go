@@ -11,7 +11,6 @@ import (
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/chimage"
-	"github.com/rohanthewiz/church/resource/session"
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/logger"
 	"strings"
@@ -54,7 +53,7 @@ func AdminListArticles(c echo.Context) error {
 func EditArticle(c echo.Context) error {
 	pg, err := page.ArticleForm()
 	if err != nil { c.Error(err); return err }
-	session.SetFormReferrer(c) // save the referrer calling for edit
+	ctx.SetFormReferrer(c) // save the referrer calling for edit
 	c.HTMLBlob(200, base.RenderPageSingle(pg, c))
 	return  nil
 }
