@@ -46,9 +46,9 @@ func LoadSessionIntoContext(next echo.HandlerFunc) echo.HandlerFunc {
 
 		sess, err := session.GetSession(sessKey)
 		if err != nil {
-			Log("Warn", "Unable to retrieve session from store", "session_key", sessKey,
-				"tip", "The session is probably expired - we will blank the session cookie")
-			cookie.Clear(c, session.CookieName)
+			LogErr(err, "Unable to retrieve session from store", "session_key", sessKey)
+				//"tip", "The session is probably expired - we will blank the session cookie")
+			//cookie.Clear(c, session.CookieName)
 			cc.Admin = false; return next(c)
 		}
 		//Log("Info", "We have a valid (admin) session. Setting `Admin = true` on context")
