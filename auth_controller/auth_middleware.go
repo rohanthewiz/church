@@ -35,7 +35,12 @@ func LoadSessionIntoContext(next echo.HandlerFunc) echo.HandlerFunc {
 		Log("Info", "Request: " + c.Request().Method + " " + c.Request().RequestURI)
 
 		cc, ok := c.(*customctx.CustomContext)
-		if !ok { Log("Error", "Couldn't typecast to CustomContext"); cc.Admin = false; return next(c) }
+		if !ok {
+			Log("Error", "Couldn't typecast to CustomContext")
+			cc.Admin = false
+			return next(c)
+		}
+		Log("Debug", "At this point we should have a valid custom context")
 
 		sessKey := EnsureSessionCookie(c)
 		//sessKey, err := cookie.Get(c, session.CookieName)
@@ -51,7 +56,7 @@ func LoadSessionIntoContext(next echo.HandlerFunc) echo.HandlerFunc {
 			//cookie.Clear(c, session.CookieName)
 			cc.Admin = false; return next(c)
 		}
-		//Log("Info", "We have a valid (admin) session. Setting `Admin = true` on context")
+		Log("Info", "We have a valid (admin) session. Setting `Admin = true` on context")
 		cc.Admin = true
 		sess.Key = sessKey
 		cc.Session = sess

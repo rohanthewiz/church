@@ -24,13 +24,16 @@ func CreateSession(username string, c echo.Context) (err error) {
 
 
 // Ensure we have a cookie with a session key
+// TODO ! Be sure loglevel is somewhere above DEBUG in production
 func EnsureSessionCookie(c echo.Context) (key string) {
 	var err error
 	key, err = cookie.Get(c, session.CookieName)
-	if err == nil && key != "" { return }
+	if err == nil && key != "" {
+		Log("Info", "we have a good existing session key, return it", "key", key)
+		return
+	}
 
 	key = auth.RandomKey()
-	// TODO !!! Be sure loglevel is somewhere above DEBUG in production
 	Log("Debug", "Setting new session key in cookie", "cookie_name", session.CookieName, "value", key)
 	cookie.Set(c, session.CookieName, key)
 	// For session cookie, don't set an expiration so it might be removed on browser window close
