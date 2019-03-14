@@ -3,21 +3,18 @@ package church
 import (
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/admin"
-	"github.com/rohanthewiz/church/payment_controller"
-	"github.com/rohanthewiz/church/resource/session"
-
-	"github.com/rohanthewiz/church/page_controller"
-	customctx "github.com/rohanthewiz/church/context"
-	"github.com/rohanthewiz/church/auth_controller"
 	"github.com/rohanthewiz/church/admin_controller"
-	"github.com/rohanthewiz/church/user_controller"
-	"github.com/rohanthewiz/church/event_controller"
-	"github.com/rohanthewiz/church/config"
-	"github.com/rohanthewiz/church/sermon_controller"
 	"github.com/rohanthewiz/church/article_controller"
-	"github.com/rohanthewiz/church/page"
+	authctlr "github.com/rohanthewiz/church/auth_controller"
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/event_controller"
 	"github.com/rohanthewiz/church/menu_controller"
+	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/page_controller"
+	"github.com/rohanthewiz/church/payment_controller"
 	"github.com/rohanthewiz/church/resource/calendar"
+	"github.com/rohanthewiz/church/sermon_controller"
+	"github.com/rohanthewiz/church/user_controller"
 )
 
 // todo !! setup cert renew on a chron job
@@ -29,75 +26,61 @@ func Serve() {
 	page.RegisterModules()
 
 	e := echo.New()
-	//e.Pre(middleware.HTTPSWWWRedirect())
+	//Did not work -> e.Pre(middleware.HTTPSWWWRedirect())
 
 	e.Static("/assets", "dist")
 	e.Static("/media", "sermons")
 	e.GET("/", page_controller.HomePage)
 
-	e.GET("/login", auth_controller.LoginHandler)
-	e.GET("/logout", auth_controller.LogoutHandler)
-	e.POST("/auth", auth_controller.AuthHandler) // Attempt login
+	e.GET("/login", authctlr.LoginHandler)
+	e.GET("/logout", authctlr.LogoutHandler)
+	e.POST("/auth", authctlr.AuthHandler) // Attempt login
 
 	//?username=joe&password=secret&token=abc12345678&
 	e.GET("/super", admin_controller.SetupSuperAdmin) // (API) Establish first SuperAdmin
 
 	// API
 	e.GET("/calendar", calendar.GetFullCalendarEvents)
-	//e.GET("/adduser", auth_controller.RegisterUser)  // todo auth! POST (bootstrap super admin)
+	//e.GET("/adduser", authctlr.RegisterUser)  // todo auth! POST (bootstrap super admin)
 
 	// Non-admin dynamic pages (the majority of the pages) are handled here
 	pgs := e.Group("pages")
-	pgs.Use(customctx.UseCustomNonAdminContext)
-	pgs.Use(auth_controller.LoadSessionIntoNonAdminContext) // check if logged in and store on our custom context
+	pgs.Use(authctlr.UseCustomContext) // check if logged in and store on our custom context
 	pgs.GET("/:slug", page_controller.PageHandler)
 
 	// Articles
 	art := e.Group("articles")
-	art.Use(customctx.UseCustomNonAdminContext)
-	art.Use(auth_controller.LoadSessionIntoNonAdminContext) // check if logged in and store on our custom context
+	art.Use(authctlr.UseCustomContext) // check if logged in and store on our custom context
 	art.GET("", article_controller.ListArticles)
 	art.GET("/:id", article_controller.ShowArticle)
 
 	// Events
 	evt := e.Group("events")
-	evt.Use(customctx.UseCustomNonAdminContext)
-	evt.Use(auth_controller.LoadSessionIntoNonAdminContext) // store authentication in custom context
+	evt.Use(authctlr.UseCustomContext) // store authentication in custom context
 	evt.GET("", event_controller.ListEvents)
 	evt.GET("/:id", event_controller.ShowEvent)
 
 	// Payments
 	pay := e.Group("payments")
-	pay.Use(customctx.UseCustomNonAdminContext)
-	pay.Use(auth_controller.LoadSessionIntoNonAdminContext) // store authentication in custom context
+	pay.Use(authctlr.UseCustomContext) // store authentication in custom context
 	pay.GET("/new", payment_controller.NewPayment)
 	pay.POST("/create", payment_controller.UpsertPayment)  // create
 	pay.GET("/receipt", payment_controller.PaymentReceipt)
-	//pay.GET("", payment_controller.ListPayments)
-	//pay.GET("/:id", payment_controller.ShowPayment)
-	//pay.GET("/payments/edit/:id", payment_controller.EditPayment)
-	//pay.POST("/payments/update/:id", payment_controller.UpsertPayment)  // update
 
 	// Sermons
 	ser := e.Group("sermons")
-	ser.Use(customctx.UseCustomNonAdminContext)
-	ser.Use(auth_controller.LoadSessionIntoNonAdminContext) // store authentication in custom context
+	ser.Use(authctlr.UseCustomContext) // store authentication in custom context
 	ser.GET("", sermon_controller.ListSermons)
 	ser.GET("/:id", sermon_controller.ShowSermon)
 
 	// Admin group uses authentication middleware
 	ad := e.Group(config.AdminPrefix)
-	ad.Use(func(handler echo.HandlerFunc) echo.HandlerFunc {  // use custom context
-		return func(c echo.Context) error {
-					cc := &customctx.CustomContext{ c, false, session.Session{ Username: "administrator" } }
-					return handler(cc)
-				}
-	})
-	ad.Use(auth_controller.LoadSessionIntoContext) // store authentication in custom context
-	ad.Use(auth_controller.AuthAdmin)              // require admin privileges in admin
+	ad.Use(authctlr.UseCustomContext) // store authentication in custom context
+	ad.Use(authctlr.AdminGuard)       // require admin privileges in admin - this should be the last middleware
+
 	ad.GET("/home", admin_controller.AdminHandler)
 
-	ad.GET("/logout", auth_controller.LogoutHandler)
+	ad.GET("/logout", authctlr.LogoutHandler)
 
 	ad.GET("/users", user_controller.ListUsers)
 	ad.GET("/users/new", user_controller.NewUser)
@@ -148,7 +131,6 @@ func Serve() {
 	} else {
 		e.Logger.Fatal(e.Start(":" + config.Options.Server.Port))
 	}
-
 }
 
 func startTLS(e *echo.Echo) {

@@ -32,6 +32,7 @@ func (sess Session) Marshal() (data string, err error) {
 
 // Key here is the value of the user's session cookie
 func (sess Session) Save(key string) (err error) {
+	sess.Key = key // save the key inside the session also ?? not sure about this
 	errorStage := " when saving session"
 	data, err := sess.Marshal()
 	if err != nil {

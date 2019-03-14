@@ -52,7 +52,7 @@ func AuthHandler(c echo.Context) error {
 		return nil
 	}
 	// At this point login is successful
-	err = CreateSession(username, c)
+	err = StartSession(username, c)
 	if err != nil {
 		c.String(http.StatusInternalServerError,
 			"Something went wrong on the server and we weren't able to log you in")
