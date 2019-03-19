@@ -25,7 +25,7 @@ func (m ModulePaymentReceipt) Render(params map[string]map[string]string, logger
 		e("p", "class", "receipt-info").R(
 			"Your receipt is available",
 			e("a", "href", m.Opts.Meta, "target", "_blank").R(" here."),
-			"<br>Please save a copy for your records",
+			"<br>Please save a copy for your records, and close the browser window when finished",
 		),
 	)
 	return
