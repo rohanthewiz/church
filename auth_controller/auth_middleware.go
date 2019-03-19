@@ -7,6 +7,7 @@ import (
 	"github.com/rohanthewiz/church/resource/session"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
+	"strings"
 )
 
 // Authorization middleware - Read the Admin value on the custom context
@@ -45,8 +46,10 @@ func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
 		// Get Session
 		sess, err := session.GetSession(sessKey)
 		if err != nil {
-			LogErr(serr.Wrap(err, "No session found", "session_key", sessKey))
-				//"tip", "The session is probably expired - we will blank the session cookie")
+			if !strings.Contains(err.Error(), session.KeyNotExists) {
+				LogErr(serr.Wrap(err, "Unable to obtain session", "session_key", sessKey))
+			}
+			//"tip", "The session is probably expired - we will blank the session cookie")
 			//cookie.Clear(c, session.CookieName)
 			//cc.Admin = false
 			return next(cc)

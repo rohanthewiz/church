@@ -10,6 +10,7 @@ import (
 
 const CookieName = "church_session"
 const ttlSeconds = 1800
+const KeyNotExists = "Key does not exist"
 
 // Store attributes about the user's session. We will serialize the session under the session key.
 // We will have one session per user
