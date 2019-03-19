@@ -45,7 +45,7 @@ func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
 		// Get Session
 		sess, err := session.GetSession(sessKey)
 		if err != nil {
-			LogErr(serr.NewSErr("Unable to retrieve session from store", "session_key", sessKey))
+			LogErr(serr.Wrap(err, "No session found", "session_key", sessKey))
 				//"tip", "The session is probably expired - we will blank the session cookie")
 			//cookie.Clear(c, session.CookieName)
 			//cc.Admin = false
