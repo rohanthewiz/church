@@ -23,7 +23,8 @@ func (m ModulePaymentReceipt) Render(params map[string]map[string]string, logger
 	out = e("div", "class", "ch-module-wrapper ch-" + m.Opts.ModuleType).R(
 		e("h3", "class", "article-title").R("Thanks for your donation!"),
 		e("p", "class", "receipt-info").R(
-			"Your receipt is available here: ",
+			"Your receipt is available",
+			e("a", "href", m.Opts.Meta).R(" here."),
 			m.Opts.Meta, "<br>Please save a copy for your records",
 		),
 	)
