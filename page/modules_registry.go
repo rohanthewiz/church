@@ -19,7 +19,8 @@ import (
 const numOfModules = 15
 var modulesRegistry map[string]func(module.Presenter) (module.Module, error)
 var moduleTypeToName map[string]module.Name
-var moduleContentBy map[string]content.ModuleContentType // How to filter module content
+// module option types (by Id(s) or by limit/offset) - (used mainly in page form)
+var moduleContentBy map[string]content.ModuleContentType
 
 // Todo - refactor to a place like string utils
 // Registry of modules need to ensure an entry here though
