@@ -38,13 +38,14 @@ type ModuleReceiver struct {
 	Offset          string `json:"offset"` // we'll conv these to int64
 	ShowUnpublished bool   `json:"show_unpublished"`
 	Ascending       bool   `json:"ascending"`
+	CustomClass string `json:"custom_class"`
 }
 
 func ModulePresentersFromJson(formJson string) (modPresenter []module.Presenter) {
 	form := formPageObject{}
 	err := json.Unmarshal([]byte(formJson), &form)
 	if err != nil { return }
-	println("|* Num of modules:", len(form.Modules))
+	println("|* Num of modules rcxd from form:", len(form.Modules))
 
 	for _, mod := range form.Modules {
 		modPres := module.Presenter{}
@@ -97,6 +98,7 @@ func ModulePresentersFromJson(formJson string) (modPresenter []module.Presenter)
 			Offset:          offset,
 			ShowUnpublished: mod.ShowUnpublished,
 			Ascending:       mod.Ascending,
+			CustomClass: mod.CustomClass,
 		}
 		modPresenter = append(modPresenter, modPres)
 	}

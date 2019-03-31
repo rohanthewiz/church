@@ -44,6 +44,7 @@ type Opts struct {
 	ShowUnpublished bool    `json:"show_unpublished"` // only admin can show unpublished
 	Ascending       bool    `json:"ascending"`        // false - normally descending - only needed for multiple
 	IsLoggedIn	bool `json:"-"`
+	CustomClass string `json:"custom_class"` // user specified css class
 	Meta string `json:"-"` // custom data for module
 }
 

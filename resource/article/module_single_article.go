@@ -46,8 +46,10 @@ func (m *ModuleSingleArticle) Render(params map[string]map[string]string, logged
 		LogErr(err, "Error in module single article render")
 		return ""
 	}
+	klass := "ch-module-wrapper ch-" + m.Opts.ModuleType
+	if m.Opts.CustomClass != "" { klass += " " + m.Opts.CustomClass }
 	e := element.New
-	out := e("div", "class", "ch-module-wrapper ch-" + m.Opts.ModuleType).R(
+	out := e("div", "class", klass).R(
 		e("h3", "class", "article-title").R(art.Title),
 		e("p").R(art.Summary),
 		e("p").R(art.Body),
