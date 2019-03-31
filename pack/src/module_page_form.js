@@ -87,7 +87,7 @@ $(document).ready(function() {
 	});
 });
 
-// Todo - init `(contentBys[mod.opts.module_type] != "SingleId" && contentBys[mod.opts.module_type] != "MultiId")` to a var `isList`
+// Todo - init (contentBys[mod.opts.module_type] != "SingleId" && contentBys[mod.opts.module_type] != "MultiId") to a var isList
 function buildComponent(x, mod) {
 	var ids = "";
 	if (mod.opts.item_ids) {

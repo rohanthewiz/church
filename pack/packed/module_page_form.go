@@ -6,7 +6,7 @@ var ModulePageForm_js = `// The format is PACKER START <varname_to_hold_contents
 var newModule = {
 		opts: {
 			layout_column: "center", published: true, main_module: false,
-			title: "", slug: "", module_type: "article_single",
+			title: "", slug: "", module_type: "article_single", custom_class: "",
 			items_url_path: "", item_ids: [], is_admin: false,
 			show_unpublished: false, ascending: false, condition: "", limit: 5, offset: 0
 		}
@@ -86,6 +86,7 @@ $(document).ready(function() {
 	});
 });
 
+// Todo - init (contentBys[mod.opts.module_type] != "SingleId" && contentBys[mod.opts.module_type] != "MultiId") to a var isList
 function buildComponent(x, mod) {
 	var ids = "";
 	if (mod.opts.item_ids) {
@@ -93,22 +94,50 @@ function buildComponent(x, mod) {
 	}
 	return $('<div class="module">' +
 		'<div class="form-pack">' +
-		'<div class="form-group"><label>Choose Module Type</label><select class="module_type" name="mods[' + x + '][module_type]" value="' + mod.opts.module_type + '">' + buildModuleTypeOptions(mod.opts.module_type) + '</select><i class="bar"></i></div>' +
-		'<div class="form-group"><label>Module Title</label>&nbsp;<input type="text" placeholder="title" name="mods[' + x + '][title]" value="' + mod.opts.title + '" /><i class="bar"></i></div>' +
-		'<div class="form-group btn-group"><button class="btn move_up" title="Move row up">Up</button><button class="btn move_down" title="Move row down">Down</button>' + '<button class="remove_field">Delete</button></div>' +
-		'</div><div class="form-pack">' +
-		'<div class="form-group"><label>Column Position (e.g. center)</label>&nbsp;<input type="text" placeholder="layout_column" name="mods[' + x + '][layout_column]" value="' + mod.opts.layout_column + '"><i class="bar"></i></div>' +
-		'<div class="form-group"><label>Item Ids</label>&nbsp;<input class="by-id can-disable" type="text"' + ((contentBys[mod.opts.module_type] != "SingleId" && contentBys[mod.opts.module_type] != "MultiId") ? ' disabled="disabled"' : '')  + '  placeholder="Item id(s)" name="mods[' + x + '][item_ids]" value="' + ids + '"><i class="bar"></i></div>' +
-		'</div><div class="form-pack">' +
-		'<div class="form-group"><label>Number of Items to List</label>&nbsp;<input class="by-list can-disable" type="text"' + ((contentBys[mod.opts.module_type] == "SingleId" || contentBys[mod.opts.module_type] == "MultiId") ? ' disabled="disabled"' : '')  + ' placeholder="limit" name="mods[' + x + '][limit]" value="' + mod.opts.limit + '"><i class="bar"></i></div>' +
-		'<div class="form-group"><label>Number of Items to Skip</label>&nbsp;<input class="by-list can-disable" type="text"' + ((contentBys[mod.opts.module_type] == "SingleId" || contentBys[mod.opts.module_type] == "MultiId") ? ' disabled="disabled"' : '')  + ' placeholder="offset" name="mods[' + x + '][offset]" value="' + mod.opts.offset + '"><i class="bar"></i></div>' +
-		'</div><div class="form-pack">' +
-		//checkbox('Admin', 'is_admin', x, mod.opts.is_admin) +
-		checkbox('Published', 'published', x, mod.opts.published) +
-		checkbox('Main Module (Only one module should be the Main)', 'main_module', x, mod.opts.is_main_module) +
-		checkbox('Show Unpublished', 'show_unpublished', x, mod.opts.show_unpublished) +
-		checkbox('Oldest First', 'ascending', x, mod.opts.ascending) +
-		'</div></div>');
+			'<div class="form-group"><label>Choose Module Type</label><select class="module_type" name="mods[' + x + '][module_type]" value="' +
+					mod.opts.module_type + '">' + buildModuleTypeOptions(mod.opts.module_type) + '</select><i class="bar"></i>' +
+			'</div>' +
+			'<div class="form-group"><label>Module Title</label>&nbsp;<input type="text" placeholder="title" name="mods[' + x + '][title]" ' +
+					'value="' + mod.opts.title + '" /><i class="bar"></i>' +
+			'</div>' +
+			'<div class="form-group btn-group"><button class="btn move_up" title="Move row up">Up</button>' +
+					'<button class="btn move_down" title="Move row down">Down</button>' +
+					'<button class="remove_field">Delete</button>' +
+			'</div>' +
+		'</div>' +
+
+		'<div class="form-pack">' +
+			'<div class="form-group"><label>Column Position (e.g. center)</label>&nbsp;<input type="text"' +
+					'placeholder="layout_column" name="mods[' + x + '][layout_column]" value="' + mod.opts.layout_column +
+					'"><i class="bar"></i>' +
+			'</div>' +
+			'<div class="form-group"><label>Item Ids</label>&nbsp;<input class="by-id can-disable" type="text"' +
+					((contentBys[mod.opts.module_type] != "SingleId" && contentBys[mod.opts.module_type] != "MultiId") ? ' disabled="disabled"' : '') +
+					'placeholder="Item id(s)" name="mods[' + x + '][item_ids]" value="' + ids + '"><i class="bar"></i>' +
+			'</div>' +
+		'</div>' +
+		'<div class="form-pack">' + // Todo - Apply a class to show only on isList (bool var)
+			'<div class="form-group"><label>Number of Items to List</label>&nbsp;<input class="by-list can-disable" type="text"' +
+					((contentBys[mod.opts.module_type] == "SingleId" || contentBys[mod.opts.module_type] == "MultiId") ? ' disabled="disabled"' : '')  +
+					'placeholder="limit" name="mods[' + x + '][limit]" value="' + mod.opts.limit + '"><i class="bar"></i>' +
+			'</div>' +
+			'<div class="form-group"><label>Number of Items to Skip</label>&nbsp;<input class="by-list can-disable" type="text"' +
+					((contentBys[mod.opts.module_type] == "SingleId" || contentBys[mod.opts.module_type] == "MultiId") ? ' disabled="disabled"' : '')  +
+					'placeholder="offset" name="mods[' + x + '][offset]" value="' + mod.opts.offset + '"><i class="bar"></i>' +
+			'</div>' +
+		'</div>' +
+		'<div class="form-pack">' +
+			'<div class="form-group"><label>Module style</label>&nbsp;<input placeholder="module style(s) - separate multiples with spaces" name="mods[' + x + '][custom_class]" value="' + mod.opts.custom_class + '"><i class="bar"></i>' +
+			'</div>' +
+		'</div>' +
+		'<div class="form-pack">' +
+			//checkbox('Admin', 'is_admin', x, mod.opts.is_admin) +
+			checkbox('Published', 'published', x, mod.opts.published) +
+			checkbox('Main Module (Only one module should be the Main)', 'main_module', x, mod.opts.is_main_module) +
+			checkbox('Show Unpublished', 'show_unpublished', x, mod.opts.show_unpublished) +
+			checkbox('Oldest First', 'ascending', x, mod.opts.ascending) +
+		'</div>' +
+	'</div>');
 }
 
 function buildModuleTypeOptions(modType) {
