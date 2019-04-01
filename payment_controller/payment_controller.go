@@ -58,7 +58,7 @@ func UpsertPayment(c echo.Context) error {
 	chgParams := &stripe.ChargeParams{
 		Amount: stripe.Int64(int64(amt * 100.0)), // Todo! Verify amount is expressed as cents
 		Currency: stripe.String(string(stripe.CurrencyUSD)),
-		Description: stripe.String("Test charge"),
+		Description: stripe.String("CCSWM Donation"),
 	}
 	err = chgParams.SetSource(paymentToken)
 	if err != nil {
