@@ -34,6 +34,8 @@ func PaymentReceipt(c echo.Context) (err error) {
 	return
 }
 
+const txDescription = "CCSWM Donation"
+
 func UpsertPayment(c echo.Context) error {
 	csrf := c.FormValue("csrf")
 	// Check token valid against Redis
@@ -46,7 +48,7 @@ func UpsertPayment(c echo.Context) error {
 	paymentToken := c.FormValue("stripeToken")
 	strAmount := c.FormValue("amount")
 	fullname := c.FormValue("fullname")
-	logger.Log("Info", fmt.Sprintf("Stripe token: '%s'", paymentToken))
+	logger.Log("Info", fmt.Sprintf("Stripe token: '%s'", paymentToken)) // Todo - this is a debug
 	amt, err := strconv.ParseFloat(strAmount, 64)
 	if err != nil {
 		logger.LogErr(err, "Unable to parse donation amount")
@@ -58,7 +60,7 @@ func UpsertPayment(c echo.Context) error {
 	chgParams := &stripe.ChargeParams{
 		Amount: stripe.Int64(int64(amt * 100.0)), // Todo! Verify amount is expressed as cents
 		Currency: stripe.String(string(stripe.CurrencyUSD)),
-		Description: stripe.String("CCSWM Donation"),
+		Description: stripe.String(txDescription),
 	}
 	err = chgParams.SetSource(paymentToken)
 	if err != nil {
@@ -68,18 +70,38 @@ func UpsertPayment(c echo.Context) error {
 	}
 	chgResult, err := charge.New(chgParams)
 	if err != nil {
-		logger.LogErr(err, "Stripe: unable to charge donation amount: " + strAmount, "token", paymentToken)
+		logger.LogErr(err, "Stripe: unable to charge donation amount: " + strAmount, "token", paymentToken,
+				"fullname", fullname)
 		c.Error(err)
 		return err
 	}
-	logger.Log("Info", "Stripe payment charged", "charge", fmt.Sprintf("%#v", chgResult))
+	logger.LogAsync("Info", "Stripe payment charged", "charge", fmt.Sprintf("%#v", chgResult))
 
+	go savePaymentToLocalDB(chgResult, fullname, paymentToken)
+
+	msg := "Thank you! Your payment of $" + strAmount + " processed successfully"
+	// Todo - if updateOp { msg = "Payment Updated" }
+
+	logger.LogAsync("Info", "Charge " + msg, "customer_name", fullname, "amount_paid (cents)", strAmount,
+			"receipt_number", chgResult.ReceiptNumber, "receipt url", chgResult.ReceiptURL)
+	err = ctx.SetLastDonationURL(c, chgResult.ReceiptURL) // store in session so can be picked up by the receipt page
+	if err != nil {
+		logger.LogErr(err, "Unable to set last donation receipt url into session",
+			"url", chgResult.ReceiptURL)
+	} else {
+		logger.LogAsync("Info", "Saved receipt url into session", "url", chgResult.ReceiptURL)
+	}
+	app.Redirect(c, "/payments/receipt", msg)
+	return nil
+}
+
+func savePaymentToLocalDB(chgResult *stripe.Charge, fullName, paymentToken string) {
 	// Record the charge in local DB
 	chg := payment.ChargePresenter{}
-	chg.CustomerName = fullname
+	chg.CustomerName = fullName
 	chg.AmtPaid = chgResult.Amount  // *chgParams.Amount
 	// chg.CustomerName = ?
-	chg.Description = *chgParams.Description
+	chg.Description = txDescription
 	chg.PaymentToken = paymentToken
 	chg.Captured = chgResult.Captured
 	chg.Paid = chgResult.Paid
@@ -95,23 +117,12 @@ func UpsertPayment(c echo.Context) error {
 	updateOp, err := chg.Upsert()
 	if err != nil {
 		logger.LogErr(err, "Error saving charge/payment record")
-		c.Error(err)
-		return err
+		return
 	}
-
-	msg := "Thank you! Your payment of $" + strAmount + " processed successfully"
-	if updateOp { msg = "Payment Updated" }
-	logger.Log("Info", "Charge " + msg, "customer_name", chg.CustomerName, "amount_paid (cents)", strAmount,
-			"receipt_number", chg.ReceiptNumber)
-	err = ctx.SetLastDonationURL(c, chg.ReceiptURL) // store in session so can be picked up by the receipt page
-	if err != nil {
-		logger.LogErr(err, "Unable to set last donation receipt url into session",
-			"url", chgResult.ReceiptURL)
-	} else {
-		logger.Log("Info", "Saved receipt url into session", "url", chgResult.ReceiptURL)
-	}
-	app.Redirect(c, "/payments/receipt", msg)
-	return nil
+	logger.Log("Info", func(updOp bool) (out string) {
+		if updateOp { return "Updated charge in DB" }
+		return "Inserted charge into DB"
+	}(updateOp))
 }
 
 //func ListPayments(c echo.Context) error {
