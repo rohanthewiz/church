@@ -58,7 +58,7 @@ func SetLastDonationURL(c echo.Context, url string) (err error) {
 	//}
 	sess := cc.Session
 	sess.LastGivingReceiptURL = url
-	fmt.Printf("Session -> %#v\n", sess)
+	logger.Log("Info", fmt.Sprintf("On set of Last Donation URL - Session -> %#v\n", sess))
 	return sess.Save(sess.Key)
 }
 
