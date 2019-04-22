@@ -49,9 +49,7 @@ func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
 			if !strings.Contains(err.Error(), session.KeyNotExists) {
 				LogErr(serr.Wrap(err, "Unable to obtain session", "session_key", sessKey))
 			}
-			//"tip", "The session is probably expired - we will blank the session cookie")
-			//cookie.Clear(c, session.CookieName)
-			//cc.Admin = false
+			// The session may have expired or was not written into the store as yet
 			return next(cc)
 		}
 		Log("Info", "We have a valid session - loading custom context")

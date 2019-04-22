@@ -35,14 +35,15 @@ func (sess Session) Marshal() (data string, err error) {
 func (sess Session) Save(key string) (err error) {
 	sess.Key = key // save the key inside the session also ?? not sure about this
 	errorStage := " when saving session"
-	data, err := sess.Marshal()
+	strSession, err := sess.Marshal()
 	if err != nil {
-		return serr.Wrap(err, "Error"+errorStage)
+		return serr.Wrap(err, "Error marshaling session"+errorStage)
 	}
-	err = roredis.Set(key, data, ttlSeconds*time.Second)
+	err = roredis.Set(key, strSession, ttlSeconds*time.Second)
 	if err != nil {
 		return serr.Wrap(err, "Error saving to session store")
 	}
+	logger.Log("Info", "*** Session saved. Key: " + key + " session: " + strSession)
 	return err
 }
 

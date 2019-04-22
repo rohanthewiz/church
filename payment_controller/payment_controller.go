@@ -84,6 +84,7 @@ func UpsertPayment(c echo.Context) error {
 
 	logger.LogAsync("Info", "Charge " + msg, "customer_name", fullname, "amount_paid (cents)", strAmount,
 			"receipt_number", chgResult.ReceiptNumber, "receipt url", chgResult.ReceiptURL)
+
 	err = ctx.SetLastDonationURL(c, chgResult.ReceiptURL) // store in session so can be picked up by the receipt page
 	if err != nil {
 		logger.LogErr(err, "Unable to set last donation receipt url into session",
