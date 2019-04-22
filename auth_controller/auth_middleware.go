@@ -57,10 +57,10 @@ func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
 			cc.Admin = true
 		}
 
-		sess.Key = sessKey // Not sure we need this ??The key may be new - we want to track it in the session
+		//sess.Key = sessKey // Not sure we need this ??The key may be new - we want to track it in the session
 		cc.Session = sess
 		//Log("Info", "Extending session", "username", username, "session_key", sessKey)
-		_ = sess.Extend(sessKey)
+		_ = sess.Extend()
 		return next(cc)
 	}
 }

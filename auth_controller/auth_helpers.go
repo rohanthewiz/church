@@ -23,7 +23,6 @@ func StartSession(username string, c echo.Context) (err error) {
 }
 
 // Ensure we have a cookie with a session key
-// TODO ! Be sure loglevel is somewhere above DEBUG in production
 func EnsureSessionCookie(c echo.Context) (key string) {
 	var err error
 	key, err = cookie.Get(c, session.CookieName)
