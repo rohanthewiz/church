@@ -49,15 +49,13 @@ func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
 			if !strings.Contains(err.Error(), session.KeyNotExists) {
 				LogErr(serr.Wrap(err, "Unable to obtain session", "session_key", sessKey))
 			}
-			// The session may have expired or was not written into the store as yet
-			return next(cc)
+			// The session may have expired or was not written into the store as yet or some other error
+			// so create a fresh session
+			sess = session.Session{ Key: sessKey }
 		}
-		Log("Info", "We have a valid session - loading custom context")
 		if sess.Username != "" { // admins must have a username in sesssion
 			cc.Admin = true
 		}
-
-		//sess.Key = sessKey // Not sure we need this ??The key may be new - we want to track it in the session
 		cc.Session = sess
 		//Log("Info", "Extending session", "username", username, "session_key", sessKey)
 		_ = sess.Extend()

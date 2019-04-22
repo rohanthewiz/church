@@ -38,7 +38,10 @@ func (sess Session) Save(key string) (err error) {
 		logger.LogErr(err)
 		return
 	}
-	sess.Key = key // save the key inside the session also ?? not sure about this
+	if sess.Key != "" && sess.Key != key {
+		logger.Log("Warn", "We have an inconsistency problem. Key in session: " + sess.Key, ", Key for store: " + key)
+	}
+	sess.Key = key // save the key inside the session also for easy access to update
 	errorStage := " when saving session"
 	strSession, err := sess.Marshal()
 	if err != nil {
