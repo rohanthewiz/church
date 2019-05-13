@@ -42,7 +42,10 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 	e := element.New
 	out = e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
 		e("h2", "class", "form-title").R("Give Securely Online"),
-		e("p", "class", "subtitle").R("Transactions are securely processed by Stripe (https://stripe.com/about)"),
+		e("p", "class", "subtitle").R(
+			"Transactions are securely processed by Stripe payment services (https://stripe.com/about)<br>",
+			"All donations are tax-deductible. Please contact Lance Parr, or Rohan Allison with any questions.",
+			),
 		e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 		e("div", "class", "form-row").R(
 			e("label", "for", "fullname").R("First and last name"),
@@ -59,7 +62,7 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 			e("label", "for", "amount").R("Giving amount"),
 			e("input", "name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
 		),
-		e("button", "id", "payment_form_submit_btn", "class", "submit-button").R("Submit Payment"),
+		e("button", "id", "payment_form_submit_btn", "class", "submit-button").R("Send My Gift"),
 
 		e("script", "type", "text/javascript").R(`
 			var stripe = Stripe('` + config.Options.Stripe.PubKey+ `');
