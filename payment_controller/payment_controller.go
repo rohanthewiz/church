@@ -18,9 +18,12 @@ import (
 
 func NewPayment(c echo.Context) error {
 	pg, err := page.PaymentForm()
-	if err != nil { c.Error(err); return err }
+	if err != nil {
+		c.Error(err)
+		return err
+	}
 	_ = c.HTMLBlob(200, base.RenderPageNew(pg, c))
-	return  nil
+	return nil
 }
 
 func PaymentReceipt(c echo.Context) (err error) {
@@ -48,6 +51,8 @@ func UpsertPayment(c echo.Context) error {
 	paymentToken := c.FormValue("stripeToken")
 	strAmount := c.FormValue("amount")
 	fullname := c.FormValue("fullname")
+	email := c.FormValue("email")
+	comment := c.FormValue("comment")
 	logger.Log("Info", fmt.Sprintf("Stripe token: '%s'", paymentToken)) // Todo - this is a debug
 	amt, err := strconv.ParseFloat(strAmount, 64)
 	if err != nil {
@@ -58,8 +63,8 @@ func UpsertPayment(c echo.Context) error {
 	// Make the Charge
 	stripe.Key = config.Options.Stripe.PrivKey // Todo! create env var override //os.Getenv("STRIPE_PRIV_KEY")
 	chgParams := &stripe.ChargeParams{
-		Amount: stripe.Int64(int64(amt * 100.0)), // Todo! Verify amount is expressed as cents
-		Currency: stripe.String(string(stripe.CurrencyUSD)),
+		Amount:      stripe.Int64(int64(amt * 100.0)), // Todo! Verify amount is expressed as cents
+		Currency:    stripe.String(string(stripe.CurrencyUSD)),
 		Description: stripe.String(txDescription),
 	}
 	err = chgParams.SetSource(paymentToken)
@@ -70,20 +75,20 @@ func UpsertPayment(c echo.Context) error {
 	}
 	chgResult, err := charge.New(chgParams)
 	if err != nil {
-		logger.LogErr(err, "Stripe: unable to charge donation amount: " + strAmount, "token", paymentToken,
-				"fullname", fullname)
+		logger.LogErr(err, "Stripe: unable to charge donation amount: "+strAmount, "token", paymentToken,
+			"fullname", fullname)
 		c.Error(err)
 		return err
 	}
 	logger.LogAsync("Info", "Stripe payment charged", "charge", fmt.Sprintf("%#v", chgResult))
 
-	go savePaymentToLocalDB(chgResult, fullname, paymentToken)
+	go savePaymentToLocalDB(chgResult, fullname, email, comment, paymentToken)
 
 	msg := "Thank you! Your payment of $" + strAmount + " processed successfully"
 	// Todo - if updateOp { msg = "Payment Updated" }
 
-	logger.LogAsync("Info", "Charge " + msg, "customer_name", fullname, "amount_paid (cents)", strAmount,
-			"receipt_number", chgResult.ReceiptNumber, "receipt url", chgResult.ReceiptURL)
+	logger.LogAsync("Info", "Charge "+msg, "customer_name", fullname, "amount_paid (cents)", strAmount,
+		"receipt_number", chgResult.ReceiptNumber, "receipt url", chgResult.ReceiptURL)
 
 	err = ctx.SetLastDonationURL(c, chgResult.ReceiptURL) // store in session so can be picked up by the receipt page
 	if err != nil {
@@ -96,11 +101,13 @@ func UpsertPayment(c echo.Context) error {
 	return nil
 }
 
-func savePaymentToLocalDB(chgResult *stripe.Charge, fullName, paymentToken string) {
+func savePaymentToLocalDB(chgResult *stripe.Charge, fullName, email, comment, paymentToken string) {
 	// Record the charge in local DB
 	chg := payment.ChargePresenter{}
 	chg.CustomerName = fullName
-	chg.AmtPaid = chgResult.Amount  // *chgParams.Amount
+	chg.CustomerEmail = email
+	chg.Comment = comment
+	chg.AmtPaid = chgResult.Amount // *chgParams.Amount
 	// chg.CustomerName = ?
 	chg.Description = txDescription
 	chg.PaymentToken = paymentToken
@@ -121,7 +128,9 @@ func savePaymentToLocalDB(chgResult *stripe.Charge, fullName, paymentToken strin
 		return
 	}
 	logger.Log("Info", func(updOp bool) (out string) {
-		if updateOp { return "Updated charge in DB" }
+		if updateOp {
+			return "Updated charge in DB"
+		}
 		return "Inserted charge into DB"
 	}(updateOp))
 }

@@ -36,7 +36,7 @@ func NewModulePaymentForm(pres module.Presenter) (module.Module, error) {
 // Refer to the fragment as a string
 
 func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn bool) (out string) {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
 	e := element.New
@@ -45,11 +45,15 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 		e("p", "class", "subtitle").R(
 			"Transactions are securely processed by Stripe payment services (https://stripe.com/about)<br>",
 			"All donations are tax-deductible. Please contact Lance Parr, or Rohan Allison with any questions.",
-			),
+		),
 		e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 		e("div", "class", "form-row").R(
 			e("label", "for", "fullname").R("First and last name"),
 			e("input", "name", "fullname", "type", "text").R(),
+		),
+		e("div", "class", "form-row").R(
+			e("label", "for", "email").R("Email"),
+			e("input", "name", "email", "type", "text").R(),
 		),
 		e("div", "class", "form-row").R(
 			e("label", "for", "card-element").R("Credit or Debit card"),
@@ -62,10 +66,14 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 			e("label", "for", "amount").R("Giving amount"),
 			e("input", "name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
 		),
+		e("div", "class", "form-row").R(
+			e("label", "for", "comment").R("Comment"),
+			e("textarea", "name", "comment").R(),
+		),
 		e("button", "id", "payment_form_submit_btn", "class", "submit-button").R("Send My Gift"),
 
 		e("script", "type", "text/javascript").R(`
-			var stripe = Stripe('` + config.Options.Stripe.PubKey+ `');
+			var stripe = Stripe('`+config.Options.Stripe.PubKey+`');
 			var elements = stripe.elements();`,
 			packed.ModulePaymentForm_js,
 		),

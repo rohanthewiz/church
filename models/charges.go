@@ -28,7 +28,9 @@ type Charge struct {
 	UpdatedAt      null.Time   `boil:"updated_at" json:"updated_at,omitempty" toml:"updated_at" yaml:"updated_at,omitempty"`
 	CustomerID     null.String `boil:"customer_id" json:"customer_id,omitempty" toml:"customer_id" yaml:"customer_id,omitempty"`
 	CustomerName   string      `boil:"customer_name" json:"customer_name" toml:"customer_name" yaml:"customer_name"`
+	CustomerEmail  null.String `boil:"customer_email" json:"customer_email,omitempty" toml:"customer_email" yaml:"customer_email,omitempty"`
 	Description    null.String `boil:"description" json:"description,omitempty" toml:"description" yaml:"description,omitempty"`
+	Comment        null.String `boil:"comment" json:"comment,omitempty" toml:"comment" yaml:"comment,omitempty"`
 	ReceiptNumber  null.String `boil:"receipt_number" json:"receipt_number,omitempty" toml:"receipt_number" yaml:"receipt_number,omitempty"`
 	ReceiptURL     null.String `boil:"receipt_url" json:"receipt_url,omitempty" toml:"receipt_url" yaml:"receipt_url,omitempty"`
 	PaymentToken   string      `boil:"payment_token" json:"payment_token" toml:"payment_token" yaml:"payment_token"`
@@ -49,7 +51,9 @@ var ChargeColumns = struct {
 	UpdatedAt      string
 	CustomerID     string
 	CustomerName   string
+	CustomerEmail  string
 	Description    string
+	Comment        string
 	ReceiptNumber  string
 	ReceiptURL     string
 	PaymentToken   string
@@ -65,7 +69,9 @@ var ChargeColumns = struct {
 	UpdatedAt:      "updated_at",
 	CustomerID:     "customer_id",
 	CustomerName:   "customer_name",
+	CustomerEmail:  "customer_email",
 	Description:    "description",
+	Comment:        "comment",
 	ReceiptNumber:  "receipt_number",
 	ReceiptURL:     "receipt_url",
 	PaymentToken:   "payment_token",
@@ -85,8 +91,8 @@ type chargeR struct {
 type chargeL struct{}
 
 var (
-	chargeColumns               = []string{"id", "created_at", "updated_at", "customer_id", "customer_name", "description", "receipt_number", "receipt_url", "payment_token", "captured", "paid", "amount_paid", "refunded", "amount_refunded", "meta"}
-	chargeColumnsWithoutDefault = []string{"created_at", "updated_at", "customer_id", "customer_name", "description", "receipt_number", "receipt_url", "payment_token", "amount_paid", "amount_refunded", "meta"}
+	chargeColumns               = []string{"id", "created_at", "updated_at", "customer_id", "customer_name", "customer_email", "description", "comment", "receipt_number", "receipt_url", "payment_token", "captured", "paid", "amount_paid", "refunded", "amount_refunded", "meta"}
+	chargeColumnsWithoutDefault = []string{"created_at", "updated_at", "customer_id", "customer_name", "customer_email", "description", "comment", "receipt_number", "receipt_url", "payment_token", "amount_paid", "amount_refunded", "meta"}
 	chargeColumnsWithDefault    = []string{"id", "captured", "paid", "refunded"}
 	chargePrimaryKeyColumns     = []string{"id"}
 )

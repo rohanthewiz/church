@@ -19,6 +19,8 @@ type ChargePresenter struct {
 	Id            string
 	CustomerId    string
 	CustomerName  string
+	CustomerEmail string
+	Comment       string
 	Description   string
 	ReceiptNumber string
 	ReceiptURL    string
@@ -28,7 +30,7 @@ type ChargePresenter struct {
 	AmtPaid       int64
 	Refunded      bool
 	AmtRefunded   int64
-	Meta string
+	Meta          string
 	CreatedAt     string
 	UpdatedAt     string
 }
@@ -36,7 +38,7 @@ type ChargePresenter struct {
 func (p ChargePresenter) Upsert() (updateOp bool, err error) {
 	dbH, err := db.Db()
 	if err != nil {
-		return  updateOp, err
+		return updateOp, err
 	}
 	chg, create, err := modelFromPresenter(p)
 	if err != nil {
@@ -63,7 +65,6 @@ func (p ChargePresenter) Upsert() (updateOp bool, err error) {
 	}
 	return
 }
-
 
 // Returns a charge model for id `id` or error
 func findChargeById(id int64) (*models.Charge, error) {
@@ -110,6 +111,8 @@ func modelFromPresenter(cp ChargePresenter) (chgMod *models.Charge, create_op bo
 		msg := "Customer name is a required field when creating charges"
 		return chgMod, create_op, serr.Wrap(errors.New(msg))
 	}
+	chgMod.CustomerEmail = null.NewString(strings.TrimSpace(cp.CustomerEmail), true)
+	chgMod.Comment = null.NewString(strings.TrimSpace(cp.Comment), true)
 	chgMod.Description = null.NewString(strings.TrimSpace(cp.Description), true)
 	chgMod.ReceiptNumber = null.NewString(strings.TrimSpace(cp.ReceiptNumber), true)
 	chgMod.ReceiptURL = null.NewString(strings.TrimSpace(cp.ReceiptURL), true)

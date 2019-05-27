@@ -33,6 +33,7 @@ $(document).ready(function() {
             if (result.error) {
                 var errorEle = document.getElementById('card-errors');
                 errorEle.textContent = result.error.message;
+                sbtn.removeAttribute('disabled');
             } else {
                 stripeTokenHandler(result.token);
             }
