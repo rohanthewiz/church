@@ -33,11 +33,15 @@ $(document).ready(function() {
             if (result.error) {
                 var errorEle = document.getElementById('card-errors');
                 errorEle.textContent = result.error.message;
-                sbtn.removeAttribute('disabled');
             } else {
                 stripeTokenHandler(result.token);
             }
+            sbtn.InnerHTML = "Submit";
+            sbtn.removeAttribute('disabled');
         });
+        // This probably shouldn't be here, but we have to cover the case where the promise doesn't fire off
+        sbtn.InnerHTML = "Submit";
+        sbtn.removeAttribute('disabled');
     });
 });
 
