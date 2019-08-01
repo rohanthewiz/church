@@ -41,15 +41,16 @@ func (m ModuleSermonsList) GetData() ([]Presenter, error) {
 }
 
 type sermonsListRowDef struct {
-	Id string `json:"id,omitempty"`
-	Published string `json:"published,omitempty"`
-	Slug string `json:"slug,omitempty"`
-	Cats string `json:"cats,omitempty"`
-	UpdatedBy string `json:"updatedBy"`
-	Title string `json:"title"`
-	DateTaught string `json:"dateTaught"`
-	Edit string `json:"edit,omitempty"`
-	Delete string `json:"delete"`
+	Id            string `json:"id,omitempty"`
+	Published     string `json:"published,omitempty"`
+	Slug          string `json:"slug,omitempty"`
+	ScriptureRefs string `json:"scriptures,omitempty"`
+	Cats          string `json:"cats,omitempty"`
+	UpdatedBy     string `json:"updatedBy"`
+	Title         string `json:"title"`
+	DateTaught    string `json:"dateTaught"`
+	Edit          string `json:"edit,omitempty"`
+	Delete        string `json:"delete"`
 }
 
 func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn bool) string {
@@ -80,10 +81,10 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 	}
 	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Date Preached", Field: "dateTaught", Width: 190})
 	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Title", Field: "title", CellRenderer: "linkCellRenderer"})
-	//columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Description", Field: "Summary", Width: 200, CellRenderer: "sermonsListRenderer"})
+	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Scripture Refs.", Field: "scriptures", Width: 196})
+	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Categories", Field: "cats"})
 	if m.Opts.IsAdmin {
 		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Slug", Field: "slug"})
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Categories", Field: "cats"})
 		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Updated By", Field: "updatedBy", Width: 196})
 		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Published", Field: "published", Width: 190})
 		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "", Field: "edit", Width: 120, CellRenderer: "linkCellRenderer"})
@@ -101,10 +102,11 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 		}
 		row.DateTaught = ser.DateTaught
 		row.Title = ser.Title + "|" +  "/" + m.Opts.ItemsURLPath + "/" + ser.Id //base64.StdEncoding.EncodeToString([]byte(title))
+		row.ScriptureRefs = strings.Join(ser.ScriptureRefs, ", ")
+		row.Cats = strings.Join(ser.Categories, ", ")
 		//row.Summary = base64.StdEncoding.EncodeToString([]byte(ser.Summary))
 		if m.Opts.IsAdmin {
 			row.Slug = ser.Slug
-			row.Cats = strings.Join(ser.Categories, ", ")
 			row.UpdatedBy = ser.UpdatedBy
 			row.Published = published
 			row.Edit = "edit|" + sermonsEditURL + ser.Id
