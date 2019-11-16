@@ -2,7 +2,7 @@
 A template-less golang Content Management System (CMS) based on the Echo web framework (https://github.com/labstack/echo) and SQLBoiler (https://github.com/vattle/sqlboiler) and an innovative, think-outside-the-box golang architecture. 
 
 ## Intro
-The project started from the need to build a sustainable website for a small church pastored by a friend. The site needed to allow admins to maintain events, sermons, and articles. Here's a temporary link to that site: http://www.cceastmetro.com/pages/home
+The project started from the need to build a sustainable website for a small church pastored by a friend. The site needed to allow admins to maintain events, sermons, and articles. Here's a temporary link to that site: http://www.calvaryeastmetro.com
 - The start of commit history here represents 1.5 years of previous work - so this sits on top of a great amount of innovation and effort, yet this is just the beginning...
 - Note: while I feel the project, once configured is production ready, please use at your own discretion. 
 - Note also that over the next couple months there may be some change to the architecture.
