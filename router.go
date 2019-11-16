@@ -13,6 +13,7 @@ import (
 	"github.com/rohanthewiz/church/page_controller"
 	"github.com/rohanthewiz/church/payment_controller"
 	"github.com/rohanthewiz/church/resource/calendar"
+	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/sermon_controller"
 	"github.com/rohanthewiz/church/user_controller"
 )
@@ -40,6 +41,7 @@ func Serve() {
 	e.GET("/super", admin_controller.SetupSuperAdmin) // (API) Establish first SuperAdmin
 
 	// API
+	e.GET("/api/v1/sermons", sermon.APISermons)
 	e.GET("/calendar", calendar.GetFullCalendarEvents)
 	//e.GET("/adduser", authctlr.RegisterUser)  // todo auth! POST (bootstrap super admin)
 
@@ -64,7 +66,7 @@ func Serve() {
 	pay := e.Group("payments")
 	pay.Use(authctlr.UseCustomContext) // store authentication in custom context
 	pay.GET("/new", payment_controller.NewPayment)
-	pay.POST("/create", payment_controller.UpsertPayment)  // create
+	pay.POST("/create", payment_controller.UpsertPayment) // create
 	pay.GET("/receipt", payment_controller.PaymentReceipt)
 
 	// Sermons
@@ -84,46 +86,46 @@ func Serve() {
 
 	ad.GET("/users", user_controller.ListUsers)
 	ad.GET("/users/new", user_controller.NewUser)
-	ad.POST("/users", user_controller.UpsertUser)  // create
+	ad.POST("/users", user_controller.UpsertUser) // create
 	ad.GET("/users/edit/:id", user_controller.EditUser)
-	ad.POST("/users/update/:id", user_controller.UpsertUser)  // update
+	ad.POST("/users/update/:id", user_controller.UpsertUser) // update
 	ad.GET("/users/delete/:id", user_controller.DeleteUser)  // update
 
 	ad.GET("/articles", article_controller.AdminListArticles)
 	ad.GET("/articles/new", article_controller.NewArticle)
-	ad.POST("/articles", article_controller.UpsertArticle)  // create
+	ad.POST("/articles", article_controller.UpsertArticle) // create
 	ad.GET("/articles/edit/:id", article_controller.EditArticle)
-	ad.POST("/articles/update/:id", article_controller.UpsertArticle)  // update
+	ad.POST("/articles/update/:id", article_controller.UpsertArticle) // update
 	ad.GET("/articles/delete/:id", article_controller.DeleteArticle)
 
 	ad.GET("/sermons", sermon_controller.AdminListSermons)
 	ad.GET("/sermons/new", sermon_controller.NewSermon)
 	ad.GET("/sermons/import", sermon_controller.Import)
-	ad.POST("/sermons", sermon_controller.UpsertSermon)  // create
+	ad.POST("/sermons", sermon_controller.UpsertSermon) // create
 	ad.GET("/sermons/edit/:id", sermon_controller.EditSermon)
-	ad.POST("/sermons/update/:id", sermon_controller.UpsertSermon)  // update
+	ad.POST("/sermons/update/:id", sermon_controller.UpsertSermon) // update
 	ad.GET("/sermons/delete/:id", sermon_controller.DeleteSermon)
 
 	ad.GET("/events", event_controller.AdminListEvents)
 	ad.GET("/events/new", event_controller.NewEvent)
-	ad.POST("/events", event_controller.UpsertEvent)  // create
+	ad.POST("/events", event_controller.UpsertEvent) // create
 	ad.GET("/events/edit/:id", event_controller.EditEvent)
-	ad.POST("/events/update/:id", event_controller.UpsertEvent)  // update
+	ad.POST("/events/update/:id", event_controller.UpsertEvent) // update
 	ad.GET("/events/delete/:id", event_controller.DeleteEvent)
 
 	ad.GET("/pages", page_controller.AdminListPages)
 	ad.GET("/pages/new", page_controller.NewPage)
-	ad.POST("/pages", page_controller.UpsertPage)  // create
-	ad.GET("/pages/:id", page_controller.AdminShowPage)  // preview
+	ad.POST("/pages", page_controller.UpsertPage)       // create
+	ad.GET("/pages/:id", page_controller.AdminShowPage) // preview
 	ad.GET("/pages/edit/:id", page_controller.EditPage)
-	ad.POST("/pages/update/:id", page_controller.UpsertPage)  // update
+	ad.POST("/pages/update/:id", page_controller.UpsertPage) // update
 	ad.GET("/pages/delete/:id", page_controller.DeletePage)
 
 	ad.GET("/menus", menu_controller.AdminListMenus)
 	ad.GET("/menus/new", menu_controller.NewMenu)
-	ad.POST("/menus", menu_controller.UpsertMenu)  // create
+	ad.POST("/menus", menu_controller.UpsertMenu) // create
 	ad.GET("/menus/edit/:id", menu_controller.EditMenu)
-	ad.POST("/menus/update/:id", menu_controller.UpsertMenu)  // update
+	ad.POST("/menus/update/:id", menu_controller.UpsertMenu) // update
 	ad.GET("/menus/delete/:id", menu_controller.DeleteMenu)
 
 	if config.AppEnv != "development" && config.Options.Server.UseTLS {
@@ -134,7 +136,7 @@ func Serve() {
 }
 
 func startTLS(e *echo.Echo) {
-	e.Logger.Fatal(e.StartTLS("0.0.0.0:" + config.Options.Server.Port,
+	e.Logger.Fatal(e.StartTLS("0.0.0.0:"+config.Options.Server.Port,
 		config.Options.Server.CertFile, config.Options.Server.KeyFile))
 }
 
