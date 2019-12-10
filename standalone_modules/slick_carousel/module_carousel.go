@@ -73,7 +73,7 @@ func (m *ModuleSlickCarousel) Render(params map[string]map[string]string, logged
 					speed: 1200,
 					fade: true,
 					cssEase: 'ease-out',
-					autoplaySpeed: 3800,
+					autoplaySpeed: 11000,
 					slidesToShow: 1,
 					slidesToScroll: 1
 				});
