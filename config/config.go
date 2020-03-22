@@ -89,7 +89,7 @@ type EnvConfig struct {
 		Account  string   `yaml:"account"`
 		FromName string   `yaml:"from"`
 		Word     string   `yaml:"word"`
-		BCCs     []string `yaml: "bcc"`
+		BCCs     []string `yaml:"bcc"`
 	} `yaml:"gmail"`
 }
 
