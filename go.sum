@@ -51,6 +51,8 @@ github.com/rifflock/lfshook v0.0.0-20170601165600-6844c808343c h1:fb08W52K+IU7f6
 github.com/rifflock/lfshook v0.0.0-20170601165600-6844c808343c/go.mod h1:GEXHk5HgEKCvEIIrSpFI3ozzG5xOKA2DVlEX/gGnewM=
 github.com/rohanthewiz/element v0.1.2 h1:q4CkTCi5yoMW8H9p9bn/zPt4Hk0OpMm7OfIE7BzyfuI=
 github.com/rohanthewiz/element v0.1.2/go.mod h1:VNgNUGzMSA2rEot4fXM2deHofTXnF8dt5gV2KIQ+0tA=
+github.com/rohanthewiz/gmail_send v1.0.0 h1:GxgZf6vF/iozP2YhYg3sgSWJCl2lrc/XNnhOpSRpUuY=
+github.com/rohanthewiz/gmail_send v1.0.0/go.mod h1:p8Gj8BFnaR72GK0hy3q4nuj4v2lkvrubesBeMaQu9C0=
 github.com/rohanthewiz/logger v1.0.1 h1:mEULiVZw9sdtsBrIVFGxP/dfGl1N1Ii+peUldzLNV54=
 github.com/rohanthewiz/logger v1.0.1/go.mod h1:X0vxX9BG4NSCFkAwr1B6k3if6frVTde+qEA2GauNtH0=
 github.com/rohanthewiz/roftp v0.2.0 h1:xujy3kJqenUOMBBVcaiCwK9b8vfQEa/QloXNdOaXuqo=

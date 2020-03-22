@@ -10,6 +10,7 @@ import (
 	ctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/payment"
+	gmail "github.com/rohanthewiz/gmail_send"
 	"github.com/rohanthewiz/logger"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
@@ -82,7 +83,7 @@ func UpsertPayment(c echo.Context) error {
 	}
 	logger.LogAsync("Info", "Stripe payment charged", "charge", fmt.Sprintf("%#v", chgResult))
 
-	go savePaymentToLocalDB(chgResult, fullname, email, comment, paymentToken)
+	go savePayment(chgResult, fullname, email, comment, paymentToken)
 
 	msg := "Thank you! Your payment of $" + strAmount + " processed successfully"
 	// Todo - if updateOp { msg = "Payment Updated" }
@@ -101,7 +102,7 @@ func UpsertPayment(c echo.Context) error {
 	return nil
 }
 
-func savePaymentToLocalDB(chgResult *stripe.Charge, fullName, email, comment, paymentToken string) {
+func savePayment(chgResult *stripe.Charge, fullName, email, comment, paymentToken string) {
 	// Record the charge in local DB
 	chg := payment.ChargePresenter{}
 	chg.CustomerName = fullName
@@ -133,6 +134,34 @@ func savePaymentToLocalDB(chgResult *stripe.Charge, fullName, email, comment, pa
 		}
 		return "Inserted charge into DB"
 	}(updateOp))
+
+	amt := float64(chg.AmtPaid) / 100.0
+	strAmt := fmt.Sprintf("%0.2f", amt)
+
+	msg := `<body><p>Thank you for your investment into the Kingdom!</p>
+<p>The Lord bless you and keep you. The Lord make His face to shine upon you.</p>
+<p>
+Description: ` + chg.Description + `<br>
+Comment: ` + chg.Comment + `<br>
+Amount: ` + strAmt + `<br>
+Receipt Number: ` + chg.ReceiptNumber + `<br>
+Receipt Link: <a href="` + chg.ReceiptURL + `">Online Receipt</a><br>
+</p>
+</body>`
+
+	gcfg := gmail.GSMTPConfig{
+		AccountEmail: config.Options.Gmail.Account,
+		Word:         config.Options.Gmail.Word, // Can use an app password here (Enable MFA then setup app password)
+		FromName:     config.Options.Gmail.FromName,
+		Subject:      "Giving Receipt",
+		ToAddrs:      []string{email},
+		BCCs:         config.Options.Gmail.BCCs,
+		Body:        msg,
+	}
+	err = gmail.GmailSend(gcfg)
+	if err != nil {
+		logger.LogErr(err)
+	}
 }
 
 //func ListPayments(c echo.Context) error {

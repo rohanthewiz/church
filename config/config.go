@@ -84,6 +84,12 @@ type EnvConfig struct {
 		PubKey string `yaml:"pub_key"`
 		PrivKey string `yaml:"priv_key"`
 	} `yaml:"stripe"`
+	Gmail struct {
+		Account  string
+		FromName string
+		Word     string
+		BCCs     []string
+	}
 }
 
 type FTPConfig struct {
