@@ -120,7 +120,7 @@ func savePayment(chgResult *stripe.Charge, fullName, email, comment, paymentToke
 	if cust != nil {
 		chg.CustomerId = cust.ID
 	}
-	chg.ReceiptNumber = chgResult.ReceiptNumber
+	chg.ReceiptNumber = chgResult.ID
 	chg.ReceiptURL = chgResult.ReceiptURL
 
 	updateOp, err := chg.Upsert()
@@ -138,7 +138,7 @@ func savePayment(chgResult *stripe.Charge, fullName, email, comment, paymentToke
 	amt := float64(chg.AmtPaid) / 100.0
 	strAmt := fmt.Sprintf("%0.2f", amt)
 
-	msg := `<body><p>Thank you for your investment into the Kingdom!</p>
+	msg := `<body><p>Thank you ` + fullName + `, for your investment into the Kingdom!</p>
 <p>The Lord bless you and keep you. The Lord make His face to shine upon you.</p>
 <p>
 Description: ` + chg.Description + `<br>
@@ -156,7 +156,7 @@ Receipt Link: <a href="` + chg.ReceiptURL + `">Online Receipt</a><br>
 		Subject:      "Giving Receipt",
 		ToAddrs:      []string{email},
 		BCCs:         config.Options.Gmail.BCCs,
-		Body:        msg,
+		Body:         msg,
 	}
 	err = gmail.GmailSend(gcfg)
 	if err != nil {
