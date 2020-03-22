@@ -4,22 +4,22 @@
 package config
 
 import (
-	"os"
-	"log"
-	"strings"
-	"io/ioutil"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"log"
+	"os"
+	"strings"
 )
 
 const (
-	AdminPrefix = "/admin"
-	APP_NAME    = "Church"
-	configFile = "cfg/options.yml"
+	AdminPrefix            = "/admin"
+	APP_NAME               = "Church"
+	configFile             = "cfg/options.yml"
 	IncomingDateTimeFormat = "2006-01-02 15:04 MST" // 2017-06-10 19:30 CST
-	DisplayDateTimeFormat = "2006-01-02 15:04" // 3:04 PM"
-	DisplayDateFormat = "2006-01-02"
+	DisplayDateTimeFormat  = "2006-01-02 15:04"     // 3:04 PM"
+	DisplayDateFormat      = "2006-01-02"
 	DisplayShortDateFormat = "1/2"
-	DisplayTimeFormat = "15:04"
+	DisplayTimeFormat      = "15:04"
 )
 
 var AppEnv string
@@ -30,46 +30,47 @@ var GitCommitHash = "Unknown"
 var BuildTimestamp = "Unknown"
 
 // Poor man's enum :-)
-var Environments = environments{ Development: "development", Test: "test", Production: "production" }
+var Environments = environments{Development: "development", Test: "test", Production: "production"}
+
 type environments struct{ Development, Test, Production string }
 
 type ConfigAll struct {
 	Development *EnvConfig `yaml:"development"`
-	Test *EnvConfig `yaml:"test"`
-	Production *EnvConfig `yaml:"production"`
+	Test        *EnvConfig `yaml:"test"`
+	Production  *EnvConfig `yaml:"production"`
 }
 
 // This maps an environment section of the yaml config
 type EnvConfig struct {
-	Theme string `yaml:"theme"`
+	Theme           string `yaml:"theme"`
 	BannerInnerHTML string `yaml:"banner_inner_html"`
-	CopyrightOwner string `yaml:"copyright_owner"`
-	AppTimeout int64 `yaml:"app_timeout"`  // App max time in minutes
-	Server struct {
-		Domain string `yaml:"domain"`
-		Port string `yaml:"port"`
-		UseTLS bool `yaml:"use_tls"`
+	CopyrightOwner  string `yaml:"copyright_owner"`
+	AppTimeout      int64  `yaml:"app_timeout"` // App max time in minutes
+	Server          struct {
+		Domain   string `yaml:"domain"`
+		Port     string `yaml:"port"`
+		UseTLS   bool   `yaml:"use_tls"`
 		CertFile string `yaml:"cert_file"`
-		KeyFile string `yaml:"key_file"`
+		KeyFile  string `yaml:"key_file"`
 	} `yaml:"server"`
 	Log struct {
-		Level string `yaml:"level"`
-		Format string `yaml:"format"`
-		InfoPath string `yaml:"info_path"`
+		Level     string `yaml:"level"`
+		Format    string `yaml:"format"`
+		InfoPath  string `yaml:"info_path"`
 		ErrorPath string `yaml:"error_path"`
 	} `yaml:"log"`
 	PG struct {
-		Host string `yaml:"host"`
-		Port string `yaml:"port"`
-		User string `yaml:"user"`
-		Word string `yaml:"word"`
+		Host     string `yaml:"host"`
+		Port     string `yaml:"port"`
+		User     string `yaml:"user"`
+		Word     string `yaml:"word"`
 		Database string `yaml:"database"`
 	} `yaml:"pg"`
 	PG2 struct {
-		Host string `yaml:"host"`
-		Port string `yaml:"port"`
-		User string `yaml:"user"`
-		Word string `yaml:"word"`
+		Host     string `yaml:"host"`
+		Port     string `yaml:"port"`
+		User     string `yaml:"user"`
+		Word     string `yaml:"word"`
 		Database string `yaml:"database"`
 	} `yaml:"pg2"`
 	FTP struct {
@@ -81,23 +82,23 @@ type EnvConfig struct {
 		Port string `yaml:"port"`
 	} `yaml:"redis"`
 	Stripe struct {
-		PubKey string `yaml:"pub_key"`
+		PubKey  string `yaml:"pub_key"`
 		PrivKey string `yaml:"priv_key"`
 	} `yaml:"stripe"`
 	Gmail struct {
-		Account  string
-		FromName string
-		Word     string
-		BCCs     []string
-	}
+		Account  string   `yaml:"account"`
+		FromName string   `yaml:"from"`
+		Word     string   `yaml:"word"`
+		BCCs     []string `yaml: "bcc"`
+	} `yaml:"gmail"`
 }
 
 type FTPConfig struct {
-	Enabled bool `yaml:"enabled"`
-	Host string `yaml:"host"`
-	Port string `yaml:"port"`
-	User string `yaml:"user"`
-	Word string `yaml:"word"`
+	Enabled       bool   `yaml:"enabled"`
+	Host          string `yaml:"host"`
+	Port          string `yaml:"port"`
+	User          string `yaml:"user"`
+	Word          string `yaml:"word"`
 	WebAccessPath string `yaml:"web_access_path"`
 }
 
@@ -127,7 +128,7 @@ func InitConfig(version, commitHash, buildStamp string) {
 		log.Fatal("Error: ", err.Error())
 	}
 	env_cfg := getOptionsForEnvironment(config_data)
-	env_cfg = envOverride(env_cfg)  // Override some settings with environment variables
+	env_cfg = envOverride(env_cfg) // Override some settings with environment variables
 	Options = env_cfg
 }
 
@@ -157,11 +158,11 @@ func getOptionsForEnvironment(cfg *ConfigAll) *EnvConfig {
 }
 
 func loadConfigFile() (*ConfigAll, error) {
-	var config_all  = new(ConfigAll)
+	var config_all = new(ConfigAll)
 
 	file_data, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		log.Fatal("error - Could not load configuration. ", err.Error(),	" - config_file: ", configFile,
+		log.Fatal("error - Could not load configuration. ", err.Error(), " - config_file: ", configFile,
 			" tip - Are you in the project root?",
 			" tip2 - Did you remember to copy 'cfg/options.yml.sample' to 'cfg/options.yml' ?")
 		return config_all, err
@@ -174,4 +175,3 @@ func loadConfigFile() (*ConfigAll, error) {
 	}
 	return config_all, err
 }
-
