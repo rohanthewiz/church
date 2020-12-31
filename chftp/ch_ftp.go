@@ -1,16 +1,17 @@
 package chftp
 
 import (
+	"github.com/jlaffaye/ftp"
+	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/util/timeutil"
 	"github.com/rohanthewiz/roftp"
 	"github.com/rohanthewiz/serr"
-	"github.com/jlaffaye/ftp"
-	"github.com/rohanthewiz/church/config"
 	"net/url"
 	"path"
+	"strings"
+
 	"github.com/rohanthewiz/logger"
 )
-
 
 const (
 	defaultFtpPort   = "21"
@@ -28,18 +29,23 @@ type Uploader struct {
 
 // Create New Uploader object with derived options
 // No connection is made at this point
-func NewCemaUploader(srcFile, destFile string) *Uploader {
+func NewCemaUploader(srcFile, destFile, dateTaught string) *Uploader {
 	ftpOpts := roftp.FTPOptions{
 		User:   config.Options.FTP.Main.User,
 		Word:   config.Options.FTP.Main.Word,
 		Server: config.Options.FTP.Main.Host,
-		Port: config.Options.FTP.Main.Port,
+		Port:   config.Options.FTP.Main.Port,
 	}
 	if ftpOpts.Port == "" {
 		ftpOpts.Port = defaultFtpPort
 	}
-	serverPath := serverPathPrefix + timeutil.CurrentYear() // sweet!
-	return &Uploader{ ftpOpts, srcFile, serverPath, destFile }
+
+	year := timeutil.CurrentYear()
+	if arr := strings.SplitN(dateTaught, "-", 2); len(arr) == 2 {
+		year = arr[0]
+	}
+
+	return &Uploader{ftpOpts, srcFile, serverPathPrefix + year, destFile}
 }
 
 // Do all the things
@@ -85,4 +91,3 @@ func (u Uploader) listAndPrintFiles(conn *ftp.ServerConn) error {
 	}
 	return nil
 }
-

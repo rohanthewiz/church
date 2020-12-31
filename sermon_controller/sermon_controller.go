@@ -31,7 +31,7 @@ func NewSermon(c echo.Context) error {
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNew(c), map[string]map[string]string{}, app.IsLoggedIn(c))
 	c.HTMLBlob(200, buf.Bytes())
-	return  nil
+	return nil
 }
 
 func Import(c echo.Context) error {
@@ -42,36 +42,50 @@ func Import(c echo.Context) error {
 // Show a particular sermon - for given by id
 func ShowSermon(c echo.Context) error {
 	pg, err := page.SermonShow()
-	if err != nil {	c.Error(err); return err }
+	if err != nil {
+		c.Error(err)
+		return err
+	}
 	c.HTMLBlob(200, base.RenderPageSingle(pg, c))
-	return  nil
+	return nil
 }
 
 func ListSermons(c echo.Context) error {
 	pg, err := page.SermonsList()
-	if err != nil {	c.Error(err); return err }
+	if err != nil {
+		c.Error(err)
+		return err
+	}
 	c.HTMLBlob(200, base.RenderPageList(pg, c))
-	return  nil
+	return nil
 }
 
 func AdminListSermons(c echo.Context) error {
 	pg, err := page.AdminSermonsList()
-	if err != nil { c.Error(err); return err }
+	if err != nil {
+		c.Error(err)
+		return err
+	}
 	c.HTMLBlob(200, base.RenderPageList(pg, c))
-	return  nil
+	return nil
 }
 
 func EditSermon(c echo.Context) error {
 	pg, err := page.SermonForm()
-	if err != nil { c.Error(err); return err }
+	if err != nil {
+		c.Error(err)
+		return err
+	}
 	ctx.SetFormReferrer(c) // save the referrer calling for edit
 	c.HTMLBlob(200, base.RenderPageSingle(pg, c))
-	return  nil
+	return nil
 }
 
 func UpsertSermon(c echo.Context) error {
 	const sermonsLocalFilePrefix = "sermons"
 	const sermonsLocalURLPrefix = "media"
+	const ftpUploadDelay = time.Second * 40
+
 	var fileUploaded bool
 	var localFilePath string
 	csrf := c.FormValue("csrf")
@@ -96,7 +110,7 @@ func UpsertSermon(c echo.Context) error {
 	sermonAudio, err := c.FormFile("sermon_audio")
 	//fmt.Printf("|** %#v\n", sermonAudio)
 	if err == nil && sermonAudio != nil && sermonAudio.Filename != "" {
-		sermonTmp, err := sermonAudio.Open()  // Todo: move to sermon model
+		sermonTmp, err := sermonAudio.Open() // Todo: move to sermon model
 		if err != nil {
 			logger.LogErrAsync(err, "when", "opening sermon from FormFile", "filename", sermonAudio.Filename)
 			c.Error(err)
@@ -125,7 +139,7 @@ func UpsertSermon(c echo.Context) error {
 	} else {
 		if c.FormValue("audio-link-ovrd") == "on" {
 			serPres.AudioLink = c.FormValue("audio_link")
-			logger.Log("Info", "Audio link manually overidden to: " + serPres.AudioLink)
+			logger.Log("Info", "Audio link manually overidden to: "+serPres.AudioLink)
 		} else {
 			logger.Log("Debug", "Sermon updated, but audio file not updated")
 		}
@@ -150,8 +164,8 @@ func UpsertSermon(c echo.Context) error {
 
 	if config.Options.FTP.Main.Enabled && fileUploaded { // Transfer to main sermon archive
 		go func() {
-			time.Sleep(time.Second * 40) // todo adj
-			upl := chftp.NewCemaUploader(localFilePath, sermonAudio.Filename)
+			time.Sleep(ftpUploadDelay)
+			upl := chftp.NewCemaUploader(localFilePath, sermonAudio.Filename, serPres.DateTaught)
 			println("Transferring", localFilePath, "to Main FTP server")
 			err := upl.Run()
 			if err != nil {
@@ -171,12 +185,12 @@ func UpsertSermon(c echo.Context) error {
 			}
 		}()
 	}
-		// Backup will be similar
+	// Backup will be similar
 	redirectTo := "/admin/sermons"
 	if cc, ok := c.(*ctx.CustomContext); ok && cc.Session.FormReferrer != "" {
 		redirectTo = cc.Session.FormReferrer // return to the form caller
 	}
-	app.Redirect(c, redirectTo, "Sermon " + msg)
+	app.Redirect(c, redirectTo, "Sermon "+msg)
 	return nil
 }
 
