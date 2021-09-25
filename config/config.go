@@ -4,11 +4,12 @@
 package config
 
 import (
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"log"
 	"os"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -102,6 +103,7 @@ type FTPConfig struct {
 	WebAccessPath string `yaml:"web_access_path"`
 }
 
+// InitConfig is called externally
 // Errors here are fatal bc we don't want to run on a bad configuration
 func InitConfig(version, commitHash, buildStamp string) {
 	var err error

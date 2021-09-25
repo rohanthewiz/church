@@ -1,5 +1,7 @@
 module github.com/rohanthewiz/church
 
+go 1.15
+
 require (
 	cloud.google.com/go v0.0.0-20181010175407-5f0ffe772937
 	github.com/PuerkitoBio/goquery v1.4.1
