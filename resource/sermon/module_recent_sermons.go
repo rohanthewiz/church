@@ -62,7 +62,7 @@ func (m *ModuleRecentSermons) Render(params map[string]map[string]string, logged
 	} else {
 		for _, ser := range sermons {
 			out += "<tr><td>" + ser.DateTaughtShort + `</td><td><a href="/sermons/` + ser.Id + `">` + ser.Title +
-				`</a></td><td><a class="sermon-play-icon" href="` + ser.AudioLink + `">` + html.TriangleLeftSmall + `</a></td></tr>`
+				`</a></td><td><a class="sermon-play-icon" href="` + ser.AudioLink + `">` + html.TriangleRightSmall + `</a></td></tr>`
 		}
 	}
 	out += "</table></div></div>"
