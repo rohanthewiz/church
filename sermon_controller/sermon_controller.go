@@ -112,11 +112,15 @@ func UpsertSermon(c echo.Context) error {
 	serPres.DateTaught = c.FormValue("sermon_date")
 	serPres.PlaceTaught = c.FormValue("sermon_place")
 	serPres.Teacher = c.FormValue("pastor-teacher")
-	sermonAudio, err := c.FormFile("sermon_audio")
-	sermonFilename := sermonAudio.Filename // get filename by value, not ptr to form data stuff
 
-	// fmt.Printf("|** %#v\n", sermonAudio)
-	if err == nil && sermonAudio != nil && sermonFilename != "" {
+	var sermonFilename string // used later
+
+	sermonAudio, err := c.FormFile("sermon_audio")
+	if sermonAudio != nil {
+		sermonFilename = sermonAudio.Filename // be careful of nil ptr deref when audio empty
+	}
+
+	if err == nil && sermonFilename != "" {
 		sermonTmp, err := sermonAudio.Open() // Todo: move to sermon model
 		if err != nil {
 			logger.LogErrAsync(err, "when", "opening sermon from FormFile", "filename", sermonFilename)
