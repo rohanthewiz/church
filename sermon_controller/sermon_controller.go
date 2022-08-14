@@ -21,6 +21,7 @@ import (
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/rerr"
 )
 
 func NewSermon(c echo.Context) error {
@@ -83,6 +84,7 @@ func EditSermon(c echo.Context) error {
 }
 
 func UpsertSermon(c echo.Context) error {
+	logger.Log("Info", "In UpsertSermon...")
 	const sermonsLocalFilePrefix = "sermons"
 	const sermonsLocalURLPrefix = "media"
 	const ftpUploadDelay = time.Second * 30
@@ -93,9 +95,12 @@ func UpsertSermon(c echo.Context) error {
 	// Check that this token is present and valid in Redis
 	if !app.VerifyFormToken(csrf) {
 		err := errors.New("your form is expired. Go back to the form, refresh the page and try again")
+		logger.LogErr(err, "Error verifying CSRF token")
 		c.Error(err)
 		return err
 	}
+	logger.Log("Info", "Passed CSRF check...", "location", rerr.FunctionLoc(0))
+
 	// apparently embedded fields cannot be set immediately in  a literal struct
 	// we'll set those after efs is created
 	serPres := sermon.Presenter{}
@@ -143,7 +148,7 @@ func UpsertSermon(c echo.Context) error {
 			serPres.AudioLink = c.FormValue("audio_link")
 			logger.Log("Info", "Audio link manually overidden to: "+serPres.AudioLink)
 		} else {
-			logger.Log("Debug", "Sermon updated, but audio file not updated")
+			logger.Log("Info", "Sermon updated, but audio file not updated")
 		}
 	}
 
@@ -153,6 +158,8 @@ func UpsertSermon(c echo.Context) error {
 	if c.FormValue("published") == "on" {
 		serPres.Published = true
 	}
+
+	logger.Log("Info", "sermon Presenter before upsert", fmt.Sprintf("%#v", serPres))
 
 	slug, err := serPres.Upsert()
 	if err != nil {

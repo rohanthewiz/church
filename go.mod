@@ -42,6 +42,7 @@ require (
 	github.com/onsi/gomega v1.20.0 // indirect
 	github.com/rifflock/lfshook v0.0.0-20170601165600-6844c808343c // indirect
 	github.com/rohanthewiz/rerr v0.1.0 // indirect
+	github.com/rohanthewiz/rlog v0.1.2 // indirect
 	github.com/rohanthewiz/rotatelogs v0.1.2 // indirect
 	github.com/sirupsen/logrus v1.0.6 // indirect
 	github.com/tebeka/strftime v0.1.5 // indirect
