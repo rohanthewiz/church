@@ -1,14 +1,14 @@
 package chftp
 
 import (
-	"github.com/jlaffaye/ftp"
+	"net/url"
+	"path"
+	"strings"
+
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/util/timeutil"
 	"github.com/rohanthewiz/roftp"
 	"github.com/rohanthewiz/serr"
-	"net/url"
-	"path"
-	"strings"
 
 	"github.com/rohanthewiz/logger"
 )
@@ -24,8 +24,6 @@ type Uploader struct {
 	serverPath   string
 	destFilename string
 }
-
-// Todo: tests!!
 
 // Create New Uploader object with derived options
 // No connection is made at this point
@@ -54,10 +52,10 @@ func (u *Uploader) Run() error {
 	if err != nil {
 		return serr.Wrap(err, "msg", "Unable to login", "Port", u.opts.Port)
 	}
-	defer conn.Quit()
+	defer func() { _ = conn.Quit() }()
 
 	println("Uploading", u.srcPath, "to server", u.opts.Server)
-	err = roftp.UploadFile(conn, u.srcPath, u.serverPath, u.destFilename)
+	err = conn.UploadFile(u.srcPath, u.serverPath, u.destFilename)
 	if err != nil {
 		return serr.Wrap(err, "msg", "Error uploading file", "serverPath", u.serverPath)
 	}
@@ -66,7 +64,6 @@ func (u *Uploader) Run() error {
 	if err != nil {
 		return serr.Wrap(err, "msg", "Unable to list files on server", "serverPath", u.serverPath)
 	}
-
 	return nil
 }
 
@@ -81,8 +78,8 @@ func (u Uploader) DestWebPath() string {
 }
 
 // Print Directory listing
-func (u Uploader) listAndPrintFiles(conn *ftp.ServerConn) error {
-	filesData, err := roftp.ListFiles(conn, u.serverPath)
+func (u Uploader) listAndPrintFiles(conn roftp.FTPConn) error {
+	filesData, err := conn.ListFiles(u.serverPath)
 	if err != nil {
 		return serr.Wrap(err, "Unable to list files")
 	}

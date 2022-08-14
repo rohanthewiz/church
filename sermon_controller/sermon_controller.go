@@ -31,12 +31,12 @@ func NewSermon(c echo.Context) error {
 	}
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNew(c), map[string]map[string]string{}, app.IsLoggedIn(c))
-	c.HTMLBlob(200, buf.Bytes())
+	_ = c.HTMLBlob(200, buf.Bytes())
 	return nil
 }
 
 func Import(c echo.Context) error {
-	c.JSONBlob(200, sermon.Import())
+	_ = c.JSONBlob(200, sermon.Import())
 	return nil
 }
 
@@ -47,7 +47,7 @@ func ShowSermon(c echo.Context) error {
 		c.Error(err)
 		return err
 	}
-	c.HTMLBlob(200, base.RenderPageSingle(pg, c))
+	_ = c.HTMLBlob(200, base.RenderPageSingle(pg, c))
 	return nil
 }
 
@@ -57,7 +57,7 @@ func ListSermons(c echo.Context) error {
 		c.Error(err)
 		return err
 	}
-	c.HTMLBlob(200, base.RenderPageList(pg, c))
+	_ = c.HTMLBlob(200, base.RenderPageList(pg, c))
 	return nil
 }
 
@@ -67,7 +67,7 @@ func AdminListSermons(c echo.Context) error {
 		c.Error(err)
 		return err
 	}
-	c.HTMLBlob(200, base.RenderPageList(pg, c))
+	_ = c.HTMLBlob(200, base.RenderPageList(pg, c))
 	return nil
 }
 
@@ -77,8 +77,8 @@ func EditSermon(c echo.Context) error {
 		c.Error(err)
 		return err
 	}
-	ctx.SetFormReferrer(c) // save the referrer calling for edit
-	c.HTMLBlob(200, base.RenderPageSingle(pg, c))
+	_ = ctx.SetFormReferrer(c) // save the referrer calling for edit
+	_ = c.HTMLBlob(200, base.RenderPageSingle(pg, c))
 	return nil
 }
 
@@ -118,7 +118,7 @@ func UpsertSermon(c echo.Context) error {
 			c.Error(err)
 			return err
 		}
-		defer sermonTmp.Close()
+		defer func() { _ = sermonTmp.Close() }()
 		localFilePath = path.Join(sermonsLocalFilePrefix, sermonFilename)
 		initialUrlPath := path.Join(sermonsLocalURLPrefix, sermonFilename)
 		dest, err := os.Create(localFilePath)
@@ -127,7 +127,7 @@ func UpsertSermon(c echo.Context) error {
 			c.Error(err)
 			return err
 		}
-		defer dest.Close()
+		defer func() { _ = dest.Close() }()
 		fileUploaded = true
 
 		// Copy to server
@@ -164,6 +164,7 @@ func UpsertSermon(c echo.Context) error {
 		msg = "Updated"
 	}
 
+	// TODO - use rerr and rlog
 	if config.Options.FTP.Main.Enabled && fileUploaded { // Transfer to main sermon archive
 		go func() {
 			time.Sleep(ftpUploadDelay)
@@ -175,6 +176,7 @@ func UpsertSermon(c echo.Context) error {
 
 			upl := chftp.NewCemaUploader(localFilePath, sermonFilename, serPres.DateTaught)
 			println("Transferring", localFilePath, "to Main FTP server")
+
 			err := upl.Run()
 			if err != nil {
 				logger.LogErrAsync(err, "Error transferring to Church FTP", "sermon", localFilePath)
