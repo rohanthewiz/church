@@ -1,9 +1,11 @@
 package page
+
 // A page is essentially an arrangement of modules
 import (
-	"strings"
-	"github.com/rohanthewiz/church/module"
 	"strconv"
+	"strings"
+
+	"github.com/rohanthewiz/church/module"
 )
 
 // A Renderable Page - this does not directly map to the database (page_presenter does)
@@ -12,11 +14,11 @@ type Page struct {
 	PresenterId    string
 	Title          string
 	slug           string
-	CurrentPage    string  // for matching menu label
+	CurrentPage    string // for matching menu label
 	modules        map[string][]module.Module
-	positions      []string  // left, right, center, for now...
+	positions      []string // left, right, center, for now...
 	layout         string
-	mainModuleSlug string  // This is the one that receives any dynamic params like next Id
+	mainModuleSlug string // This is the one that receives any dynamic params like next Id
 	IsAdmin        bool
 }
 
@@ -28,7 +30,7 @@ func pageFromPresenter(pres Presenter) *Page {
 	page.IsAdmin = pres.IsAdmin
 	page.SetPositions(pres.AvailablePositions)
 	page.AddModules(pres.Modules)
-	page.CurrentPage = strings.ToLower(pres.Title)  // todo: let's snakecase this or preferrably use page.Slug
+	page.CurrentPage = strings.ToLower(pres.Title) // todo: let's snakecase this or preferrably use page.Slug
 	return page
 }
 
@@ -39,7 +41,7 @@ func (p *Page) GetSlug() string {
 // Is the page information derived from the database (not hardwired)?
 func (p *Page) IsDynamic() bool {
 	i, err := strconv.ParseInt(p.PresenterId, 10, 64)
-	return  err == nil && i > 0
+	return err == nil && i > 0
 }
 
 func (p *Page) AddModule(mod module.Module, position string) {
@@ -105,7 +107,7 @@ func (p *Page) SetPositions(positions []string) {
 	if has_center && !has_left && !has_right {
 		p.layout = "layout-main"
 	} else if has_left && has_center && !has_right {
-			p.layout = "layout-left-main"
+		p.layout = "layout-left-main"
 	} else if has_left && has_center && has_right {
 		p.layout = "layout-left-main-right"
 	} else if !has_left && has_center && has_right {

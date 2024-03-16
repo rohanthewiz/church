@@ -44,7 +44,7 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 		e("h2", "class", "form-title").R("Give Securely Online"),
 		e("p", "class", "subtitle").R(
 			"Transactions are securely processed by Stripe payment services (https://stripe.com/about)<br>",
-			"All donations are tax-deductible. Please contact Lance Parr, or Rohan Allison with any questions.",
+			"All donations are tax-deductible. Please contact Landra Allison, or Rohan Allison with any questions.",
 		),
 		e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 		e("div", "class", "form-row").R(

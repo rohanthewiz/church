@@ -3,15 +3,16 @@ package payment
 import (
 	"errors"
 	"fmt"
-	//"github.com/rohanthewiz/church/config"
+	"strconv"
+	"strings"
+
+	// "github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 	"github.com/vattle/sqlboiler/queries/qm"
 	"gopkg.in/nullbio/null.v6"
-	"strconv"
-	"strings"
 )
 
 // Amounts are cents
