@@ -39,8 +39,10 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	e := element.New
-	out = e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
+
+	builder := element.NewBuilder()
+	e := builder.Ele
+	e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
 		e("h2", "class", "form-title").R("Give Securely Online"),
 		e("p", "class", "subtitle").R(
 			"Transactions are securely processed by Stripe payment services (https://stripe.com/about)<br>",
@@ -78,5 +80,5 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 			packed.ModulePaymentForm_js,
 		),
 	)
-	return
+	return builder.String()
 }

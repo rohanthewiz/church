@@ -20,7 +20,7 @@ require (
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
 	github.com/rifflock/lfshook v0.0.0-20170601165600-6844c808343c
-	github.com/rohanthewiz/element v0.1.2
+	github.com/rohanthewiz/element v0.4.0
 	github.com/rohanthewiz/gmail_send v1.0.0
 	github.com/rohanthewiz/logger v1.0.1
 	github.com/rohanthewiz/roftp v0.2.0
