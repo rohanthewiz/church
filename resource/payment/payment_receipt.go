@@ -21,7 +21,8 @@ func NewModulePaymentReceipt(pres module.Presenter) (module.Module, error) {
 func (m ModulePaymentReceipt) Render(params map[string]map[string]string, loggerIn bool) (out string) {
 	b := element.NewBuilder()
 	e := b.Ele
-	out = e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+
+	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		e("h3", "class", "article-title").R("Thanks for your donation!"),
 		e("p", "class", "receipt-info").R(
 			"Your receipt is available",
