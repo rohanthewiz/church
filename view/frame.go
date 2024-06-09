@@ -45,8 +45,9 @@ func (f frame) GetCopyright() (out string) {
 		return f.copyright
 	} // cached
 
-	return element.New("div", "id", "copyright").R(
+	b := element.NewBuilder()
+	b.Ele("div", "id", "copyright").R(
 		"&copy; " + time.Now().Format("2006") + " " + config.Options.CopyrightOwner,
 	)
-	return
+	return b.String()
 }
