@@ -6,6 +6,7 @@ import (
 
 	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 )
@@ -61,12 +62,16 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 		action = "/update/" + mnu.Id
 	}
 
+	b := element.NewBuilder()
+	e := b.Ele
+
 	// Prep some vars
-	published := e("input", "type", "checkbox", "name", "published")
+	published := b.EleNoRender("input", "type", "checkbox", "name", "published")
 	if mnu.Published {
 		published.AddAttributes("checked", "checked")
 	}
-	isAdmin := e("input", "type", "checkbox", "name", "is_admin")
+
+	isAdmin := b.EleNoRender("input", "type", "checkbox", "name", "is_admin")
 	if mnu.IsAdmin {
 		isAdmin.AddAttributes("checked", "checked")
 	}
@@ -77,7 +82,7 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 		return "menu error"
 	}
 
-	out := e("div", "class", "wrapper-material-form").R(
+	e("div", "class", "wrapper-material-form").R(
 		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
 		e("form", "id", "menu_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "id", "items", "name", "items", "value", "").R(),
@@ -101,7 +106,7 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 				e("div", "class", "form-inline").R(
 					e("div", "class", "checkbox").R(
 						e("label").R(
-							published.R(),
+							published.RenderOpeningTag().R(),
 							e("i", "class", "helper").R(),
 							"Published",
 						),
@@ -109,7 +114,7 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 					),
 					e("div", "class", "checkbox").R(
 						e("label").R(
-							isAdmin.R(),
+							isAdmin.RenderOpeningTag().R(),
 							e("i", "class", "helper").R(),
 							"For Admin Only",
 						),
@@ -211,5 +216,5 @@ function hspace() {
 	return '&nbsp;&nbsp;'
 }`))
 
-	return out
+	return b.String()
 }
