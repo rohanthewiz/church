@@ -53,6 +53,8 @@ github.com/rohanthewiz/element v0.1.2 h1:q4CkTCi5yoMW8H9p9bn/zPt4Hk0OpMm7OfIE7Bz
 github.com/rohanthewiz/element v0.1.2/go.mod h1:VNgNUGzMSA2rEot4fXM2deHofTXnF8dt5gV2KIQ+0tA=
 github.com/rohanthewiz/element v0.4.0 h1:zY6cVEtJZnBPjzBXAyw8haGHtILM+LwXAqED0NAJ2lM=
 github.com/rohanthewiz/element v0.4.0/go.mod h1:yxmrFVnO9eQQ7GbjRfJgJG9u8yHUjTTxy/6ji3PNhXY=
+github.com/rohanthewiz/element v0.4.1-0.20240610014730-cae6bd9b5361 h1:K21oUBInEVl6IIfP89aVngikXS8uJvp4TN6onc87Ang=
+github.com/rohanthewiz/element v0.4.1-0.20240610014730-cae6bd9b5361/go.mod h1:yxmrFVnO9eQQ7GbjRfJgJG9u8yHUjTTxy/6ji3PNhXY=
 github.com/rohanthewiz/gmail_send v1.0.0 h1:GxgZf6vF/iozP2YhYg3sgSWJCl2lrc/XNnhOpSRpUuY=
 github.com/rohanthewiz/gmail_send v1.0.0/go.mod h1:p8Gj8BFnaR72GK0hy3q4nuj4v2lkvrubesBeMaQu9C0=
 github.com/rohanthewiz/logger v1.0.1 h1:mEULiVZw9sdtsBrIVFGxP/dfGl1N1Ii+peUldzLNV54=
