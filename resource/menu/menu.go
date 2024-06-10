@@ -1,7 +1,6 @@
 package menu
 
 import (
-	"bytes"
 	"strings"
 
 	"github.com/rohanthewiz/element"
@@ -37,7 +36,6 @@ func RenderNav(slug string, loggedIn bool) string {
 }
 
 func buildMenu(slug string, loggedIn bool) string {
-	out := new(bytes.Buffer)
 	menuDef, err := menuDefFromSlug(slug)
 	if err != nil {
 		ser := serr.Wrap(err, "Error obtaining menu def by slug")
@@ -45,10 +43,10 @@ func buildMenu(slug string, loggedIn bool) string {
 		return ""
 	}
 
-	b := element.NewBuilder()
-	e := b.Ele
+	sb := &strings.Builder{}
+	w := sb.WriteString
 
-	ows("<ul>")
+	w("<ul>")
 	// logger.LogAsync("Debug", "In buildMenu", "Menu definition", fmt.Sprintf("%#v\n", menuDef))
 
 	currentPage := "abc" // todo - set this in the menu edit interface
@@ -65,45 +63,48 @@ func buildMenu(slug string, loggedIn bool) string {
 			} // authr
 
 			if strings.ToLower(item.Label) == currentPage {
-				ows(`<li class="menuitem-active">`)
+				w(`<li class="menuitem-active">`)
 			} else {
-				ows(`<li>`)
+				w(`<li>`)
 			}
 
-			ows(`<a href="#">`)
-			ows(item.Label)
-			ows(`</a>`)
-			ows(buildMenu(item.SubMenuSlug, loggedIn))
+			w(`<a href="#">`)
+			w(item.Label)
+			w(`</a>`)
+			w(buildMenu(item.SubMenuSlug, loggedIn))
 		} else {
 			if strings.ToLower(item.Label) == currentPage {
-				ows(`<li class="menuitem-active">`)
+				w(`<li class="menuitem-active">`)
 			} else {
-				ows(`<li>`)
+				w(`<li>`)
 			}
-			ows(`<a href="`)
-			ows(item.Url)
-			ows(`">`)
-			ows(item.Label)
-			ows(`</a>`)
+			w(`<a href="`)
+			w(item.Url)
+			w(`">`)
+			w(item.Label)
+			w(`</a>`)
 		}
 
-		ows(`</li>`)
+		w(`</li>`)
 	}
+
+	e := element.New
+
 	if slug == "footer-menu" {
 		if loggedIn {
-			ows(e("li").R(
-				e("a", "href", "/logout").R("Logout"),
-			))
+			e(sb, "li").R(
+				e(sb, "a", "href", "/logout").R("Logout"),
+			)
 		} else {
-			ows(e("li").R(
-				e("a", "href", "/login").R("Login"),
-			))
+			e(sb, "li").R(
+				e(sb, "a", "href", "/login").R("Login"),
+			)
 		}
 	}
 
-	ows("</ul>")
+	w("</ul>")
 
-	return b.String()
+	return sb.String()
 }
 
 // Menus are built from the top down

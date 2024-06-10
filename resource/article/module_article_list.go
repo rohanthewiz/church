@@ -1,13 +1,14 @@
 package article
 
 import (
-	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/element"
-	"strings"
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
+	"strings"
+
 	"github.com/rohanthewiz/church/agrid"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
+	"github.com/rohanthewiz/logger"
 )
 
 const ModuleTypeArticlesList = "articles_list"
@@ -23,7 +24,7 @@ func NewModuleArticlesList(pres module.Presenter) (module.Module, error) {
 
 	// Work out local condition
 	cond := "1 = 1"
-	if !mod.Opts.IsAdmin && !mod.Opts.ShowUnpublished{
+	if !mod.Opts.IsAdmin && !mod.Opts.ShowUnpublished {
 		cond = "published = true"
 	}
 	// merge with any incoming condition
@@ -36,36 +37,36 @@ func NewModuleArticlesList(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleArticlesList) GetData() ([]Presenter, error) {
-	return QueryArticles(m.Opts.Condition, "updated_at " + m.Order(), m.Opts.Limit, m.Opts.Offset)
+	return QueryArticles(m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
 // Admin fields will be empty for normal view and so eliminated from the JSON
 type rowDef struct {
-	Id string `json:"id,omitempty"`
+	Id        string `json:"id,omitempty"`
 	Published string `json:"published,omitempty"`
-	Slug string `json:"slug,omitempty"`
-	Cats string `json:"cats,omitempty"`
+	Slug      string `json:"slug,omitempty"`
+	Cats      string `json:"cats,omitempty"`
 	UpdatedBy string `json:"updatedBy"`
-	Title string `json:"title"`
-	Summary string `json:"summary"`
-	Edit string `json:"edit,omitempty"`
-	Delete string `json:"delete"`
+	Title     string `json:"title"`
+	Summary   string `json:"summary"`
+	Edit      string `json:"edit,omitempty"`
+	Delete    string `json:"delete"`
 }
 
 func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to this module
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to this module
 		m.SetLimitAndOffset(opts)
 	}
 
 	articles, err := m.GetData()
 	if err != nil {
-		logger.LogErr(err, "Error obtaining data in module", "module_slug",  m.Opts.Slug, "module_type", m.Opts.ModuleType)
+		logger.LogErr(err, "Error obtaining data in module", "module_slug", m.Opts.Slug, "module_type", m.Opts.ModuleType)
 		return ""
 	}
 
 	var columnDefs []agrid.ColumnDef
 	if m.Opts.IsAdmin {
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Id", Field: "id", Width: 32 })
+		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Id", Field: "id", Width: 32})
 	}
 	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Title", Field: "title", Width: 210, CellRenderer: "linkCellRenderer"})
 	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Summary", Field: "summary", Width: 230, CellRenderer: "articleListContentRenderer"})
@@ -81,14 +82,16 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 	var rowData []rowDef
 	for _, art := range articles {
 		published := "draft"
-		if art.Published { published = "published" }
+		if art.Published {
+			published = "published"
+		}
 
 		row := rowDef{}
 		if m.Opts.IsAdmin {
 			row.Id = art.Id
 		}
 		// N/A: we base64 encode bc the JS JSON parser is not handling some chars like '/' - terrible!
-		row.Title = art.Title + "|" +  "/" + m.Opts.ItemsURLPath + "/" + art.Id //base64.StdEncoding.EncodeToString([]byte(title))
+		row.Title = art.Title + "|" + "/" + m.Opts.ItemsURLPath + "/" + art.Id // base64.StdEncoding.EncodeToString([]byte(title))
 		row.Summary = base64.StdEncoding.EncodeToString([]byte(art.Summary))
 		if m.Opts.IsAdmin {
 			row.Slug = art.Slug
@@ -103,7 +106,9 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 
 	columnDefsAsJson, err := json.Marshal(columnDefs)
 	rowDataAsJson, err := json.Marshal(rowData)
-	if err != nil { logger.LogErr(err, "Error converting Article column defs to JSON") }
+	if err != nil {
+		logger.LogErr(err, "Error converting Article column defs to JSON")
+	}
 	jsConvertColumnDefs := "var columnDefs = JSON.parse(`" + string(columnDefsAsJson) + "`);"
 	jsConvertRowData := "var rowData = JSON.parse(`" + string(rowDataAsJson) + "`);"
 
@@ -135,13 +140,15 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 			return this.eGui;
 		};`
 
-	e := element.New
-	estr := e("div", "class", "ch-module-wrapper ch-" + m.Opts.ModuleType).R(
+	b := element.NewBuilder()
+	e := b.Ele
+
+	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		e("div", "class", "ch-module-heading").R(
 			m.Opts.Title,
 			func() (s string) {
 				if m.Opts.IsAdmin {
-					s = e("a", "class", "btn-add", "href", m.GetNewURL(), "title", "Add Article").R("+")
+					e("a", "class", "btn-add", "href", m.GetNewURL(), "title", "Add Article").R("+")
 				}
 				return
 			}(),
@@ -150,9 +157,9 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 			e("div", "class", "articles-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
 			e("script", "type", "text/javascript").R(
 				jsConvertColumnDefs, jsConvertRowData, contentRenderer, gridOptions,
-				`$(document).ready(function() {` + scriptBody + `});`),
+				`$(document).ready(function() {`+scriptBody+`});`),
 		),
 	)
 
-	return estr
+	return b.String()
 }

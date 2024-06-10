@@ -1,13 +1,13 @@
 package menu
 
 import (
-	"fmt"
-	"github.com/rohanthewiz/serr"
-	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/church/app"
 	"encoding/json"
-	"github.com/rohanthewiz/element"
+	"fmt"
+
+	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 type ModuleMenuForm struct {
@@ -35,13 +35,13 @@ func NewModuleMenuForm(pres module.Presenter) (module.Module, error) {
 func (m ModuleMenuForm) getData() (mdef MenuDef, err error) {
 	mnu, err := findModelById(m.Opts.ItemIds[0])
 	if err != nil {
-		return mdef, serr.Wrap(err, "Unable to obtain menu with id: " + fmt.Sprintf("%d", m.Opts.ItemIds[0]))
+		return mdef, serr.Wrap(err, "Unable to obtain menu with id: "+fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 	}
 	return menuDefFromModel(mnu)
 }
 
 func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bool) string {
-	//fmt.Printf("*|* Params: %#v\n", params)
+	// fmt.Printf("*|* Params: %#v\n", params)
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
@@ -61,7 +61,6 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 		action = "/update/" + mnu.Id
 	}
 
-	e := element.New
 	// Prep some vars
 	published := e("input", "type", "checkbox", "name", "published")
 	if mnu.Published {
@@ -71,6 +70,7 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 	if mnu.IsAdmin {
 		isAdmin.AddAttributes("checked", "checked")
 	}
+
 	byts, err := json.Marshal(mnu.Items)
 	if err != nil {
 		logger.LogErrAsync(err, "Error marshalling menu items for menu form", "menu_presenter", fmt.Sprintf("%#v", mnu))
@@ -78,8 +78,8 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 	}
 
 	out := e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation + " " + m.Name.Singular),
-		e("form", "id", "menu_form", "method", "post", "action", "/admin/" + m.Name.Plural + action, "onSubmit", "return preSubmit();").R(
+		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
+		e("form", "id", "menu_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "id", "items", "name", "items", "value", "").R(),
 			e("input", "type", "hidden", "name", "menu_id", "value", mnu.Id).R(),
 			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
@@ -128,8 +128,8 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 			),
 		),
 		e("script", "type", "text/javascript").R(
-		"var items = JSON.parse(`" + string(byts) + "`);" +
-		`var newItem = {
+			"var items = JSON.parse(`"+string(byts)+"`);"+
+				`var newItem = {
 			label: "", url: "", sub_menu_slug: ""
 		};
 
@@ -209,7 +209,7 @@ function reorderItems() {
 }
 function hspace() {
 	return '&nbsp;&nbsp;'
-}`), )
+}`))
 
 	return out
 }
