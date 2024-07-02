@@ -1,14 +1,15 @@
 package sermon
 
 import (
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"strings"
-	"github.com/rohanthewiz/serr"
-	"fmt"
 	"errors"
-	"github.com/rohanthewiz/element"
+	"fmt"
 	strconv "strconv"
+	"strings"
+
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeSingleSermon = "sermon_single"
@@ -39,7 +40,7 @@ func (m ModuleSingleSermon) getData() (pres Presenter, err error) {
 }
 
 func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
 	ser, err := m.getData()
@@ -47,22 +48,26 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 		LogErr(err, "Error in module render")
 		return ""
 	}
-	e := element.New
-	out := e("h3", "class", "sermon-title").R(ser.Title)
-	out += e("span", "class", "sermon-sub-title").R(
-		ser.Teacher + " - " + ser.DateTaught,
+
+	b := element.NewBuilder()
+	e := b.Ele
+
+	e("h3", "class", "sermon-title").R(ser.Title)
+	e("span", "class", "sermon-sub-title").R(
+		ser.Teacher+" - "+ser.DateTaught,
 		e("a", "class", "sermon-play-icon", "href", ser.AudioLink).R("download"))
-	out += e("div").R(ser.Summary)
-	out += e("div").R(ser.Body)
+	e("div").R(ser.Summary)
+	e("div").R(ser.Body)
 	if loggedIn && len(m.Opts.ItemIds) > 0 {
-		out += e("a", "class", "edit-link", "href", m.GetEditURL() +
+		e("a", "class", "edit-link", "href", m.GetEditURL()+
 			strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
 			e("img", "class", "edit-icon", "title", "Edit Sermon", "src", "/assets/images/edit_article.svg").R(),
 		)
 	}
-	out += e("div", "class", "sermon-footer").R(
+	e("div", "class", "sermon-footer").R(
 		e("span", "class", "scripture").R(strings.Join(ser.ScriptureRefs, ", ")),
 		e("span", "class", "categories").R(strings.Join(ser.Categories, ", ")),
 	)
-	return out
+
+	return b.String()
 }

@@ -1,13 +1,14 @@
 package event
 
 import (
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"fmt"
-	"strings"
 	"errors"
+	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
 )
 
 const ModuleTypeSingleEvent = "event_single"
@@ -24,17 +25,19 @@ func NewModuleSingleEvent(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleSingleEvent) getData() (pres Presenter, err error) {
-	if len(m.Opts.ItemIds) < 1 { return }
+	if len(m.Opts.ItemIds) < 1 {
+		return
+	}
 	evt, err := findEventById(m.Opts.ItemIds[0])
 	if err != nil {
-		LogErr(err, "Unable to obtain event", "event_id",  fmt.Sprintf("%d", m.Opts.ItemIds[0]))
+		LogErr(err, "Unable to obtain event", "event_id", fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 		return pres, err
 	}
 	return presenterFromModel(evt), err
 }
 
 func (m *ModuleSingleEvent) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
 	// Safety - todo add to all modules
@@ -49,8 +52,11 @@ func (m *ModuleSingleEvent) Render(params map[string]map[string]string, loggedIn
 		LogErr(err, "Error in module render")
 		return ""
 	}
-	e := element.New
-	out := "<h3>Event (" + evt.Title + `)</h3><table>
+
+	b := element.NewBuilder()
+	e := b.E
+
+	_ = b.WriteString("<h3>Event (" + evt.Title + `)</h3><table>
 		<tr><td>Name</td><td>` + evt.Title + `</td></tr>
 		<tr><td>Event Date</td><td>` + evt.EventDate + `</td></tr>
 		<tr><td>Event Time</td><td>` + evt.EventTime + `</td></tr>
@@ -63,12 +69,12 @@ func (m *ModuleSingleEvent) Render(params map[string]map[string]string, loggedIn
 		<tr><td>Contact URL</td><td>` + evt.ContactURL + `</td></tr>
 		<tr><td>Categories</td><td>` + strings.Join(evt.Categories, ", ") + `</td></tr>
 		<tr><td>Updated At</td><td>` + evt.UpdatedAt + `</td></tr>
-		</table>`
+		</table>`)
 	if loggedIn && len(m.Opts.ItemIds) > 0 {
-		out += e("a", "class", "edit-link", "href", m.GetEditURL() +
+		e("a", "class", "edit-link", "href", m.GetEditURL()+
 			strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
 			e("img", "class", "edit-icon", "title", "Edit Event", "src", "/assets/images/edit_article.svg").R(),
 		)
 	}
-	return out
+	return b.S()
 }

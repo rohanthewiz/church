@@ -66,7 +66,7 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 		elEnabled.AddAttributes("checked", "checked")
 	}
 
-	out := e("div", "class", "wrapper-material-form").R(
+	e("div", "class", "wrapper-material-form").R(
 		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
 		e("form", "method", "post", "action",
 			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
