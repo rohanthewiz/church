@@ -1,15 +1,16 @@
 package page
 
 import (
-	"fmt"
-	"github.com/rohanthewiz/church/pack/packed"
-	"github.com/rohanthewiz/serr"
-	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/church/app"
 	"encoding/json"
+	"fmt"
 	"strings"
+
+	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/pack/packed"
 	"github.com/rohanthewiz/element"
+	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 type ModulePageForm struct {
@@ -35,17 +36,18 @@ func NewModulePageForm(pres module.Presenter) (module.Module, error) {
 func (m ModulePageForm) getData() (Presenter, error) {
 	pg, err := findPageById(m.Opts.ItemIds[0])
 	if err != nil {
-		return Presenter{}, serr.Wrap(err, "Unable to obtain page with id: " + fmt.Sprintf("%d", m.Opts.ItemIds[0]))
+		return Presenter{}, serr.Wrap(err, "Unable to obtain page with id: "+fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 	}
 	return presenterFromModel(pg)
 }
 
 func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bool) string {
-	//fmt.Printf("*|* Params: %#v\n", params)
+	// fmt.Printf("*|* Params: %#v\n", params)
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	pg := Presenter{}; var err error
+	pg := Presenter{}
+	var err error
 
 	operation := "Create"
 	action := ""
@@ -54,14 +56,16 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 		pg, err = m.getData()
 		if err != nil {
 			logger.LogErr(err, "Error in module render", "module_options", fmt.Sprintf("%#v", m.Opts))
-			return ""  // todo - error presentation to user
+			return "" // todo - error presentation to user
 		}
 		logger.LogAsync("Debug", "Existing page object for module form", "page object", fmt.Sprintf("%#v", pg))
 		println("|* Page has:", len(pg.Modules), "modules")
 		action = "/update/" + pg.Id
 	}
 
-	e := element.New
+	b := element.NewBuilder()
+	e := b.E
+
 	// Prep some vars
 	published := e("input", "type", "checkbox", "name", "published")
 	if pg.Published {
@@ -89,9 +93,9 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 		return "page error - try again or contact the site administrator"
 	}
 
-	out := e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation + " " + m.Name.Singular),
-		e("form", "id", "page_form", "method", "post", "action", "/admin/" + m.Name.Plural + action, "onSubmit", "return preSubmit();").R(
+	e("div", "class", "wrapper-material-form").R(
+		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
+		e("form", "id", "page_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "id", "modules", "name", "modules", "value", "").R(),
 			e("input", "type", "hidden", "name", "page_id", "value", pg.Id).R(),
 			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
@@ -132,7 +136,6 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 					),
 					e("button", "class", "btn-add-module", "title", "Add Module").R("+"),
 				),
-
 			), // end form-inner
 
 			e("div", "class", "form-group").R(
@@ -140,12 +143,12 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 			),
 		),
 		e("script", "type", "text/javascript").R(
-		"var modules = JSON.parse(`" + string(moduleByts) + "`);",
-		"var moduleTypes = JSON.parse(`" + string(moduleTypesByts) + "`);",
-		"var contentBys = JSON.parse(`" + string(moduleContentBys) + "`);",
-		packed.ModulePageForm_js,
+			"var modules = JSON.parse(`"+string(moduleByts)+"`);",
+			"var moduleTypes = JSON.parse(`"+string(moduleTypesByts)+"`);",
+			"var contentBys = JSON.parse(`"+string(moduleContentBys)+"`);",
+			packed.ModulePageForm_js,
 		),
 	)
 
-	return out
+	return b.S()
 }

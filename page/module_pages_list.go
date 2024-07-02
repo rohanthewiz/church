@@ -1,12 +1,13 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/church/config"
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/element"
-	"github.com/rohanthewiz/church/agrid"
 	"encoding/json"
+
+	"github.com/rohanthewiz/church/agrid"
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
 )
 
 const ModuleTypePagesList = "pages_list"
@@ -22,7 +23,7 @@ func NewModulePagesList(pres module.Presenter) (module.Module, error) {
 
 	// Work out local condition
 	cond := "1 = 1"
-	if !mod.Opts.IsAdmin && !mod.Opts.ShowUnpublished{
+	if !mod.Opts.IsAdmin && !mod.Opts.ShowUnpublished {
 		cond = "published = true"
 	}
 	// merge with any incoming condition
@@ -35,17 +36,17 @@ func NewModulePagesList(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModulePagesList) GetData() ([]Presenter, error) {
-	return queryPages(m.Opts.Condition, "updated_at " + m.Order(), m.Opts.Limit, m.Opts.Offset)
+	return queryPages(m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
 type pagesListRowDef struct {
-	Id string `json:"id,omitempty"`
-	Title string `json:"title"`
-	PageURL string `json:"pageURL"`
+	Id        string `json:"id,omitempty"`
+	Title     string `json:"title"`
+	PageURL   string `json:"pageURL"`
 	Published string `json:"published,omitempty"`
 	UpdatedBy string `json:"updatedBy"`
-	Edit string `json:"edit,omitempty"`
-	Delete string `json:"delete"`
+	Edit      string `json:"edit,omitempty"`
+	Delete    string `json:"delete"`
 }
 
 func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn bool) string {
@@ -53,20 +54,20 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 	pagesDeleteURL := config.AdminPrefix + "/" + m.Opts.ItemsURLPath + "/delete/"
 	newPath := config.AdminPrefix + "/" + m.Opts.ItemsURLPath + "/new"
 
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to this module
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to this module
 		m.SetLimitAndOffset(opts)
 	}
 
 	pgs, err := m.GetData()
 	if err != nil {
-		LogErr(err, "Error obtaining data in module", "module_slug",  m.Opts.Slug,
+		LogErr(err, "Error obtaining data in module", "module_slug", m.Opts.Slug,
 			"module_type", m.Opts.ModuleType)
 		return ""
 	}
 
 	// Setup AgGrid
 	var columnDefs []agrid.ColumnDef
-	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Id", Field: "id", Width: 105 })
+	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Id", Field: "id", Width: 105})
 	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Title", Field: "title", CellRenderer: "linkCellRenderer"})
 	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Page URL", Field: "pageURL"})
 	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Published", Field: "published", Width: 190})
@@ -77,11 +78,13 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 	var rowData []pagesListRowDef
 	for _, pg := range pgs {
 		published := "draft"
-		if pg.Published { published = "published" }
+		if pg.Published {
+			published = "published"
+		}
 
 		row := pagesListRowDef{}
 		row.Id = pg.Id
-		row.Title = pg.Title + "|" +  "/admin/" + m.Opts.ItemsURLPath + "/" + pg.Id
+		row.Title = pg.Title + "|" + "/admin/" + m.Opts.ItemsURLPath + "/" + pg.Id
 		row.PageURL = "/pages/" + pg.Slug
 		row.Published = published
 		row.UpdatedBy = pg.UpdatedBy
@@ -92,7 +95,9 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 
 	columnDefsAsJson, err := json.Marshal(columnDefs)
 	rowDataAsJson, err := json.Marshal(rowData)
-	if err != nil { LogErr(err, "Error converting Page column defs to JSON") }
+	if err != nil {
+		LogErr(err, "Error converting Page column defs to JSON")
+	}
 	jsConvertColumnDefs := "var pagesListColumnDefs = JSON.parse(`" + string(columnDefsAsJson) + "`);"
 	jsConvertRowData := "var rowData = JSON.parse(`" + string(rowDataAsJson) + "`);"
 	gridOptions := `var pagesListGridOptions = {
@@ -110,13 +115,14 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 
 	scriptBody := `new agGrid.Grid(document.querySelector('.list-grid'), pagesListGridOptions);`
 
-	e := element.New
-	out := e("div", "class", "ch-module-wrapper ch-" + m.Opts.ModuleType).R(
+	b := element.NewBuilder()
+	e := b.E
+	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		e("div", "class", "ch-module-heading").R(
 			m.Opts.Title,
 			func() (s string) {
 				if m.Opts.IsAdmin {
-					s = e("a", "class", "btn-add", "href", newPath, "title", "Add Page").R("+")
+					e("a", "class", "btn-add", "href", newPath, "title", "Add Page").R("+")
 				}
 				return
 			}(),
@@ -125,9 +131,9 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 			e("div", "class", "list-grid ag-theme-material", "style", `width: 98vw; height: 780px`).R(),
 			e("script", "type", "text/javascript").R(
 				jsConvertColumnDefs, jsConvertRowData, gridOptions,
-				`$(document).ready(function() {` + scriptBody + `});`),
+				`$(document).ready(function() {`+scriptBody+`});`),
 		),
 	)
 
-	return out
+	return b.S()
 }
