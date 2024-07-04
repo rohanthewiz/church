@@ -1,14 +1,15 @@
 package event
 
 import (
-	"github.com/rohanthewiz/church/models"
-	"github.com/rohanthewiz/church/db"
-	. "github.com/vattle/sqlboiler/queries/qm"
-	. "github.com/rohanthewiz/logger"
 	"fmt"
-	"github.com/rohanthewiz/church/util/stringops"
-	"github.com/rohanthewiz/serr"
 	"strconv"
+
+	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/util/stringops"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
+	. "github.com/vattle/sqlboiler/queries/qm"
 )
 
 func UpComingEvents() ([]Presenter, error) {
@@ -31,7 +32,8 @@ func UpComingEvents() ([]Presenter, error) {
 // Condition is the condition expression without leading/trailing WHERE and AND
 func QueryEvents(condition, order string, limit int64, offset int64) ([]Presenter, error) {
 	fmt.Println("condition:", condition, " order:", order, " limit:", limit, " offset:", offset)
-	pres := []Presenter{}
+	var pres []Presenter
+
 	db, err := db.Db()
 	if err != nil {
 		return pres, err
@@ -47,31 +49,28 @@ func QueryEvents(condition, order string, limit int64, offset int64) ([]Presente
 	return pres, err
 }
 
-
 // Given a Presenter, update or insert
 func (p Presenter) UpsertEvent() error {
 	db, err := db.Db()
 	if err != nil {
-		return  err
+		return err
 	}
 	evt, create, err := modelFromPresenter(p)
 	if err != nil {
-		serr.Wrap(err, "Error in event model upsert", "location", FunctionLoc())
-		return err
+		return serr.Wrap(err)
 	}
 	if create {
 		evt.Slug = stringops.SlugWithRandomString(evt.Title) // create the unique id for the module
 		err = evt.Insert(db)
 		if err != nil {
-			serr.Wrap(err, "Error inserting event into DB","location", FunctionLoc())
-			return err
+			return serr.Wrap(err, "Error inserting event into DB")
 		} else {
 			Log("Info", "Successfully created event")
 		}
 	} else {
 		err = evt.Update(db)
 		if err != nil {
-			serr.Wrap(err, "Error updating event in DB", "location", FunctionLoc())
+			err = serr.Wrap(err, "Error updating event in DB")
 		} else {
 			Log("Info", "Successfully updated event")
 		}
@@ -83,9 +82,11 @@ func DeleteEventById(id string) error {
 	const when = "When deleting event by id"
 	dbH, err := db.Db()
 	if err != nil {
-		return  err
+		return err
 	}
-	if id == "" { return serr.NewSErr("Id to delete is empty string", "when", when) }
+	if id == "" {
+		return serr.New("Id to delete is empty string", "when", when)
+	}
 	intId, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Event id to integer", "Id", id, "when", when)
@@ -111,7 +112,7 @@ func findEventById(id int64) (*models.Event, error) {
 }
 
 // Returns the models.Presenter with id `id` or a new models.Presenter
-func findModelByIdOrCreate(id string) (*models.Event) {
+func findModelByIdOrCreate(id string) *models.Event {
 	var evt *models.Event
 	if id != "" {
 		intId, err := strconv.ParseInt(id, 10, 64)
@@ -129,7 +130,7 @@ func findModelByIdOrCreate(id string) (*models.Event) {
 	return evt
 }
 
-//func FirstEvent() (Presenter, error) {
+// func FirstEvent() (Presenter, error) {
 //	efs := Presenter{}
 //	db, err := db.Db()
 //	if err != nil {
@@ -140,10 +141,9 @@ func findModelByIdOrCreate(id string) (*models.Event) {
 //		return efs, err
 //	}
 //	return presenterFromModel(ev), err
-//}
+// }
 
-
-//func PresenterById(param_id string) (Presenter, error) {
+// func PresenterById(param_id string) (Presenter, error) {
 //	efs := Presenter{}
 //	id, err := strconv.ParseInt(strings.TrimSpace(param_id), 10, 64)
 //	if err != nil {
@@ -156,7 +156,6 @@ func findModelByIdOrCreate(id string) (*models.Event) {
 //		return efs, err
 //	}
 //	return presenterFromModel(evt), err
-//}
+// }
 
 // Private
-

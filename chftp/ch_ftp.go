@@ -1,14 +1,15 @@
 package chftp
 
 import (
+	"net/url"
+	"path"
+	"strings"
+
 	"github.com/jlaffaye/ftp"
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/util/timeutil"
 	"github.com/rohanthewiz/roftp"
 	"github.com/rohanthewiz/serr"
-	"net/url"
-	"path"
-	"strings"
 
 	"github.com/rohanthewiz/logger"
 )
@@ -73,7 +74,7 @@ func (u *Uploader) Run() error {
 func (u Uploader) DestWebPath() string {
 	url_, err := url.Parse(config.Options.FTP.Main.WebAccessPath)
 	if err != nil {
-		logger.LogErrAsync(err, "msg", "could not parse cema ftp domain")
+		logger.LogErr(serr.Wrap(err, "msg", "could not parse cema ftp domain"))
 		return ""
 	}
 	url_.Path = path.Join(url_.Path, u.serverPath, u.destFilename)

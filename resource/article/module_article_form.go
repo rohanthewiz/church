@@ -2,12 +2,13 @@ package article
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
-	"strings"
 )
 
 const ModuleTypeArticleForm = "article_form"
@@ -23,7 +24,7 @@ func NewModuleArticleForm(pres module.Presenter) (module.Module, error) {
 	mod.Opts = pres.Opts
 	csrf, err := app.GenerateFormToken()
 	if err != nil {
-		return nil, serr.Wrap(err, "Could not generate form token", "location", FunctionLoc())
+		return nil, serr.Wrap(err)
 	}
 	mod.csrf = csrf
 	return module.Module(mod), nil

@@ -24,12 +24,11 @@ require (
 	github.com/rifflock/lfshook v0.0.0-20170601165600-6844c808343c // indirect
 	github.com/rohanthewiz/element v0.4.1-0.20240610014730-cae6bd9b5361
 	github.com/rohanthewiz/gmail_send v1.0.0
-	github.com/rohanthewiz/logger v1.0.1
+	github.com/rohanthewiz/logger v1.2.5
 	github.com/rohanthewiz/roftp v0.2.0
 	github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e
 	github.com/rohanthewiz/rotatelogs v0.1.2 // indirect
-	github.com/rohanthewiz/serr v1.0.0-rc.3
-	github.com/sirupsen/logrus v1.0.6 // indirect
+	github.com/rohanthewiz/serr v1.2.0
 	github.com/stripe/stripe-go v55.14.0+incompatible
 	github.com/tebeka/strftime v0.1.5 // indirect
 	github.com/vattle/sqlboiler v2.5.0+incompatible

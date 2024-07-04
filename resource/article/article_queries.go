@@ -1,14 +1,14 @@
 package article
 
 import (
-	"github.com/rohanthewiz/church/models"
-	"github.com/rohanthewiz/church/db"
-	. "github.com/vattle/sqlboiler/queries/qm"
-	"github.com/rohanthewiz/serr"
 	"fmt"
-	. "github.com/rohanthewiz/logger"
 	"strconv"
-	"errors"
+
+	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/models"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
+	. "github.com/vattle/sqlboiler/queries/qm"
 )
 
 func QueryArticles(condition, order string, limit, offset int64) (presenters []Presenter, err error) {
@@ -37,7 +37,7 @@ func RecentArticles(limit int64) (presenters []Presenter, err error) {
 func (p Presenter) UpsertArticle() error {
 	db, err := db.Db()
 	if err != nil {
-		return  err
+		return err
 	}
 	art, create, err := modelFromPresenter(p)
 	if err != nil {
@@ -65,9 +65,11 @@ func DeleteArticleById(id string) error {
 	const when = "When deleting article by id"
 	dbH, err := db.Db()
 	if err != nil {
-		return  err
+		return err
 	}
-	if id == "" { return errors.New("Id to delete is empty string") }
+	if id == "" {
+		return serr.New("Id to delete is empty string")
+	}
 	intId, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Article id to integer", "Id", id, "when", when)
@@ -98,12 +100,11 @@ func findModelByIdOrCreate(id string) (art *models.Article) {
 	return
 }
 
-
 // Returns an article for id `id` or error
 func findArticleById(id int64) (*models.Article, error) {
 	dbH, err := db.Db()
 	if err != nil {
-		return nil, serr.Wrap(err, "location", FunctionLoc())
+		return nil, serr.Wrap(err)
 	}
 	art, err := models.Articles(dbH, Where("id = ?", id)).One()
 	if err != nil {
@@ -118,7 +119,7 @@ func findArticleBySlug(slug string) (*models.Article, error) {
 		return nil, serr.Wrap(err, "Error obtaining DB handle")
 	}
 	art, err := models.Articles(dbH, Where("slug = ?", slug)).One()
-	if  err != nil {
+	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving article by slug", "slug", slug)
 	}
 	return art, err

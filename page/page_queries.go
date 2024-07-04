@@ -2,18 +2,20 @@ package page
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
-	. "github.com/vattle/sqlboiler/queries/qm"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
-	"strconv"
+	. "github.com/vattle/sqlboiler/queries/qm"
 )
+
 // Fixup Received data for Presenter
 func UpsertPage(pres Presenter) (pgUrl string, err error) {
 	dbH, err := db.Db()
 	if err != nil {
-		return  pgUrl, err
+		return pgUrl, err
 	}
 	model, create, err := modelFromPresenter(pres)
 	if err != nil {
@@ -22,20 +24,20 @@ func UpsertPage(pres Presenter) (pgUrl string, err error) {
 	if create {
 		err = model.Insert(dbH)
 		if err != nil {
-			return pgUrl, serr.Wrap(err, "Error inserting new page into DB", "location", FunctionLoc())
+			return pgUrl, serr.Wrap(err, "Error inserting new page into DB")
 		} else {
 			Log("Info", "Successfully inserted page into db")
 		}
 	} else {
 		err = model.Update(dbH)
 		if err != nil {
-			return pgUrl, serr.Wrap(err, "Error updating modelicle in DB", "location", FunctionLoc())
+			return pgUrl, serr.Wrap(err, "Error updating page in DB")
 		} else {
 			Log("Info", "Successfully updated page")
 		}
 	}
 	pgUrl = "/pages/" + model.Slug
-	return pgUrl, err
+	return
 }
 
 func queryPages(condition, order string, limit int64, offset int64) ([]Presenter, error) {
@@ -57,7 +59,9 @@ func queryPages(condition, order string, limit int64, offset int64) ([]Presenter
 		}
 		presenters = append(presenters, pres)
 	}
-	if len(errs) > 0 { err = errs[0]}  // todo - better way
+	if len(errs) > 0 {
+		err = errs[0]
+	} // todo - better way
 	return presenters, err
 }
 
@@ -65,9 +69,11 @@ func DeletePageById(id string) error {
 	const when = "When deleting page by id"
 	dbH, err := db.Db()
 	if err != nil {
-		return  err
+		return err
 	}
-	if id == "" { return serr.NewSErr("Id to delete is empty string", "when", when) }
+	if id == "" {
+		return serr.New("Id to delete is empty string", "when", when)
+	}
 	intId, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Page id to integer", "Id", id, "when", when)
@@ -85,7 +91,7 @@ func findPageById(id int64) (*models.Page, error) {
 		return nil, serr.Wrap(err, "Error obtaining DB handle")
 	}
 	pg, err := models.Pages(dbH, Where("id = ?", id)).One()
-	if  err != nil {
+	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving page by id", "id", fmt.Sprintf("%d", id))
 	}
 	return pg, err
@@ -97,7 +103,7 @@ func findPageBySlug(slug string) (*models.Page, error) {
 		return nil, serr.Wrap(err, "Error obtaining DB handle")
 	}
 	pg, err := models.Pages(dbH, Where("slug = ?", slug)).One()
-	if  err != nil {
+	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving page by slug", "slug", slug)
 	}
 	return pg, err

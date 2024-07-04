@@ -1,11 +1,13 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/module"
 	"encoding/json"
-	"strings"
-	"github.com/rohanthewiz/logger"
 	"strconv"
+	"strings"
+
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 // Structures for directly interfacing with page forms
@@ -13,38 +15,41 @@ import (
 // This object is for unmarshalling form data produced by the JavaScript serializer
 // The serializer serializes the whole form, but we are only interested in Modules here
 type formPageObject struct {
-	//PageId             string           `json:"page_id"`
-	//PageTitle          string           `json:"page_title"`
-	//AvailablePositions string           `json:"available_positions"`
-	//MainModuleSlug     string           `json:"main_module_slug"`
-	//Published          bool             `json:"published"`
-	Modules            []ModuleReceiver `json:"mods"`
-	//Admin              bool             `json:"admin"`
+	// PageId             string           `json:"page_id"`
+	// PageTitle          string           `json:"page_title"`
+	// AvailablePositions string           `json:"available_positions"`
+	// MainModuleSlug     string           `json:"main_module_slug"`
+	// Published          bool             `json:"published"`
+	Modules []ModuleReceiver `json:"mods"`
+	// Admin              bool             `json:"admin"`
 }
 
 type ModuleReceiver struct {
-	Title           string `json:"title"`
-	//Slug            string `json:"slug"` // If slug is empty, it will be created at the resource level (modelFromPresenter)
-	ModuleType      string `json:"module_type"`
-	IsAdmin         bool   `json:"is_admin"`
-	IsMainModule    bool   `json:"main_module"`
-	Published       bool   `json:"published"`
-	LayoutColumn    string `json:"layout_column"`
-	ItemsURLPath    string `json:"items_url_path"`
-	//Condition       string `json:"condition"`
+	Title string `json:"title"`
+	// Slug            string `json:"slug"` // If slug is empty, it will be created at the resource level (modelFromPresenter)
+	ModuleType   string `json:"module_type"`
+	IsAdmin      bool   `json:"is_admin"`
+	IsMainModule bool   `json:"main_module"`
+	Published    bool   `json:"published"`
+	LayoutColumn string `json:"layout_column"`
+	ItemsURLPath string `json:"items_url_path"`
+	// Condition       string `json:"condition"`
 	ItemIds         string `json:"item_ids"`
 	ItemSlug        string `json:"item_slug"`
 	Limit           string `json:"limit"`
 	Offset          string `json:"offset"` // we'll conv these to int64
 	ShowUnpublished bool   `json:"show_unpublished"`
 	Ascending       bool   `json:"ascending"`
-	CustomClass string `json:"custom_class"`
+	CustomClass     string `json:"custom_class"`
 }
 
 func ModulePresentersFromJson(formJson string) (modPresenter []module.Presenter) {
 	form := formPageObject{}
 	err := json.Unmarshal([]byte(formJson), &form)
-	if err != nil { return }
+	if err != nil {
+		logger.LogErr(serr.Wrap(err))
+		return
+	}
 	println("|* Num of modules rcxd from form:", len(form.Modules))
 
 	for _, mod := range form.Modules {
@@ -66,7 +71,7 @@ func ModulePresentersFromJson(formJson string) (modPresenter []module.Presenter)
 		if trimmedLimit := strings.TrimSpace(mod.Limit); trimmedLimit != "" {
 			limit, err = strconv.ParseInt(trimmedLimit, 10, 64)
 			if err != nil {
-				logger.LogErrAsync(err, "Error converting limit to int64", "limit", mod.Limit)
+				logger.LogErr(err, "Error converting limit to int64", "limit", mod.Limit)
 				limit = 0
 			}
 		}
@@ -74,7 +79,7 @@ func ModulePresentersFromJson(formJson string) (modPresenter []module.Presenter)
 		if trimmedOffset := strings.TrimSpace(mod.Offset); trimmedOffset != "" {
 			offset, err = strconv.ParseInt(trimmedOffset, 10, 64)
 			if err != nil {
-				logger.LogErrAsync(err, "Error converting offset to int64", "offset", mod.Offset)
+				logger.LogErr(err, "Error converting offset to int64", "offset", mod.Offset)
 				offset = 0
 			}
 		}
@@ -83,22 +88,22 @@ func ModulePresentersFromJson(formJson string) (modPresenter []module.Presenter)
 		// if mslug == "" { mslug = stringops.SlugWithRandomString(title) }
 		// fmt.Println("*|* mod.ItemIds", mod.ItemIds)
 		modPres.Opts = module.Opts{
-			Title:           title,
-			//Slug:            mslug,
-			ModuleType:      strings.TrimSpace(mod.ModuleType),
-			IsAdmin:         false, // dynamic pages can't be admin //mod.IsAdmin,
-			Published:       mod.Published,
-			IsMainModule:    mod.IsMainModule,
-			LayoutColumn:    strings.TrimSpace(mod.LayoutColumn),
-			ItemsURLPath:    strings.TrimSpace(mod.ItemsURLPath),
-			ItemIds:         ids,
-			ItemSlug:        strings.TrimSpace(mod.ItemSlug),
-			//Condition:       strings.TrimSpace(mod.Condition),
+			Title: title,
+			// Slug:            mslug,
+			ModuleType:   strings.TrimSpace(mod.ModuleType),
+			IsAdmin:      false, // dynamic pages can't be admin //mod.IsAdmin,
+			Published:    mod.Published,
+			IsMainModule: mod.IsMainModule,
+			LayoutColumn: strings.TrimSpace(mod.LayoutColumn),
+			ItemsURLPath: strings.TrimSpace(mod.ItemsURLPath),
+			ItemIds:      ids,
+			ItemSlug:     strings.TrimSpace(mod.ItemSlug),
+			// Condition:       strings.TrimSpace(mod.Condition),
 			Limit:           limit,
 			Offset:          offset,
 			ShowUnpublished: mod.ShowUnpublished,
 			Ascending:       mod.Ascending,
-			CustomClass: mod.CustomClass,
+			CustomClass:     mod.CustomClass,
 		}
 		modPresenter = append(modPresenter, modPres)
 	}

@@ -1,27 +1,28 @@
 package chimage
 
 import (
-	"fmt"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/rohanthewiz/logger"
-	"github.com/vincent-petithory/dataurl"
 	"bytes"
-	"github.com/h2non/bimg"
-	"github.com/rohanthewiz/serr"
-	"github.com/rohanthewiz/church/util/stringops"
-	"strings"
-	"strconv"
-	"path/filepath"
+	"fmt"
 	"io/ioutil"
+	"path/filepath"
+	"strconv"
+	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"github.com/h2non/bimg"
+	"github.com/rohanthewiz/church/util/stringops"
+	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
+	"github.com/vincent-petithory/dataurl"
 )
 
-const localImagesFolder = "dist/img/"  // separate from our core images like our banner images etc.
+const localImagesFolder = "dist/img/" // separate from our core images like our banner images etc.
 const webImagesFolder = "/assets/img/"
 const resizeThreshold = 3000
 
 // Mainly Resize
-func ProcessInlineImages(field string) (out string, err error){
-	//fmt.Println("|* ", field)
+func ProcessInlineImages(field string) (out string, err error) {
+	// fmt.Println("|* ", field)
 	buf := bytes.NewBuffer([]byte(field))
 	doc, err := goquery.NewDocumentFromReader(buf)
 	if err != nil {
@@ -42,11 +43,13 @@ func ProcessInlineImages(field string) (out string, err error){
 		fmt.Println("|* image size:", lenOrig)
 		if lenOrig > resizeThreshold {
 			height, ok := getHeightFromStyle(sel)
-			if !ok { height = 400 }
+			if !ok {
+				height = 400
+			}
 			logger.LogAsync("Info", "Resizing", "height", strconv.Itoa(height))
 			resized, err := bimg.Resize(dUrl.Data, bimg.Options{Height: height})
 			if err != nil {
-				logger.LogErrAsync(err, "Could not resize image")
+				logger.LogErr(err, "Could not resize image")
 				return
 			}
 			lnResized := len(resized)
@@ -58,22 +61,24 @@ func ProcessInlineImages(field string) (out string, err error){
 		if lenOrig < 5000 { // inline smaller images
 			dUrlOut, err := dUrl.MarshalText()
 			if err != nil {
-				logger.LogErrAsync(err, "Error marshalling data url")
+				logger.LogErr(err, "Error marshalling data url")
 				return
 			}
 			sel.SetAttr("src", string(dUrlOut))
 		} else {
 			filename, ext, ok := getFilename(sel)
-			if !ok { return }
+			if !ok {
+				return
+			}
 			uniqueFilename := filename + "." + stringops.XXHash(string(dUrl.Data)) + ext
-			//uniqueFilename := stringops.SlugWithRandomString(filename) + ext
-			ioutil.WriteFile(localImagesFolder + uniqueFilename, dUrl.Data, 0644)
-			sel.SetAttr("src", webImagesFolder + uniqueFilename)
+			// uniqueFilename := stringops.SlugWithRandomString(filename) + ext
+			ioutil.WriteFile(localImagesFolder+uniqueFilename, dUrl.Data, 0644)
+			sel.SetAttr("src", webImagesFolder+uniqueFilename)
 		}
 	})
 	out, err = doc.Html()
 	if err != nil {
-		logger.LogErrAsync(err)
+		logger.LogErr(err)
 	}
 	return
 }
@@ -91,9 +96,9 @@ func getHeightFromStyle(sel *goquery.Selection) (height int, ok bool) {
 			if len(attVal) == 2 {
 				hght, err := strconv.Atoi(stringops.NumericString(attVal[1]))
 				if err == nil {
-					return int(hght + hght * 2 / 10), true
+					return int(hght + hght*2/10), true
 				}
-				logger.LogErrAsync(err, "Error parsing height", "string_value", attVal[1])
+				logger.LogErr(err, "Error parsing height", "string_value", attVal[1])
 			}
 		}
 	}

@@ -55,7 +55,7 @@ func buildMenu(slug string, loggedIn bool) string {
 		if strings.TrimSpace(item.SubMenuSlug) != "" { // we have a submenu specified
 			submenuDef, err := menuDefFromSlug(item.SubMenuSlug)
 			if err != nil {
-				logger.LogErrAsync(err, "Could not obtain a menu def from slug", "slug",
+				logger.LogErr(err, "Could not obtain a menu def from slug", "slug",
 					item.SubMenuSlug)
 			}
 			if !loggedIn && submenuDef.IsAdmin {

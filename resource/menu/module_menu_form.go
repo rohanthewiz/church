@@ -78,7 +78,7 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 
 	byts, err := json.Marshal(mnu.Items)
 	if err != nil {
-		logger.LogErrAsync(err, "Error marshalling menu items for menu form", "menu_presenter", fmt.Sprintf("%#v", mnu))
+		logger.LogErr(err, "Error marshalling menu items for menu form", "menu_presenter", fmt.Sprintf("%#v", mnu))
 		return "menu error"
 	}
 

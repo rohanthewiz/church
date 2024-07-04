@@ -78,18 +78,18 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 
 	moduleByts, err := json.Marshal(pg.Modules)
 	if err != nil {
-		logger.LogErrAsync(err, "Error marshalling modules for page form", "modules", fmt.Sprintf("%#v", pg.Modules))
+		logger.LogErr(err, "Error marshalling modules for page form", "modules", fmt.Sprintf("%#v", pg.Modules))
 		return "page error - try again or contact the site administrator"
 	}
 	avModTypes := availableModuleTypes()
 	moduleTypesByts, err := json.Marshal(avModTypes)
 	if err != nil {
-		logger.LogErrAsync(err, "Error marshalling available module types", "available_module_types", strings.Join(avModTypes, ","))
+		logger.LogErr(err, "Error marshalling available module types", "available_module_types", strings.Join(avModTypes, ","))
 		return "page error - try again or contact the site administrator"
 	}
 	moduleContentBys, err := json.Marshal(moduleContentBy)
 	if err != nil {
-		logger.LogErrAsync(err, "Error marshalling module content bys")
+		logger.LogErr(err, "Error marshalling module content bys")
 		return "page error - try again or contact the site administrator"
 	}
 

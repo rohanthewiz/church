@@ -4,6 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"os"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
@@ -15,11 +21,6 @@ import (
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/logger"
-	"io"
-	"os"
-	"path"
-	"strings"
-	"time"
 )
 
 func NewSermon(c echo.Context) error {
@@ -108,11 +109,11 @@ func UpsertSermon(c echo.Context) error {
 	serPres.Teacher = c.FormValue("pastor-teacher")
 
 	sermonAudio, err := c.FormFile("sermon_audio")
-	//fmt.Printf("|** %#v\n", sermonAudio)
+	// fmt.Printf("|** %#v\n", sermonAudio)
 	if err == nil && sermonAudio != nil && sermonAudio.Filename != "" {
 		sermonTmp, err := sermonAudio.Open() // Todo: move to sermon model
 		if err != nil {
-			logger.LogErrAsync(err, "when", "opening sermon from FormFile", "filename", sermonAudio.Filename)
+			logger.LogErr(err, "when", "opening sermon from FormFile", "filename", sermonAudio.Filename)
 			c.Error(err)
 			return err
 		}
@@ -121,7 +122,7 @@ func UpsertSermon(c echo.Context) error {
 		initialUrlPath := path.Join(sermonsLocalURLPrefix, sermonAudio.Filename)
 		dest, err := os.Create(localFilePath)
 		if err != nil {
-			logger.LogErrAsync(err, "when", "creating destination file for sermon", "filename", sermonAudio.Filename)
+			logger.LogErr(err, "when", "creating destination file for sermon", "filename", sermonAudio.Filename)
 			c.Error(err)
 			return err
 		}
@@ -130,7 +131,7 @@ func UpsertSermon(c echo.Context) error {
 
 		// Copy to server
 		if _, err := io.Copy(dest, sermonTmp); err != nil {
-			logger.LogErrAsync(err, "when", "copying sermon from FormFile to dest", "filename", sermonAudio.Filename)
+			logger.LogErr(err, "when", "copying sermon from FormFile to dest", "filename", sermonAudio.Filename)
 			c.Error(err)
 			return err
 		}
@@ -151,7 +152,7 @@ func UpsertSermon(c echo.Context) error {
 	if c.FormValue("published") == "on" {
 		serPres.Published = true
 	}
-	//fmt.Printf("*|* serPres --> %#v\n", serPres)
+	// fmt.Printf("*|* serPres --> %#v\n", serPres)
 	slug, err := serPres.Upsert()
 	if err != nil {
 		c.Error(err)
@@ -169,17 +170,17 @@ func UpsertSermon(c echo.Context) error {
 			println("Transferring", localFilePath, "to Main FTP server")
 			err := upl.Run()
 			if err != nil {
-				logger.LogErrAsync(err, "Error transferring to Church FTP", "sermon", localFilePath)
+				logger.LogErr(err, "Error transferring to Church FTP", "sermon", localFilePath)
 			} else {
 				// Get Sermon Presenter by slug
 				pres, err := sermon.PresenterFromSlug(slug)
 				if err != nil {
-					logger.LogErrAsync(err, "Error finding sermon by slug", "slug", slug)
+					logger.LogErr(err, "Error finding sermon by slug", "slug", slug)
 				}
 				pres.AudioLink = upl.DestWebPath()
 				_, err = pres.Upsert()
 				if err != nil {
-					logger.LogErrAsync(err, "Error updating Sermon audio link to Church FTP server")
+					logger.LogErr(err, "Error updating Sermon audio link to Church FTP server")
 				}
 				logger.Log("Info", "Sermon transferred to Church FTP server", "sermon_link", pres.AudioLink)
 			}
@@ -199,7 +200,7 @@ func DeleteSermon(c echo.Context) error {
 	msg := "Sermon with id: " + c.Param("id") + " deleted"
 	if err != nil {
 		msg = "Error attempting to delete sermon with id: " + c.Param("id")
-		logger.LogErrAsync(err, msg, "when", "deleting sermon")
+		logger.LogErr(err, msg, "when", "deleting sermon")
 	}
 	app.Redirect(c, "/admin/sermons", msg)
 	return nil
