@@ -3,11 +3,12 @@ package event
 import (
 	"fmt"
 	"strings"
-	"github.com/rohanthewiz/serr"
-	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
+
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
+	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 type ModuleEventForm struct {
@@ -22,7 +23,7 @@ func NewModuleEventForm(pres module.Presenter) (module.Module, error) {
 	mod := new(ModuleEventForm)
 	mod.Name = pres.Name
 	mod.Opts = pres.Opts
-	//Slug is set only when the module model (db) is created. mod.Opts.Slug = string_util.SlugWithRandomString(title)
+	// Slug is set only when the module model (db) is created. mod.Opts.Slug = string_util.SlugWithRandomString(title)
 
 	csrf, err := app.GenerateFormToken()
 	if err != nil {
@@ -36,7 +37,7 @@ func NewModuleEventForm(pres module.Presenter) (module.Module, error) {
 func (m ModuleEventForm) getData() (pres Presenter, err error) {
 	evt, err := findEventById(m.Opts.ItemIds[0])
 	if err != nil {
-		return pres, serr.Wrap(err, "Unable to obtain event with id: " + fmt.Sprintf("%d", m.Opts.ItemIds[0]))
+		return pres, serr.Wrap(err, "Unable to obtain event with id: "+fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 	}
 	return presenterFromModel(evt), err
 }
@@ -45,7 +46,8 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	evt := Presenter{}; var err error
+	evt := Presenter{}
+	var err error
 
 	operation := "Create"
 	action := ""
@@ -60,16 +62,17 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 		action = "/update/" + evt.Id
 	}
 
-	e := element.New
+	b := element.NewBuilder()
+	e := b.Ele
 
-	published := e("input", "type", "checkbox", "name", "published")
+	var publishedParams = []string{"type", "checkbox", "name", "published"}
 	if evt.Published {
-		published.AddAttributes("checked", "checked")
+		publishedParams = append(publishedParams, []string{"checked", "checked"}...)
 	}
 
-	out := e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation + " " + m.Name.Singular),
-		e("form", "method", "post", "action", "/admin/" + m.Name.Plural + action, "onSubmit", "return preSubmit();").R(
+	e("div", "class", "wrapper-material-form").R(
+		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
+		e("form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "name", "event_id", "value", evt.Id).R(),
 			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 			e("div", "class", "form-inline").R(
@@ -88,12 +91,12 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 				e("div", "class", "form-group").R(
 					e("input", "name", "event_date", "type", "date", "value", evt.EventDate).R(),
 					e("label", "class", "control-label", "for", "event_date").R("Event Date"),
-					//e("i", "class", "bar").R(),
+					// e("i", "class", "bar").R(),
 				),
 				e("div", "class", "form-group").R(
 					e("input", "name", "event_time", "type", "time", "value", evt.EventTime).R(),
 					e("label", "class", "control-label", "for", "event_time").R("Event Time"),
-					//e("i", "class", "bar").R(),
+					// e("i", "class", "bar").R(),
 				),
 			),
 			e("div", "class", "form-inline").R(
@@ -138,7 +141,7 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 
 			e("div", "class", "checkbox").R(
 				e("label").R(
-					published.R(),
+					e("input", publishedParams...).R(),
 					e("i", "class", "helper").R(),
 					"Published",
 				),
@@ -150,7 +153,7 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 			),
 		),
 
-		//e("div", "id", "react-app").R(),
+		// e("div", "id", "react-app").R(),
 		e("script", "type", "text/javascript").R(
 			`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
 			function preSubmit() {  // todo validate fields here
@@ -169,5 +172,5 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 		`),
 	)
 
-	return out
+	return b.String()
 }

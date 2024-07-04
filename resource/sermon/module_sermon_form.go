@@ -3,11 +3,12 @@ package sermon
 import (
 	"fmt"
 	"strings"
-	"github.com/rohanthewiz/serr"
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
+
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeSermonForm = "sermon_form"
@@ -39,10 +40,11 @@ func (m ModuleSermonForm) getData() (pres Presenter, err error) {
 }
 
 func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	ser := Presenter{}; var err error
+	ser := Presenter{}
+	var err error
 
 	operation := "Create"
 	action := ""
@@ -56,31 +58,31 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 		action = "/update/" + ser.Id
 	}
 
-	e := element.New
+	b := element.NewBuilder()
+	e := b.Ele
 
-	published := e("input", "type", "checkbox", "name", "published")
+	published := b.EleNoRender("input", "type", "checkbox", "name", "published")
 	if ser.Published {
 		published.AddAttributes("checked", "checked")
 	}
-	audioLinkOvrd := e("input", "type", "checkbox", "name", "audio-link-ovrd")
 
-	out := e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation + " " + m.Name.Singular),
+	e("div", "class", "wrapper-material-form").R(
+		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
 		e("form", "method", "post", "enctype", "multipart/form-data", "action",
-			"/admin/" + m.Name.Plural + action, "onSubmit", "return preSubmit();").R(
+			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "name", "sermon_id", "value", ser.Id).R(),
 			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 			e("div", "class", "form-inline").R(
 				e("div", "class", "form-group").R(
 					e("input", "name", "sermon_title", "type", "text",
-						"required", "required", "value", ser.Title).R(),  // we are using 'required' here to drive `input:valid` selector
+						"required", "required", "value", ser.Title).R(), // we are using 'required' here to drive `input:valid` selector
 					e("label", "class", "control-label", "for", "sermon_title").R("Sermon Title"),
 					e("i", "class", "bar").R(),
 				),
 				e("div", "class", "form-group").R(
 					e("input", "name", "sermon_date", "type", "date", "value", ser.DateTaught).R(), // todo - maual validation
 					e("label", "class", "control-label", "for", "sermon_date").R("Sermon Date"),
-					//e("i", "class", "bar").R(),
+					// e("i", "class", "bar").R(),
 				),
 			),
 			e("div", "class", "form-group bootstrap-wrapper").R(
@@ -104,7 +106,7 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 				),
 				e("div", "class", "form-group").R(
 					e("input", "name", "sermon_place", "type", "text", "placeholder", "(optional)", "value",
-							ser.PlaceTaught).R(),
+						ser.PlaceTaught).R(),
 					e("label", "class", "control-label", "for", "sermon_place").R("Place Taught"),
 					e("i", "class", "bar").R(),
 				),
@@ -117,9 +119,8 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 				),
 				e("div", "class", "form-group").R( // todo - autogenerate this link
 					e("input", "name", "audio_link", "type", "text", "placeholder", "(automatically generated)",
-							"value", ser.AudioLink).R(),
-					e("label", "class", "control-label", "for", "audio_link",
-							).R("Link to Sermon"),
+						"value", ser.AudioLink).R(),
+					e("label", "class", "control-label", "for", "audio_link").R("Link to Sermon"),
 					e("i", "class", "bar").R(),
 				),
 			),
@@ -134,27 +135,27 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 					e("input", "name", "scripture_refs", "type", "text", "value", strings.Join(ser.ScriptureRefs, ", "),
 						"placeholder", "(optional)").R(),
 					e("label", "class", "control-label", "for", "scripture_refs").
-							R("Scripture references (comma separated)"),
+						R("Scripture references (comma separated)"),
 					e("i", "class", "bar").R(),
 				),
 			),
 			e("div", "class", "form-inline").R(
-    			e("div", "class", "checkbox").R(
-    				e("label").R(
-    					published.R(),
-    					e("i", "class", "helper").R(),
-    					"Published",
-    				),
-    				e("i", "class", "bar").R(),
-    			),
-    			e("div", "class", "checkbox").R(
-    				e("label").R(
-    					audioLinkOvrd.R(),
-    					e("i", "class", "helper").R(),
-    					"Audio Link Override (webmaster only)",
-    				),
-    				e("i", "class", "bar").R(),
-    			),
+				e("div", "class", "checkbox").R(
+					e("label").R(
+						published.RenderOpeningTag().R(),
+						e("i", "class", "helper").R(),
+						"Published",
+					),
+					e("i", "class", "bar").R(),
+				),
+				e("div", "class", "checkbox").R(
+					e("label").R(
+						e("input", "type", "checkbox", "name", "audio-link-ovrd").R(),
+						e("i", "class", "helper").R(),
+						"Audio Link Override (webmaster only)",
+					),
+					e("i", "class", "bar").R(),
+				),
 			),
 
 			e("div", "class", "form-group").R(
@@ -162,7 +163,7 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 			),
 		),
 
-		//e("div", "id", "react-app").R(),
+		// e("div", "id", "react-app").R(),
 		e("script", "type", "text/javascript").R(
 			`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
 			function preSubmit() {
@@ -180,5 +181,6 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 			}`,
 		),
 	)
-	return out
+
+	return b.String()
 }

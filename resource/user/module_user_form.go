@@ -2,12 +2,13 @@ package user
 
 import (
 	"fmt"
-	"github.com/rohanthewiz/serr"
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/element"
-	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/church/app"
 	"strconv"
+
+	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeUserForm = "user_form"
@@ -39,10 +40,11 @@ func (m ModuleUserForm) getData() (pres Presenter, err error) {
 }
 
 func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	usr := Presenter{}; var err error
+	usr := Presenter{}
+	var err error
 
 	operation := "Create"
 	action := ""
@@ -56,23 +58,24 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 		action = "/update/" + usr.Id
 	}
 
-	e := element.New
+	b := element.NewBuilder()
+	e := b.Ele
 
 	elEnabled := e("input", "type", "checkbox", "class", "enabled", "name", "enabled")
 	if usr.Enabled {
 		elEnabled.AddAttributes("checked", "checked")
 	}
 
-	out := e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation + " " + m.Name.Singular),
+	e("div", "class", "wrapper-material-form").R(
+		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
 		e("form", "method", "post", "action",
-				"/admin/" + m.Name.Plural + action, "onSubmit", "return preSubmit();").R(
+			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "name", "user_id", "value", usr.Id).R(),
 			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 			e("div", "class", "form-inline").R(
 				e("div", "class", "form-group").R(
 					e("input", "class", "firstname", "name", "firstname", "type", "text",
-						"required", "required", "value", usr.Firstname).R(),  // we are using 'required' here to drive `input:valid` selector
+						"required", "required", "value", usr.Firstname).R(), // we are using 'required' here to drive `input:valid` selector
 					e("label", "class", "control-label", "for", "firstname").R("Firstname"),
 					e("i", "class", "bar").R(),
 				),
@@ -155,5 +158,5 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 			}
 		`),
 	)
-	return out
+	return b.String()
 }

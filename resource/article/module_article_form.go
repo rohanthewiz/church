@@ -2,12 +2,12 @@ package article
 
 import (
 	"fmt"
-	"strings"
-	"github.com/rohanthewiz/serr"
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
+	"strings"
 )
 
 const ModuleTypeArticleForm = "article_form"
@@ -30,7 +30,7 @@ func NewModuleArticleForm(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleArticleForm) getData() (artPres Presenter, err error) {
-	art, err := findArticleById(m.Opts.ItemIds[0])  // len check safety on caller
+	art, err := findArticleById(m.Opts.ItemIds[0]) // len check safety on caller
 	if err != nil {
 		return artPres, serr.Wrap(err, "Unable to obtain article")
 	}
@@ -38,10 +38,11 @@ func (m ModuleArticleForm) getData() (artPres Presenter, err error) {
 }
 
 func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	art := Presenter{}; var err error
+	art := Presenter{}
+	var err error
 
 	operation := "Create"
 	action := ""
@@ -54,21 +55,25 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 		}
 		action = "/update/" + art.Id
 	}
-	e := element.New
-	elEnabled := e("input", "type", "checkbox", "class", "enabled", "name", "published")
+	b := element.NewBuilder()
+	e := b.Ele
+
+	enInputAttrs := []string{"type", "checkbox", "class", "enabled", "name", "published"}
 	if art.Published {
-		elEnabled.AddAttributes("checked", "checked")
+		enInputAttrs = append(enInputAttrs, []string{"checked", "checked"}...)
 	}
-	out := e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation + " " + m.Name.Singular),
+	elEnabled := e("input", enInputAttrs...)
+
+	e("div", "class", "wrapper-material-form").R(
+		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
 		e("form", "method", "post", "action",
-			"/admin/" + m.Name.Plural + action, "onSubmit", "return preSubmit();").R(
+			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "name", "article_id", "value", art.Id).R(),
 			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 
 			e("div", "class", "form-group").R(
 				e("input", "name", "article_title", "type", "text",
-					"required", "required", "value", art.Title).R(),  // we are using 'required' here to drive `input:valid` selector
+					"required", "required", "value", art.Title).R(), // we are using 'required' here to drive `input:valid` selector
 				e("label", "class", "control-label", "for", "article_title").R("Article Title"),
 				e("i", "class", "bar").R(),
 			),
@@ -122,5 +127,5 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 			}`,
 		),
 	)
-	return out
+	return b.String()
 }

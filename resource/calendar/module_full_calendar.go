@@ -2,8 +2,8 @@ package calendar
 
 import (
 	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/church/resource/auth"
+	"github.com/rohanthewiz/element"
 )
 
 const ModuleTypeFullCalendar = "calendar"
@@ -20,7 +20,7 @@ func NewModuleFullCalendar(pres module.Presenter) (module.Module, error) {
 }
 
 // FullCalendar will ask for its own data
-//func (m ModuleFullCalendar) getData() (pres Presenter, err error) {
+// func (m ModuleFullCalendar) getData() (pres Presenter, err error) {
 //	// If the module instance has an item slug defined, it takes highest precedence
 //	if m.Opts.ItemSlug != "" {
 //		pres, err = presenterFromSlug(m.Opts.ItemSlug)
@@ -32,20 +32,22 @@ func NewModuleFullCalendar(pres module.Presenter) (module.Module, error) {
 //		pres, err = presenterFromId(m.Opts.ItemIds[0])  // Todo presenterFromId for other resources
 //	}
 //	return
-//}
+// }
 
 func (m *ModuleFullCalendar) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	e := element.New
+	b := element.NewBuilder()
+	e := b.Ele
+
 	calClass := "cal" + auth.RandomKey() // unique class for this instance
-	out := e("div", "class", "ch-module-wrapper ch-" + m.Opts.ModuleType).R(
-		//e("h3", "class", "calendar-title").R("calendar"),
+	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+		// e("h3", "class", "calendar-title").R("calendar"),
 		e("div", "class", calClass).R(),
 		e("script", "type", "text/javascript").R(`
 			$(document).ready(function() {
-				$('.` + calClass+ `').fullCalendar({
+				$('.`+calClass+`').fullCalendar({
 					events: '/calendar',
 					eventClick: function(calEvt, jsEvt, view) {
 						window.location = calEvt.url;
@@ -54,5 +56,5 @@ func (m *ModuleFullCalendar) Render(params map[string]map[string]string, loggedI
 			});
 		`),
 	)
-	return out
+	return b.String()
 }
