@@ -67,7 +67,7 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 	elEnabled := e("input", enInputAttrs...)
 
 	e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
+		e("h3", "class", "page-title").R(t(operation+" "+m.Name.Singular)),
 		e("form", "method", "post", "action",
 			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "name", "article_id", "value", art.Id).R(),
@@ -76,26 +76,26 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 			e("div", "class", "form-group").R(
 				e("input", "name", "article_title", "type", "text",
 					"required", "required", "value", art.Title).R(), // we are using 'required' here to drive `input:valid` selector
-				e("label", "class", "control-label", "for", "article_title").R("Article Title"),
+				e("label", "class", "control-label", "for", "article_title").R(t("Article Title")),
 				e("i", "class", "bar").R(),
 			),
 			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer1").R(art.Summary),
+				e("div", "id", "summer1").R(t(art.Summary)),
 				e("textarea", "id", "article_summary", "name", "article_summary", "type", "text", "value", "",
 					"style", "display:none").R(), // this will hold the returned editor contents
-				e("label", "class", "control-label", "for", "article_summary").R("Summary / Intro"),
+				e("label", "class", "control-label", "for", "article_summary").R(t("Summary / Intro")),
 				// no bar if content editable //e("i", "class", "bar").R(),
 			),
 			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer2").R(art.Body),
+				e("div", "id", "summer2").R(t(art.Body)),
 				e("textarea", "id", "article_body", "name", "article_body", "type", "text", "value", "",
 					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "article_body").R("Article Body"),
+				e("label", "class", "control-label", "for", "article_body").R(t("Article Body")),
 			),
 			e("div", "class", "form-group").R(
 				e("input", "type", "text", "name", "categories",
 					"value", strings.Join(art.Categories, ", ")).R(),
-				e("label", "class", "control-label", "for", "categories").R("Categories"),
+				e("label", "class", "control-label", "for", "categories").R(t("Categories")),
 				e("i", "class", "bar").R(),
 			),
 			e("div", "class", "checkbox").R(

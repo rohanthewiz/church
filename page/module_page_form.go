@@ -68,15 +68,15 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 	t := b.Text
 
 	// Prep some vars
-	published := e("input", "type", "checkbox", "name", "published")
+	published := b.EleNoRender("input", "type", "checkbox", "name", "published")
 	if pg.Published {
 		published.AddAttributes("checked", "checked")
 	}
-	isAdmin := e("input", "type", "checkbox", "name", "is_admin")
-	if pg.IsAdmin {
-		isAdmin.AddAttributes("checked", "checked")
-	}
-
+	/*	isAdmin := b.EleNoRender("input", "type", "checkbox", "name", "is_admin")
+		if pg.IsAdmin {
+			isAdmin.AddAttributes("checked", "checked")
+		}
+	*/
 	moduleByts, err := json.Marshal(pg.Modules)
 	if err != nil {
 		logger.LogErr(err, "Error marshalling modules for page form", "modules", fmt.Sprintf("%#v", pg.Modules))
