@@ -93,11 +93,11 @@ func buildMenu(slug string, loggedIn bool) string {
 	if slug == "footer-menu" {
 		if loggedIn {
 			e(sb, "li").R(
-				e(sb, "a", "href", "/logout").R("Logout"),
+				e(sb, "a", "href", "/logout").R(w("Logout")),
 			)
 		} else {
 			e(sb, "li").R(
-				e(sb, "a", "href", "/login").R("Login"),
+				e(sb, "a", "href", "/login").R(w("Login")),
 			)
 		}
 	}
