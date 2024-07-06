@@ -28,7 +28,7 @@ func (f frame) GetBanner() (out string) {
 	e := b.Ele
 	e("div", "id", "banner", "class", "theme-"+config.Options.Theme).R(
 		e("div", "id", "banner-wrapper").R(
-			config.Options.BannerInnerHTML,
+			b.WS(config.Options.BannerInnerHTML),
 		),
 		e("div", "id", "logo-extension").R(
 		// "Join us on Sundays at 9:45",
@@ -47,7 +47,7 @@ func (f frame) GetCopyright() (out string) {
 
 	b := element.NewBuilder()
 	b.Ele("div", "id", "copyright").R(
-		"&copy; " + time.Now().Format("2006") + " " + config.Options.CopyrightOwner,
+		b.WS("&copy; " + time.Now().Format("2006") + " " + config.Options.CopyrightOwner),
 	)
 	return b.String()
 }

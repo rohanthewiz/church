@@ -154,21 +154,22 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 
 	b := element.NewBuilder()
 	e := b.Ele
+	t := b.Text
 	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		e("div", "class", "ch-module-heading").R(
-			m.Opts.Title,
+			t(m.Opts.Title),
 			func() (x interface{}) {
 				if m.Opts.IsAdmin {
-					e("a", "class", "btn-add", "href", newPath, "title", "Add Sermon").R("+")
+					e("a", "class", "btn-add", "href", newPath, "title", "Add Sermon").R(t("+"))
 				}
 				return
 			}(),
 		),
 		e("div", "class", "ch-sermons-list-wrapper").R(
 			e("div", "class", "sermons-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(), // Todo make height -ve param into a config
-			e("script", "type", "text/javascript").R(
+			e("script", "type", "text/javascript").R(t(
 				jsConvertColumnDefs, jsConvertRowData, gridOptions, // sermonsListRenderer,
-				`$(document).ready(function() {`+scriptBody+`});`),
+				`$(document).ready(function() {`+scriptBody+`});`)),
 		),
 	)
 

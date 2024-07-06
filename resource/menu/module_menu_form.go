@@ -64,6 +64,7 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 
 	b := element.NewBuilder()
 	e := b.Ele
+	t := b.Text
 
 	// Prep some vars
 	published := b.EleNoRender("input", "type", "checkbox", "name", "published")
@@ -83,7 +84,7 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 	}
 
 	e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
+		e("h3", "class", "page-title").R(t(operation+" "+m.Name.Singular)),
 		e("form", "id", "menu_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "id", "items", "name", "items", "value", "").R(),
 			e("input", "type", "hidden", "name", "menu_id", "value", mnu.Id).R(),
@@ -93,13 +94,13 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 				e("div", "class", "form-inline").R(
 					e("div", "class", "form-group").R(
 						e("input", "name", "menu_title", "type", "text", "value", mnu.Title).R(),
-						e("label", "class", "control-label", "for", "menu_title").R("Menu Title"),
+						e("label", "class", "control-label", "for", "menu_title").R(t("Menu Title")),
 						e("i", "class", "bar").R(),
 					),
 					e("div", "class", "form-group").R(
 						e("input", "class", "form-group__slug", "name", "menu_slug", "type", "text",
 							"placeholder", "slug is automatically generated on save", "value", mnu.Slug).R(),
-						e("label", "class", "control-label form-group__label--disabled", "for", "menu_slug").R("Menu Slug"),
+						e("label", "class", "control-label form-group__label--disabled", "for", "menu_slug").R(t("Menu Slug")),
 						e("i", "class", "bar").R(),
 					),
 				),
@@ -108,7 +109,7 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 						e("label").R(
 							published.RenderOpeningTag().R(),
 							e("i", "class", "helper").R(),
-							"Published",
+							t("Published"),
 						),
 						e("i", "class", "bar").R(),
 					),
@@ -116,16 +117,16 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 						e("label").R(
 							isAdmin.RenderOpeningTag().R(),
 							e("i", "class", "helper").R(),
-							"For Admin Only",
+							t("For Admin Only"),
 						),
 						e("i", "class", "bar").R(),
 					),
 				),
 				e("div", "class", "form-inline").R(
 					e("div", "class", "form-group").R(
-						e("h3").R("Menu Items"),
+						e("h3").R(t("Menu Items")),
 					),
-					e("button", "class", "btn-add-menu-item", "title", "Add Menu Item").R("+"),
+					e("button", "class", "btn-add-menu-item", "title", "Add Menu Item").R(t("+")),
 				),
 			), // end form-inner
 			e("div", "class", "form-group").R(
@@ -133,7 +134,7 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 			),
 		),
 		e("script", "type", "text/javascript").R(
-			"var items = JSON.parse(`"+string(byts)+"`);"+
+			t("var items = JSON.parse(`"+string(byts)+"`);"+
 				`var newItem = {
 			label: "", url: "", sub_menu_slug: ""
 		};
@@ -214,7 +215,7 @@ function reorderItems() {
 }
 function hspace() {
 	return '&nbsp;&nbsp;'
-}`))
+}`)))
 
 	return b.String()
 }

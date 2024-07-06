@@ -38,9 +38,9 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	e := b.E
 
 	e("script", "type", "text/javascript").R(
-		agrid.LinkCellRenderer,
-		agrid.ConfirmlinkCellRenderer,
-		agrid.ConfirmDelete,
+		b.WS(agrid.LinkCellRenderer),
+		b.WS(agrid.ConfirmlinkCellRenderer),
+		b.WS(agrid.ConfirmDelete),
 	)
 
 	b.WS(`</head><body class="theme-` + config.Options.Theme + `">`)
@@ -50,7 +50,7 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 
 	// Menu
 	e("div", "id", "header", "class", "theme-"+config.Options.Theme).R(
-		menu.RenderNav("main-menu", loggedIn),
+		b.WS(menu.RenderNav("main-menu", loggedIn)),
 	)
 
 	// Flash
@@ -59,7 +59,7 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	e("div", "id", "mid", "class", "theme-"+config.Options.Theme).R(
 		// Left
 		e("div", "id", "left-side", "class", layout).R(
-			page.Render("left", params, loggedIn),
+			b.WS(page.Render("left", params, loggedIn)),
 		),
 		// Center
 		e("div", "id", "main", "class", layout).R(
@@ -73,17 +73,17 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 				}
 				return
 			}(),
-			page.Render("center", params, loggedIn),
+			b.WS(page.Render("center", params, loggedIn)),
 		),
 		// Right
 		e("div", "id", "right-side", "class", layout).R(
-			page.Render("right", params, loggedIn),
+			b.WS(page.Render("right", params, loggedIn)),
 		),
 	)
 
 	e("div", "id", "footer", "class", "theme-"+config.Options.Theme).R(
-		menu.RenderNav("footer-menu", loggedIn),
-		view.PageFrame.GetCopyright(),
+		b.WS(menu.RenderNav("footer-menu", loggedIn)),
+		b.WS(view.PageFrame.GetCopyright()),
 	)
 
 	if page.IsAdmin {

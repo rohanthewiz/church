@@ -53,10 +53,11 @@ func (m *ModuleSingleArticle) Render(params map[string]map[string]string, logged
 	}
 	b := element.NewBuilder()
 	e := b.E
+	t := b.Text
 	e("div", "class", klass).R(
-		e("h3", "class", "article-title").R(art.Title),
-		e("p").R(art.Summary),
-		e("p").R(art.Body),
+		e("h3", "class", "article-title").R(t(art.Title)),
+		e("p").R(t(art.Summary)),
+		e("p").R(t(art.Body)),
 		func() (str string) {
 			// if len(art.Categories) > 0 {
 			//	str = e("div", "class", "categories").R(strings.Join(art.Categories, ", "))

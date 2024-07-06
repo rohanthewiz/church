@@ -142,13 +142,14 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 
 	b := element.NewBuilder()
 	e := b.Ele
+	t := b.Text
 
 	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		e("div", "class", "ch-module-heading").R(
-			m.Opts.Title,
-			func() (s string) {
+			t(m.Opts.Title),
+			func() (s any) {
 				if m.Opts.IsAdmin {
-					e("a", "class", "btn-add", "href", m.GetNewURL(), "title", "Add Article").R("+")
+					e("a", "class", "btn-add", "href", m.GetNewURL(), "title", "Add Article").R(t("+"))
 				}
 				return
 			}(),
@@ -156,8 +157,8 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 		e("div", "class", "list-wrapper").R(
 			e("div", "class", "articles-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
 			e("script", "type", "text/javascript").R(
-				jsConvertColumnDefs, jsConvertRowData, contentRenderer, gridOptions,
-				`$(document).ready(function() {`+scriptBody+`});`),
+				t(jsConvertColumnDefs, jsConvertRowData, contentRenderer, gridOptions,
+					`$(document).ready(function() {`+scriptBody+`});`)),
 		),
 	)
 

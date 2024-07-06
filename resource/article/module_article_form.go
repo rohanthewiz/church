@@ -58,6 +58,7 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 	}
 	b := element.NewBuilder()
 	e := b.Ele
+	t := b.Text
 
 	enInputAttrs := []string{"type", "checkbox", "class", "enabled", "name", "published"}
 	if art.Published {
@@ -101,7 +102,7 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 				e("label").R(
 					elEnabled.R(),
 					e("i", "class", "helper").R(),
-					"Published",
+					t("Published"),
 				),
 				e("i", "class", "bar").R(),
 			),
@@ -112,7 +113,7 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 		),
 
 		e("script", "type", "text/javascript").R(
-			`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
+			t(`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
 			function preSubmit() {
 				var s1 = $('#summer1');
 				var s2 = $('#summer2');
@@ -125,7 +126,7 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 					body.innerHTML = s2.summernote('code');
 				}
 				return true;
-			}`,
+			}`),
 		),
 	)
 	return b.String()

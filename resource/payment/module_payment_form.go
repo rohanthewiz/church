@@ -42,42 +42,43 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 
 	builder := element.NewBuilder()
 	e := builder.Ele
+	t := builder.Text
 	e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
-		e("h2", "class", "form-title").R("Give Securely Online"),
+		e("h2", "class", "form-title").R(t("Give Securely Online")),
 		e("p", "class", "subtitle").R(
-			"Transactions are securely processed by Stripe payment services (https://stripe.com/about)<br>",
-			"All donations are tax-deductible. Please contact Landra Allison, or Rohan Allison with any questions.",
+			t("Transactions are securely processed by Stripe payment services (https://stripe.com/about)<br>",
+				"All donations are tax-deductible. Please contact Landra Allison, or Rohan Allison with any questions."),
 		),
 		e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 		e("div", "class", "form-row").R(
-			e("label", "for", "fullname").R("First and last name"),
+			e("label", "for", "fullname").R(t("First and last name")),
 			e("input", "name", "fullname", "type", "text").R(),
 		),
 		e("div", "class", "form-row").R(
-			e("label", "for", "email").R("Email"),
+			e("label", "for", "email").R(t("Email")),
 			e("input", "name", "email", "type", "text").R(),
 		),
 		e("div", "class", "form-row").R(
-			e("label", "for", "card-element").R("Credit or Debit card"),
+			e("label", "for", "card-element").R(t("Credit or Debit card")),
 			e("div", "id", "card-element").R(),
 		),
 		e("div", "class", "form-row").R(
 			e("div", "id", "card-errors", "role", "alert").R(),
 		),
 		e("div", "class", "form-row").R(
-			e("label", "for", "amount").R("Giving amount"),
+			e("label", "for", "amount").R(t("Giving amount")),
 			e("input", "name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
 		),
 		e("div", "class", "form-row").R(
-			e("label", "for", "comment").R("Comment"),
+			e("label", "for", "comment").R(t("Comment")),
 			e("textarea", "name", "comment").R(),
 		),
-		e("button", "id", "payment_form_submit_btn", "class", "submit-button").R("Send My Gift"),
+		e("button", "id", "payment_form_submit_btn", "class", "submit-button").R(t("Send My Gift")),
 
-		e("script", "type", "text/javascript").R(`
+		e("script", "type", "text/javascript").R(t(`
 			var stripe = Stripe('`+config.Options.Stripe.PubKey+`');
 			var elements = stripe.elements();`,
-			packed.ModulePaymentForm_js,
+			packed.ModulePaymentForm_js),
 		),
 	)
 	return builder.String()

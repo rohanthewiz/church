@@ -65,6 +65,7 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 
 	b := element.NewBuilder()
 	e := b.E
+	t := b.Text
 
 	// Prep some vars
 	published := e("input", "type", "checkbox", "name", "published")
@@ -94,7 +95,7 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 	}
 
 	e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
+		e("h3", "class", "page-title").R(t(operation+" "+m.Name.Singular)),
 		e("form", "id", "page_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "id", "modules", "name", "modules", "value", "").R(),
 			e("input", "type", "hidden", "name", "page_id", "value", pg.Id).R(),
@@ -104,20 +105,20 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 				e("div", "class", "form-inline").R(
 					e("div", "class", "form-group").R(
 						e("input", "name", "page_title", "type", "text", "value", pg.Title).R(),
-						e("label", "class", "control-label", "for", "page_title").R("Page Title"),
+						e("label", "class", "control-label", "for", "page_title").R(t("Page Title")),
 						e("i", "class", "bar").R(),
 					),
 					e("div", "class", "form-group").R(
 						e("input", "class", "form-group__slug", "name", "page_slug", "type", "text",
 							"placeholder", "will be automatically filled in", "value", pg.Slug).R(),
-						e("label", "class", "control-label form-group__label--disabled", "for", "page_slug").R("Page Slug (identifier)"),
+						e("label", "class", "control-label form-group__label--disabled", "for", "page_slug").R(t("Page Slug (identifier)")),
 						e("i", "class", "bar").R(),
 					),
 				),
 				e("div", "class", "form-group").R(
 					e("input", "name", "available_positions", "type", "text", "placeholder", "combo of left,right,center - must include center",
 						"value", strings.Join(pg.AvailablePositions, ",")).R(),
-					e("label", "class", "control-label", "for", "available_positions").R("Available Column Positions"),
+					e("label", "class", "control-label", "for", "available_positions").R(t("Available Column Positions")),
 					e("i", "class", "bar").R(),
 				),
 				e("div", "class", "form-inline").R(
@@ -125,16 +126,16 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 						e("label").R(
 							published.R(),
 							e("i", "class", "helper").R(),
-							"Publish Page",
+							t("Publish Page"),
 						),
 						e("i", "class", "bar").R(),
 					),
 				),
 				e("div", "class", "form-inline").R(
 					e("div", "class", "form-group").R(
-						e("h3").R("Modules (page components)"),
+						e("h3").R(t("Modules (page components)")),
 					),
-					e("button", "class", "btn-add-module", "title", "Add Module").R("+"),
+					e("button", "class", "btn-add-module", "title", "Add Module").R(t("+")),
 				),
 			), // end form-inner
 
@@ -142,11 +143,11 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 				e("input", "type", "submit", "class", "button", "value", operation).R(),
 			),
 		),
-		e("script", "type", "text/javascript").R(
+		e("script", "type", "text/javascript").R(t(
 			"var modules = JSON.parse(`"+string(moduleByts)+"`);",
 			"var moduleTypes = JSON.parse(`"+string(moduleTypesByts)+"`);",
 			"var contentBys = JSON.parse(`"+string(moduleContentBys)+"`);",
-			packed.ModulePageForm_js,
+			packed.ModulePageForm_js),
 		),
 	)
 

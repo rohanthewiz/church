@@ -65,12 +65,14 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 		}
 		b := element.NewBuilder()
 		e := b.E
+		t := b.Text
+
 		e("div", "id", modId, "class", "ch-module-wrapper ch-"+ModuleTypeEasyTabs).R(
 			e("ul", "class", "eztabs").R(
 				func() (str string) {
 					for i, art := range articles {
 						e("li").R(
-							e("a", "href", "#"+ids[i]).R(art.Summary), // Put the tab id in the article summary
+							e("a", "href", "#"+ids[i]).R(t(art.Summary)), // Put the tab id in the article summary
 						)
 					}
 					return
@@ -78,13 +80,13 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 			),
 			func() (str string) {
 				for i, art := range articles {
-					e("div", "class", ids[i]).R(art.Body)
+					e("div", "class", ids[i]).R(t(art.Body))
 				}
 				return
 			}(),
 		)
 		e("script", "type", "text/javascript").R(
-			`(function ($) {
+			t(`(function ($) {
             $.fn.easyTabs = function (option) {
                 var param = jQuery.extend({fadeSpeed: "fast", defaultContent: 1, activeClass: 'active'}, option);
                 $(this).each(function () {
@@ -132,9 +134,9 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
                 });
             }
         })(jQuery);`,
-			`$(document).ready(function() {
+				`$(document).ready(function() {
 			$('.ch-easy-tabs').easyTabs({defaultContent:1});
-		});`,
+		});`),
 		)
 	}
 

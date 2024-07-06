@@ -146,12 +146,14 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 
 	b := element.NewBuilder()
 	e := b.Ele
+	t := b.Text
+
 	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		e("div", "class", "ch-module-heading").R(
-			m.Opts.Title,
+			t(m.Opts.Title),
 			func() (s string) {
 				if m.Opts.IsAdmin {
-					e("a", "class", "btn-add", "href", newPath, "title", "Add Events").R("+")
+					e("a", "class", "btn-add", "href", newPath, "title", "Add Events").R(t("+"))
 				}
 				return
 			}(),
@@ -159,8 +161,8 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 		e("div", "class", "list-wrapper").R(
 			e("div", "class", "events-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
 			e("script", "type", "text/javascript").R(
-				jsConvertColumnDefs, jsConvertRowData, gridOptions, // eventsListRenderer,
-				`$(document).ready(function() {`+scriptBody+`});`),
+				t(jsConvertColumnDefs, jsConvertRowData, gridOptions, // eventsListRenderer,
+					`$(document).ready(function() {`+scriptBody+`});`)),
 		),
 	)
 

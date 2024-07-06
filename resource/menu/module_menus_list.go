@@ -125,12 +125,13 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 
 	b := element.NewBuilder()
 	e := b.E
+	t := b.Text
 	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		e("div", "class", "ch-module-heading").R(
-			m.Opts.Title,
+			t(m.Opts.Title),
 			func() (s string) {
 				if m.Opts.IsAdmin {
-					e("a", "class", "btn-add", "href", newPath, "title", "Add Menu").R("+")
+					e("a", "class", "btn-add", "href", newPath, "title", "Add Menu").R(t("+"))
 				}
 				return
 			}(),
@@ -138,8 +139,8 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 		e("div", "class", "list-wrapper").R(
 			e("div", "class", "menu-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
 			e("script", "type", "text/javascript").R(
-				jsConvertColumnDefs, jsConvertRowData, gridOptions,
-				`$(document).ready(function() {`+scriptBody+`});`),
+				t(jsConvertColumnDefs, jsConvertRowData, gridOptions,
+					`$(document).ready(function() {`+scriptBody+`});`)),
 		),
 	)
 

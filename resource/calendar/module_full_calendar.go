@@ -40,12 +40,13 @@ func (m *ModuleFullCalendar) Render(params map[string]map[string]string, loggedI
 	}
 	b := element.NewBuilder()
 	e := b.Ele
+	t := b.Text
 
 	calClass := "cal" + auth.RandomKey() // unique class for this instance
 	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		// e("h3", "class", "calendar-title").R("calendar"),
 		e("div", "class", calClass).R(),
-		e("script", "type", "text/javascript").R(`
+		e("script", "type", "text/javascript").R(t(`
 			$(document).ready(function() {
 				$('.`+calClass+`').fullCalendar({
 					events: '/calendar',
@@ -54,7 +55,7 @@ func (m *ModuleFullCalendar) Render(params map[string]map[string]string, loggedI
 					}
 				});
 			});
-		`),
+		`)),
 	)
 	return b.String()
 }

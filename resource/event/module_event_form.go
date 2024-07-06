@@ -64,6 +64,7 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 
 	b := element.NewBuilder()
 	e := b.Ele
+	t := b.Text
 
 	var publishedParams = []string{"type", "checkbox", "name", "published"}
 	if evt.Published {
@@ -71,31 +72,31 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 	}
 
 	e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
+		e("h3", "class", "page-title").R(t(operation+" "+m.Name.Singular)),
 		e("form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "name", "event_id", "value", evt.Id).R(),
 			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 			e("div", "class", "form-inline").R(
 				e("div", "class", "form-group").R(
 					e("input", "name", "event_title", "type", "text", "required", "required", "value", evt.Title).R(),
-					e("label", "class", "control-label", "for", "event_title").R("Event Title"),
+					e("label", "class", "control-label", "for", "event_title").R(t("Event Title")),
 					e("i", "class", "bar").R(),
 				),
 				e("div", "class", "form-group").R(
 					e("input", "name", "event_location", "type", "text", "required", "required", "value", evt.Location).R(),
-					e("label", "class", "control-label", "for", "event_location").R("Location"),
+					e("label", "class", "control-label", "for", "event_location").R(t("Location")),
 					e("i", "class", "bar").R(),
 				),
 			),
 			e("div", "class", "form-inline").R(
 				e("div", "class", "form-group").R(
 					e("input", "name", "event_date", "type", "date", "value", evt.EventDate).R(),
-					e("label", "class", "control-label", "for", "event_date").R("Event Date"),
+					e("label", "class", "control-label", "for", "event_date").R(t("Event Date")),
 					// e("i", "class", "bar").R(),
 				),
 				e("div", "class", "form-group").R(
 					e("input", "name", "event_time", "type", "time", "value", evt.EventTime).R(),
-					e("label", "class", "control-label", "for", "event_time").R("Event Time"),
+					e("label", "class", "control-label", "for", "event_time").R(t("Event Time")),
 					// e("i", "class", "bar").R(),
 				),
 			),
@@ -103,40 +104,40 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 				e("div", "class", "form-group").R(
 					e("input", "name", "contact_person", "type", "text", "placeholder", "(optional)", "value",
 						evt.ContactPerson).R(),
-					e("label", "class", "control-label", "for", "contact_person").R("Contact Person"),
+					e("label", "class", "control-label", "for", "contact_person").R(t("Contact Person")),
 					e("i", "class", "bar").R(),
 				),
 				e("div", "class", "form-group").R(
 					e("input", "name", "categories", "type", "text", "value", strings.Join(evt.Categories, ", "),
 						"placeholder", "(optional)").R(),
-					e("label", "class", "control-label", "for", "categories").R("Tags (comma separated)"),
+					e("label", "class", "control-label", "for", "categories").R(t("Tags (comma separated)")),
 					e("i", "class", "bar").R(),
 				),
 			),
 			e("div", "class", "form-inline").R(
 				e("div", "class", "form-group").R(
 					e("input", "name", "contact_email", "type", "text", "value", evt.ContactEmail).R(),
-					e("label", "class", "control-label", "for", "contact_email").R("Contact Email"),
+					e("label", "class", "control-label", "for", "contact_email").R(t("Contact Email")),
 					e("i", "class", "bar").R(),
 				),
 				e("div", "class", "form-group").R(
 					e("input", "name", "contact_url", "type", "text", "placeholder", "(optional)", "value",
 						evt.ContactURL).R(),
-					e("label", "class", "control-label", "for", "contact_url").R("Contact URL"),
+					e("label", "class", "control-label", "for", "contact_url").R(t("Contact URL")),
 					e("i", "class", "bar").R(),
 				),
 			),
 			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer1").R(evt.Summary),
+				e("div", "id", "summer1").R(t(evt.Summary)),
 				e("textarea", "id", "event_summary", "name", "event_summary", "type", "text", "value", "",
 					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "event_summary").R("Summary"),
+				e("label", "class", "control-label", "for", "event_summary").R(t("Summary")),
 			),
 			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer2").R(evt.Body),
+				e("div", "id", "summer2").R(t(evt.Body)),
 				e("textarea", "id", "event_body", "name", "event_body", "type", "text", "value", "",
 					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "event_body").R("Event Body"),
+				e("label", "class", "control-label", "for", "event_body").R(t("Event Body")),
 			),
 
 			e("div", "class", "checkbox").R(
@@ -155,7 +156,7 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 
 		// e("div", "id", "react-app").R(),
 		e("script", "type", "text/javascript").R(
-			`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
+			t(`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
 			function preSubmit() {  // todo validate fields here
 				var s1 = $("#summer1");
 				var s2 = $("#summer2");
@@ -169,7 +170,7 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 				}
 				return true;
 			}
-		`),
+		`)),
 	)
 
 	return b.String()

@@ -60,6 +60,7 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 
 	b := element.NewBuilder()
 	e := b.Ele
+	t := b.Text
 
 	elEnabled := e("input", "type", "checkbox", "class", "enabled", "name", "enabled")
 	if usr.Enabled {
@@ -67,7 +68,7 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 	}
 
 	e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation+" "+m.Name.Singular),
+		e("h3", "class", "page-title").R(t(operation+" "+m.Name.Singular)),
 		e("form", "method", "post", "action",
 			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			e("input", "type", "hidden", "name", "user_id", "value", usr.Id).R(),
@@ -76,13 +77,13 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 				e("div", "class", "form-group").R(
 					e("input", "class", "firstname", "name", "firstname", "type", "text",
 						"required", "required", "value", usr.Firstname).R(), // we are using 'required' here to drive `input:valid` selector
-					e("label", "class", "control-label", "for", "firstname").R("Firstname"),
+					e("label", "class", "control-label", "for", "firstname").R(t("Firstname")),
 					e("i", "class", "bar").R(),
 				),
 				e("div", "class", "form-group").R(
 					e("input", "class", "lastname", "name", "lastname", "type", "text",
 						"required", "required", "value", usr.Lastname).R(),
-					e("label", "class", "control-label", "for", "lastname").R("Last Name"),
+					e("label", "class", "control-label", "for", "lastname").R(t("Last Name")),
 					e("i", "class", "bar").R(),
 				),
 			),
@@ -90,13 +91,13 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 				e("div", "class", "form-group").R(
 					e("input", "class", "username", "name", "username", "type", "text",
 						"required", "required", "value", usr.Username).R(),
-					e("label", "class", "control-label", "for", "username").R("Username"),
+					e("label", "class", "control-label", "for", "username").R(t("Username")),
 					e("i", "class", "bar").R(),
 				),
 				e("div", "class", "form-group").R(
 					e("input", "class", "email_address", "name", "email_address", "type", "text",
 						"required", "required", "value", usr.EmailAddress).R(),
-					e("label", "class", "control-label", "for", "email_address").R("Email Address"),
+					e("label", "class", "control-label", "for", "email_address").R(t("Email Address")),
 					e("i", "class", "bar").R(),
 				),
 			),
@@ -104,34 +105,34 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 				e("div", "class", "form-group").R(
 					e("input", "class", "role", "name", "role", "type", "text",
 						"required", "required", "value", strconv.Itoa(usr.Role)).R(),
-					e("label", "class", "control-label", "for", "role").R("Role (1 - admin, 5 - publisher, 7 - editor, 9 - registered_user)"),
+					e("label", "class", "control-label", "for", "role").R(t("Role (1 - admin, 5 - publisher, 7 - editor, 9 - registered_user)")),
 					e("i", "class", "bar").R(),
 				),
 				e("div", "class", "checkbox").R(
 					e("label").R(
 						elEnabled.R(),
 						e("i", "class", "helper").R(),
-						"User enabled",
+						t("User enabled"),
 					),
 					e("i", "class", "bar").R(),
 				),
 			),
 			e("div", "class", "form-group").R(
 				e("input", "class", "password", "name", "password", "type", "password", "value", "").R(),
-				e("label", "class", "control-label", "for", "password").R("Password for new user or password change"),
+				e("label", "class", "control-label", "for", "password").R(t("Password for new user or password change")),
 				e("i", "class", "bar").R(),
 			),
 			e("div", "class", "form-group").R(
 				e("input", "class", "password_confirm", "name", "password_confirm", "type", "password",
 					"value", "").R(),
-				e("label", "class", "control-label", "for", "password_confirm").R("Password Confirmation"),
+				e("label", "class", "control-label", "for", "password_confirm").R(t("Password Confirmation")),
 				e("i", "class", "bar").R(),
 			),
 			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer1").R(usr.Summary),
+				e("div", "id", "summer1").R(t(usr.Summary)),
 				e("textarea", "id", "user_summary", "name", "user_summary", "type", "text", "value", "",
 					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "user_summary").R("Summary"),
+				e("label", "class", "control-label", "for", "user_summary").R(t("Summary")),
 			),
 
 			e("div", "class", "form-group").R(
@@ -139,7 +140,7 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 			),
 		),
 
-		e("script", "type", "text/javascript").R(
+		e("script", "type", "text/javascript").R(t(
 			`$(document).ready(function(){$('#summer1').summernote()});
 			function preSubmit() {
 				var pass = document.querySelector('.password');
@@ -156,7 +157,7 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 				}
 				return true;
 			}
-		`),
+		`)),
 	)
 	return b.String()
 }
