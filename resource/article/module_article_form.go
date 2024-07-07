@@ -64,7 +64,8 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 	if art.Published {
 		enInputAttrs = append(enInputAttrs, []string{"checked", "checked"}...)
 	}
-	elEnabled := e("input", enInputAttrs...)
+
+	elEnabled := b.EleNoRender("input", enInputAttrs...)
 
 	e("div", "class", "wrapper-material-form").R(
 		e("h3", "class", "page-title").R(t(operation+" "+m.Name.Singular)),
