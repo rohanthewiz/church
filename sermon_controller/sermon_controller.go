@@ -109,7 +109,13 @@ func UpsertSermon(c echo.Context) error {
 	serPres.Teacher = c.FormValue("pastor-teacher")
 
 	sermonAudio, err := c.FormFile("sermon_audio")
+	if err != nil {
+		logger.LogErr(err, "Error obtaining sermon file data from form")
+		c.Error(err)
+		return err
+	}
 	// fmt.Printf("|** %#v\n", sermonAudio)
+
 	if err == nil && sermonAudio != nil && sermonAudio.Filename != "" {
 		sermonTmp, err := sermonAudio.Open() // Todo: move to sermon model
 		if err != nil {
@@ -118,6 +124,7 @@ func UpsertSermon(c echo.Context) error {
 			return err
 		}
 		defer sermonTmp.Close()
+
 		localFilePath = path.Join(sermonsLocalFilePrefix, sermonAudio.Filename)
 		initialUrlPath := path.Join(sermonsLocalURLPrefix, sermonAudio.Filename)
 		dest, err := os.Create(localFilePath)

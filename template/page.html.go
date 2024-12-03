@@ -46,7 +46,7 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	b.WS(`</head><body class="theme-` + config.Options.Theme + `">`)
 
 	// Banner
-	b.WS(view.PageFrame.GetBanner())
+	b.WS(view.PgFrame.GetBanner())
 
 	// Menu
 	e("div", "id", "header", "class", "theme-"+config.Options.Theme).R(
@@ -83,7 +83,7 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 
 	e("div", "id", "footer", "class", "theme-"+config.Options.Theme).R(
 		b.WS(menu.RenderNav("footer-menu", loggedIn)),
-		b.WS(view.PageFrame.GetCopyright()),
+		b.WS(view.PgFrame.GetCopyright()),
 	)
 
 	if page.IsAdmin {

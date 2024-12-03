@@ -7,32 +7,33 @@ import (
 	"github.com/rohanthewiz/element"
 )
 
-var PageFrame frame
+var PgFrame pageFrame
 
 func init() {
-	PageFrame = frame{}
+	PgFrame = pageFrame{}
 }
 
-// The Page Frame - Header and Footer info
-type frame struct {
+// pageFrame will hold rendered elements of the page frame, both header and footer info
+type pageFrame struct {
 	banner    string // cache rendered banner
-	copyright string
+	bannerExt string // typically area below banner
+	copyright string // typically bottom of the page
 }
 
-// Provide cached banner
-func (f frame) GetBanner() (out string) {
+// GetBanner returns the cached banner
+func (f pageFrame) GetBanner() (out string) {
 	if f.banner != "" {
-		return f.banner
-	} // return cached
+		return f.banner // return cached
+	}
+
 	b := element.NewBuilder()
 	e := b.Ele
 	e("div", "id", "banner", "class", "theme-"+config.Options.Theme).R(
 		e("div", "id", "banner-wrapper").R(
 			b.WS(config.Options.BannerInnerHTML),
 		),
-		e("div", "id", "logo-extension").R(
-		// "Join us on Sundays at 9:45",
-		// e("a", "href", "/pages/contact-us").R("Contact Us"),
+		e("div", "id", "banner-extension").R(
+			b.WS(config.Options.BannerExt),
 		),
 	)
 
@@ -40,7 +41,7 @@ func (f frame) GetBanner() (out string) {
 }
 
 // Return the copyright that goes in the footer
-func (f frame) GetCopyright() (out string) {
+func (f pageFrame) GetCopyright() (out string) {
 	if f.copyright != "" {
 		return f.copyright
 	} // cached

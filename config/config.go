@@ -45,6 +45,7 @@ type ConfigAll struct {
 type EnvConfig struct {
 	Theme           string `yaml:"theme"`
 	BannerInnerHTML string `yaml:"banner_inner_html"`
+	BannerExt       string `yaml:"banner_ext"`
 	CopyrightOwner  string `yaml:"copyright_owner"`
 	AppTimeout      int64  `yaml:"app_timeout"` // App max time in minutes
 	Server          struct {
@@ -110,9 +111,9 @@ func InitConfig(version, commitHash, buildStamp string) {
 
 	// Don't cache config here, since this function is normally only called on init()
 	// Not caching allows us to be able to hot reload config in the future
-	//if Options != nil { // return cached Options if already loaded
+	// if Options != nil { // return cached Options if already loaded
 	//	return  // Options are already loaded
-	//}
+	// }
 
 	AppEnv = "development"
 	if env := strings.TrimSpace(os.Getenv("APP_ENV")); env != "" {
