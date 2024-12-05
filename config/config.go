@@ -4,7 +4,6 @@
 package config
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -19,6 +18,10 @@ const (
 	IncomingDateTimeFormat = "2006-01-02 15:04 MST" // 2017-06-10 19:30 CST
 	DisplayDateTimeFormat  = "2006-01-02 15:04"     // 3:04 PM"
 	DisplayDateFormat      = "2006-01-02"
+
+	PresenterDateFormat   = "2006-01-02"
+	DisplayDateFormatLong = "01/02/2006"
+
 	DisplayShortDateFormat = "1/2"
 	DisplayTimeFormat      = "15:04"
 )
@@ -161,20 +164,20 @@ func getOptionsForEnvironment(cfg *ConfigAll) *EnvConfig {
 }
 
 func loadConfigFile() (*ConfigAll, error) {
-	var config_all = new(ConfigAll)
+	var cfgAll = new(ConfigAll)
 
-	file_data, err := ioutil.ReadFile(configFile)
+	fileData, err := os.ReadFile(configFile)
 	if err != nil {
 		log.Fatal("error - Could not load configuration. ", err.Error(), " - config_file: ", configFile,
 			" tip - Are you in the project root?",
 			" tip2 - Did you remember to copy 'cfg/options.yml.sample' to 'cfg/options.yml' ?")
-		return config_all, err
+		return cfgAll, err
 	}
-	err = yaml.Unmarshal(file_data, config_all)
+	err = yaml.Unmarshal(fileData, cfgAll)
 	if err != nil {
 		log.Fatal("Error unmarshalling yaml configuration file", err.Error(), "config_file", configFile,
 			"tip - Double check that the contents of the config file is proper yaml (http://www.yamllint.com/)")
-		return config_all, err
+		return cfgAll, err
 	}
-	return config_all, err
+	return cfgAll, err
 }

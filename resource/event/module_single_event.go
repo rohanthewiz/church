@@ -33,7 +33,8 @@ func (m ModuleSingleEvent) getData() (pres Presenter, err error) {
 		LogErr(err, "Unable to obtain event", "event_id", fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 		return pres, err
 	}
-	return presenterFromModel(evt), err
+	return presenterFromModel(evt,
+		PresenterParams{TimeNormalFormat: "3:04 PM", DateLongFormat: "1/2/2006", DateTimeFormat: "1/2/2006 3:04 PM TZ"}), err
 }
 
 func (m *ModuleSingleEvent) Render(params map[string]map[string]string, loggedIn bool) string {
@@ -58,7 +59,7 @@ func (m *ModuleSingleEvent) Render(params map[string]map[string]string, loggedIn
 
 	_ = b.WriteString("<h3>Event (" + evt.Title + `)</h3><table>
 		<tr><td>Name</td><td>` + evt.Title + `</td></tr>
-		<tr><td>Event Date</td><td>` + evt.EventDate + `</td></tr>
+		<tr><td>Event Date</td><td>` + evt.EventDateDisplayLong + `</td></tr>
 		<tr><td>Event Time</td><td>` + evt.EventTime + `</td></tr>
 		<tr><td>Summary</td><td>` + evt.Summary + `</td></tr>
 		<tr><td>Description</td><td>` + evt.Body + `</td></tr>
