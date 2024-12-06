@@ -172,7 +172,7 @@ vips -v
 - You can manually migrate each of the sql files (though not recommended) `psql -h localhost -d church_development -U myuser -f db/migrate/20170419004813_CreateUsersTable.sql`
 
 ### Configuration
-- `cp options.yml.sample options.yml`
+- `cp options-sample.yml options.yml`
 - Update config params: `sudo nano cfg/options.yml`
 
 #### Create a Random Seeds file

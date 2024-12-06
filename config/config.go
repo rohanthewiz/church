@@ -90,7 +90,8 @@ type EnvConfig struct {
 		PubKey  string `yaml:"pub_key"`
 		PrivKey string `yaml:"priv_key"`
 	} `yaml:"stripe"`
-	Gmail struct {
+	GivingContacts []string `yaml:"giving_contacts"` // typically used on the Giving form
+	Gmail          struct {
 		Account  string   `yaml:"account"`
 		FromName string   `yaml:"from"`
 		Word     string   `yaml:"word"`
@@ -129,11 +130,11 @@ func InitConfig(version, commitHash, buildStamp string) {
 	GitCommitHash = commitHash
 	BuildTimestamp = buildStamp
 
-	config_data, err := loadConfigFile()
+	configData, err := loadConfigFile()
 	if err != nil {
 		log.Fatal("Error: ", err.Error())
 	}
-	env_cfg := getOptionsForEnvironment(config_data)
+	env_cfg := getOptionsForEnvironment(configData)
 	env_cfg = envOverride(env_cfg) // Override some settings with environment variables
 	Options = env_cfg
 }
@@ -170,7 +171,7 @@ func loadConfigFile() (*ConfigAll, error) {
 	if err != nil {
 		log.Fatal("error - Could not load configuration. ", err.Error(), " - config_file: ", configFile,
 			" tip - Are you in the project root?",
-			" tip2 - Did you remember to copy 'cfg/options.yml.sample' to 'cfg/options.yml' ?")
+			" tip2 - Did you remember to copy 'cfg/options-sample.yml' to 'cfg/options.yml' ?")
 		return cfgAll, err
 	}
 	err = yaml.Unmarshal(fileData, cfgAll)

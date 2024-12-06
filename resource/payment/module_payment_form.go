@@ -1,6 +1,9 @@
 package payment
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/module"
@@ -40,14 +43,18 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 		m.SetId(opts)
 	}
 
+	givingContactsMsg := fmt.Sprintf("Please contact %s with any questions.",
+		strings.Join(config.Options.GivingContacts, " or "))
+
 	builder := element.NewBuilder()
 	e := builder.Ele
 	t := builder.Text
+
 	e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
 		e("h2", "class", "form-title").R(t("Give Securely Online")),
 		e("p", "class", "subtitle").R(
 			t("Transactions are securely processed by Stripe payment services (https://stripe.com/about)<br>",
-				"All donations are tax-deductible. Please contact Landra Allison, or Rohan Allison with any questions."),
+				"All donations are tax-deductible. "+givingContactsMsg),
 		),
 		e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
 		e("div", "class", "form-row").R(

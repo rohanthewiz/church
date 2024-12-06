@@ -52,6 +52,7 @@ func (m *ModuleSlickCarousel) Render(params map[string]map[string]string, logged
 		logger.LogErr(err, "Error obtaining article data for Carousel module", "module_options", fmt.Sprintf("%#v", m.Opts))
 		return
 	}
+
 	if len(articles) > 0 {
 		b := element.NewBuilder()
 		e := b.E
@@ -86,6 +87,7 @@ func (m *ModuleSlickCarousel) Render(params map[string]map[string]string, logged
 				});
 			});`),
 		)
+		return b.String()
 	}
 
 	return
