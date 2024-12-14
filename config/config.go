@@ -86,6 +86,14 @@ type EnvConfig struct {
 		Host string `yaml:"host"`
 		Port string `yaml:"port"`
 	} `yaml:"redis"`
+	IDrive struct {
+		EndPoint        string `yaml:"end_point"`
+		Region          string `yaml:"region"`
+		Bucket          string `yaml:"bucket"`
+		AccessKey       string `yaml:"access_key"`
+		SecretKey       string `yaml:"secret_key"`
+		LocalSermonsDir string `yaml:"local_sermons_dir"`
+	} `yaml:"idrive"`
 	Stripe struct {
 		PubKey  string `yaml:"pub_key"`
 		PrivKey string `yaml:"priv_key"`
