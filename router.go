@@ -84,10 +84,10 @@ func Serve() {
 	ser.GET("/:id", sermon_controller.ShowSermon)
 
 	// TODO - move this code to the sermons controller
-	sergrp := e.Group("ser")
-	sergrp.GET("/:year/:sermon", func(c echo.Context) error {
+	sergrp := e.Group("sermons")
+	sergrp.GET("/:year/:filename", func(c echo.Context) error {
 		year := c.Param("year")
-		filename := c.Param("sermon")
+		filename := c.Param("filename")
 		fmt.Printf("**-> year %s, sermon %s\n", year, filename)
 
 		byts, err := idrive.GetSermon(year, filename)

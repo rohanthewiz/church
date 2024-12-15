@@ -170,6 +170,8 @@ func GetFileFromS3(key, targetFileSpec string) error {
 		return serr.Wrap(err)
 	}
 
+	// TODO !  Put the logic below into idrive pkg. Return output.body in that case
+
 	sermonYrDir, filename := filepath.Split(targetFileSpec)
 
 	// Setup dir
@@ -198,7 +200,9 @@ func GetFileFromS3(key, targetFileSpec string) error {
 	if err != nil {
 		return serr.Wrap(err, "Could not create the sermon file locally")
 	}
-	defer outFile.Close()
+	defer func() {
+		_ = outFile.Close()
+	}()
 
 	_, err = io.Copy(outFile, output.Body)
 	if err != nil {
