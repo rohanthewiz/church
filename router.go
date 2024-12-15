@@ -2,6 +2,7 @@ package church
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/admin"
@@ -21,7 +22,6 @@ import (
 	"github.com/rohanthewiz/church/sermon_controller"
 	"github.com/rohanthewiz/church/user_controller"
 	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/serr"
 )
 
 // todo !! setup cert renew on a chron job
@@ -93,7 +93,10 @@ func Serve() {
 		byts, err := idrive.GetSermon(year, filename)
 		if err != nil {
 			logger.Err(err, "error getting sermon", "year", year, "sermon", filename)
-			return serr.Wrap(err)
+			return c.JSON(http.StatusNotImplemented, map[string]string{
+				"message": "Sorry, we couldn't find the sermon you requested.",
+				"error":   err.Error(),
+			})
 		}
 
 		return basectlr.SendAudioFile(c, filename, byts)
