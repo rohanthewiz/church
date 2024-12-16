@@ -108,14 +108,9 @@ func UpsertSermon(c echo.Context) error {
 	serPres.PlaceTaught = c.FormValue("sermon_place")
 	serPres.Teacher = c.FormValue("pastor-teacher")
 
+	// Here we don't want to always err if form file is just not set
 	sermonAudio, err := c.FormFile("sermon_audio")
-	if err != nil {
-		logger.LogErr(err, "Error obtaining sermon file data from form")
-		c.Error(err)
-		return err
-	}
-	// fmt.Printf("|** %#v\n", sermonAudio)
-
+	// If all conditions are good upload the sermon contents
 	if err == nil && sermonAudio != nil && sermonAudio.Filename != "" {
 		sermonTmp, err := sermonAudio.Open() // Todo: move to sermon model
 		if err != nil {
