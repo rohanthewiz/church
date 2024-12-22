@@ -3,17 +3,20 @@ package sermon
 import (
 	"fmt"
 	"strconv"
-	"github.com/rohanthewiz/serr"
-	. "github.com/rohanthewiz/logger"
-	. "github.com/vattle/sqlboiler/queries/qm"
+	"strings"
+
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/util/timeutil"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
+	. "github.com/vattle/sqlboiler/queries/qm"
 )
 
 func (p Presenter) Upsert() (slug string, err error) {
 	dbH, err := db.Db()
 	if err != nil {
-		return  slug, err
+		return slug, err
 	}
 	ser, create, err := modelFromPresenter(p)
 	if err != nil {
@@ -40,6 +43,14 @@ func (p Presenter) Upsert() (slug string, err error) {
 	return ser.Slug.String, err
 }
 
+func (p Presenter) GetYear() (year string) {
+	year = timeutil.CurrentYear()
+	if arr := strings.SplitN(p.DateTaught, "-", 2); len(arr) == 2 {
+		year = arr[0]
+	}
+	return
+}
+
 // Returns a sermon model for id `id` or a new sermon model
 func findByIdOrCreate(id string) (model *models.Sermon) {
 	if id != "" {
@@ -63,9 +74,11 @@ func DeleteSermonById(id string) error {
 	const when = "When deleting sermon by id"
 	dbH, err := db.Db()
 	if err != nil {
-		return  err
+		return err
 	}
-	if id == "" { return serr.NewSErr("Id to delete is empty string", "when", when) }
+	if id == "" {
+		return serr.NewSErr("Id to delete is empty string", "when", when)
+	}
 	intId, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Sermon id to integer", "Id", id, "when", when)
@@ -97,7 +110,7 @@ func findSermonBySlug(slug string) (*models.Sermon, error) {
 		return nil, serr.Wrap(err, "Error obtaining DB handle")
 	}
 	art, err := models.Sermons(dbH, Where("slug = ?", slug)).One()
-	if  err != nil {
+	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving sermon by slug", "slug", slug)
 	}
 	return art, err
@@ -111,7 +124,7 @@ func QuerySermons(condition, order string, limit, offset int64) (presenters []Pr
 		return
 	}
 	sermons, err := models.Sermons(dbH, Where(condition), OrderBy(order), Limit(int(limit)),
-			Offset(int(offset))).All()
+		Offset(int(offset))).All()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error querying sermons")
 	}

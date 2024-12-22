@@ -38,7 +38,7 @@ func Serve() {
 	// Did not work -> e.Pre(middleware.HTTPSWWWRedirect())
 
 	e.Static("/assets", "dist")
-	e.Static("/media", "sermons")
+	e.Static("/media", "sermons") // TODO - path_from_proj_root(config.Options.IDrive.LocalSermonsDir)
 	e.GET("/", page_controller.HomePage)
 
 	e.GET("/login", authctlr.LoginHandler)
