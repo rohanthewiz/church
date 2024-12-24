@@ -2,8 +2,8 @@ package sermon_controller
 
 import (
 	"bytes"
-	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -12,9 +12,9 @@ import (
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
-	"github.com/rohanthewiz/church/chftp"
 	"github.com/rohanthewiz/church/config"
 	ctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/core/idrive"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/sermon"
@@ -83,8 +83,7 @@ func EditSermon(c echo.Context) error {
 }
 
 func UpsertSermon(c echo.Context) error {
-	const sermonsLocalFilePrefix = "sermons"
-	const sermonsLocalURLPrefix = "media"
+	const sermonsURLPrefix = "sermons"
 	const ftpUploadDelay = time.Second * 40
 	var fileUploaded bool
 	var localFileSpec string
@@ -112,6 +111,7 @@ func UpsertSermon(c echo.Context) error {
 	if c.FormValue("published") == "on" {
 		serPres.Published = true
 	}
+	serYear := serPres.GetYear()
 
 	// Here we don't want to always err if form file is just not set
 	sermonAudio, err := c.FormFile("sermon_audio")
@@ -124,10 +124,9 @@ func UpsertSermon(c echo.Context) error {
 		}
 		defer sermonTmp.Close()
 
-		serYear := serPres.GetYear()
-
 		localFileSpec = path.Join(config.Options.IDrive.LocalSermonsDir, serYear, sermonAudio.Filename)
-		initialUrlPath := path.Join(sermonsLocalURLPrefix, serYear, sermonAudio.Filename)
+
+		sermonAudioURL := url.QueryEscape(path.Join(sermonsURLPrefix, serYear, sermonAudio.Filename)) // todo URL encode
 
 		// Create empty local file
 		dest, err := os.Create(localFileSpec)
@@ -147,19 +146,21 @@ func UpsertSermon(c echo.Context) error {
 
 		fileUploaded = true
 
-		serPres.AudioLink = fmt.Sprintf("/" + initialUrlPath) // todo URL encode on store
+		serPres.AudioLink = "/" + sermonAudioURL
 		logger.Log("info", "New sermon file uploaded", "upload_path", serPres.AudioLink)
 
 	} else { // We are not uploading a sermon, what else can we do?
 		if c.FormValue("audio-link-ovrd") == "on" {
 			serPres.AudioLink = c.FormValue("audio_link")
-			logger.Log("Info", "Audio link manually overidden to: "+serPres.AudioLink)
+			logger.Log("Info", "Audio link manually overridden to: "+serPres.AudioLink)
 		} else {
 			logger.Log("Debug", "Sermon updated, but audio file not updated")
 		}
 	}
-	// fmt.Printf("*|* serPres --> %#v\n", serPres)
+
+	// Save it
 	slug, err := serPres.Upsert()
+	// fmt.Printf("*|* serPres --> %#v\n", serPres)
 	if err != nil {
 		c.Error(err)
 		return err
@@ -170,28 +171,32 @@ func UpsertSermon(c echo.Context) error {
 		msg = "Updated"
 	}
 
-	if config.Options.FTP.Main.Enabled && fileUploaded { // Transfer to main sermon archive
+	if config.Options.FTP.Main.Enabled && fileUploaded { // Transfer to sermon archive
 		go func() {
 			time.Sleep(ftpUploadDelay)
 
-			upl := chftp.NewCemaUploader(localFileSpec, sermonAudio.Filename, serPres.DateTaught)
-			println("Transferring", localFileSpec, "to Main FTP server")
-			err := upl.Run()
+			logger.Info("Transferring", localFileSpec, "to IDriveE2")
+			err = idrive.PutSermonToIDrive(serYear, localFileSpec)
 			if err != nil {
-				logger.LogErr(err, "Error transferring to Church FTP", "sermon", localFileSpec)
-			} else {
-				pres, err := sermon.PresenterFromSlug(slug)
-				if err != nil {
-					logger.LogErr(err, "Error finding sermon by slug", "slug", slug)
-				}
-				pres.AudioLink = upl.DestWebPath()
-
-				_, err = pres.Upsert()
-				if err != nil {
-					logger.LogErr(err, "Error updating Sermon audio link to Church FTP server")
-				}
-				logger.Log("Info", "Sermon transferred to Church FTP server", "sermon_link", pres.AudioLink)
+				logger.LogErr(err, "Error transferring sermon to IDriveE2", "sermon", localFileSpec)
+				return
 			}
+			logger.Log("Info", "Sermon transferred to IDriveE2", "sermon_link", serPres.AudioLink, "slug", slug)
+
+			// upl := chftp.NewCemaUploader(localFileSpec, sermonAudio.Filename, serPres.DateTaught)
+			// err := upl.Run()
+
+			// No need to change URLs
+			/*			pres, err := sermon.PresenterFromSlug(slug)
+						if err != nil {
+							logger.LogErr(err, "Error finding sermon by slug", "slug", slug)
+						}
+						pres.AudioLink = upl.DestWebPath()
+
+						_, err = pres.Upsert()
+						if err != nil {
+							logger.LogErr(err, "Error updating Sermon audio link to Church FTP server")
+						}*/
 		}()
 	}
 
