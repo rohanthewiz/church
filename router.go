@@ -1,7 +1,6 @@
 package church
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo"
@@ -88,7 +87,16 @@ func Serve() {
 	ser.GET("/:year/:filename", func(c echo.Context) error {
 		year := c.Param("year")
 		filename := c.Param("filename")
-		fmt.Printf("**-> year %s, sermon %s\n", year, filename)
+		// Need to test QueryUnescape feature on existing sermon filenames - that were not queryEscaped previously
+		// filename, err := url.QueryUnescape(c.Param("filename"))
+		// if err != nil {
+		// 	logger.Err(err, "error unescaping filename", "filename", filename)
+		// 	return c.JSON(http.StatusNotImplemented, map[string]string{
+		// 		"error_message":     "Sorry, we couldn't find the sermon you requested: " + filename,
+		// 		"technical_details": err.Error(),
+		// 	})
+		// }
+		// fmt.Printf("**-> year %s, sermon %s\n", year, filename)
 
 		byts, err := idrive.GetSermon(year, filename)
 		if err != nil {

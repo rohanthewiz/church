@@ -1,6 +1,7 @@
 package idrive
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -48,25 +49,20 @@ func getSermonFromIDrive(relFileSpec, localFileSpec string) (fileBytes []byte, e
 	if err != nil {
 		return fileBytes, serr.Wrap(err)
 	}
-	logger.Info("Successfully downloaded sermon %q\n", localFileSpec)
+	logger.Info(fmt.Sprintf("Successfully obtained sermon %q from IDrive.\n", localFileSpec))
 
 	go func() { // Cache sermon locally - TODO some LRU process
-		sermonYrDir, filename := filepath.Split(relFileSpec)
-
-		// Ensure sermon year dir
-		isDir, _ := fileops.IsDir(sermonYrDir)
-		if !isDir {
-			err = os.Mkdir(sermonYrDir, 0750)
-			if err != nil && !os.IsExist(err) {
-				logger.LogErr(serr.Wrap(err, "Error creating directory for sermon year"))
-				return
-			}
-			logger.Info("Successfully created directory for sermon year", "year", sermonYrDir)
+		// Ensure sermon dir
+		sermonDir := filepath.Dir(localFileSpec)
+		err = fileops.EnsureDir(sermonDir)
+		if err != nil {
+			logger.LogErr(serr.Wrap(err, fmt.Sprintf("Could not create the sermon directory '%s' locally", sermonDir)))
+			return
 		}
 
-		err = os.WriteFile(filename, fileBytes, 0644)
+		err = os.WriteFile(localFileSpec, fileBytes, 0644)
 		if err != nil {
-			logger.LogErr(serr.Wrap(err, "Could not create the sermon file locally"))
+			logger.LogErr(serr.Wrap(err, "Could not create the sermon file locally", "filespec", localFileSpec))
 			return
 		}
 	}()

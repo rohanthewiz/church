@@ -3,9 +3,9 @@ package sermon_controller
 import (
 	"bytes"
 	"io"
-	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,6 +19,7 @@ import (
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/template"
+	"github.com/rohanthewiz/church/util/fileops"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 )
@@ -84,7 +85,7 @@ func EditSermon(c echo.Context) error {
 
 func UpsertSermon(c echo.Context) error {
 	const sermonsURLPrefix = "sermons"
-	const ftpUploadDelay = time.Second * 40
+	const cloudUploadDelay = time.Second * 45
 	var fileUploaded bool
 	var localFileSpec string
 
@@ -126,7 +127,16 @@ func UpsertSermon(c echo.Context) error {
 
 		localFileSpec = path.Join(config.Options.IDrive.LocalSermonsDir, serYear, sermonAudio.Filename)
 
-		sermonAudioURL := url.QueryEscape(path.Join(sermonsURLPrefix, serYear, sermonAudio.Filename)) // todo URL encode
+		sermonDir := filepath.Dir(localFileSpec)
+		err = fileops.EnsureDir(sermonDir)
+		if err != nil {
+			logger.LogErr(err, "error ensuring local directory exists for sermon", "localFileSpec", localFileSpec)
+			c.Error(err)
+			return err
+		}
+
+		sermonAudioURL := path.Join(sermonsURLPrefix, serYear, sermonAudio.Filename)
+		// Let's test out query escaping later // sermonAudioURL := url.QueryEscape(path.Join(sermonsURLPrefix, serYear, sermonAudio.Filename))
 
 		// Create empty local file
 		dest, err := os.Create(localFileSpec)
@@ -173,7 +183,7 @@ func UpsertSermon(c echo.Context) error {
 
 	if config.Options.FTP.Main.Enabled && fileUploaded { // Transfer to sermon archive
 		go func() {
-			time.Sleep(ftpUploadDelay)
+			time.Sleep(cloudUploadDelay)
 
 			logger.Info("Transferring", localFileSpec, "to IDriveE2")
 			err = idrive.PutSermonToIDrive(serYear, localFileSpec)
