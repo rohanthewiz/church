@@ -13,7 +13,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
-	"github.com/rohanthewiz/church/util/fileops"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 )
@@ -122,7 +121,7 @@ func RenameFileInS3(bucketPrefix, srcFileName, destFileName string) (err error) 
 	return
 }
 
-func PutFileToS3(bucketPrefix string, filePath string) (err error) {
+func PutFileToS3(bucketPrefix string, fileSpec string) (err error) {
 	if s3Client == nil {
 		_ = initS3Client()
 	}
@@ -130,13 +129,13 @@ func PutFileToS3(bucketPrefix string, filePath string) (err error) {
 		return serr.New("Could not initialize S3 client")
 	}
 
-	log.Println("Uploading file: " + filePath)
-	fileContent, err := os.ReadFile(filePath)
+	log.Println("Uploading file: " + fileSpec)
+	fileContent, err := os.ReadFile(fileSpec)
 	if err != nil {
-		return serr.New(fmt.Sprintf("Unable to read file %q, %v", filePath, err))
+		return serr.New(fmt.Sprintf("Unable to read file %q, %v", fileSpec, err))
 	}
 
-	filename := filepath.Base(filePath)
+	filename := filepath.Base(fileSpec)
 	key := filepath.Join(bucketPrefix, filename)
 
 	// log.Println("Writing file: " + key)
@@ -150,16 +149,16 @@ func PutFileToS3(bucketPrefix string, filePath string) (err error) {
 			filepath.Join(s3Cfg.Bucket, bucketPrefix, filename), err.Error()))
 	}
 	log.Printf("Successfully uploaded file %q to S3 Bucket %q, key: %q\n",
-		filePath, s3Cfg.Bucket, filepath.Join(bucketPrefix, filename))
+		fileSpec, s3Cfg.Bucket, filepath.Join(bucketPrefix, filename))
 	return
 }
 
-func GetFileFromS3(key, targetFileSpec string) error {
+func GetFileFromS3(key string) (fileBytes []byte, err error) {
 	if s3Client == nil {
 		_ = initS3Client()
 	}
 	if s3Client == nil {
-		return serr.New("Could not initialize S3 client")
+		return fileBytes, serr.New("Could not initialize S3 client")
 	}
 
 	output, err := s3Client.GetObject(context.TODO(), &s3.GetObjectInput{
@@ -167,48 +166,14 @@ func GetFileFromS3(key, targetFileSpec string) error {
 		Key:    aws.String(key),
 	})
 	if err != nil {
-		return serr.Wrap(err)
+		return fileBytes, serr.Wrap(err, "Error obtaining file via s3 client")
 	}
+	defer output.Body.Close()
 
-	// TODO !  Put the logic below into idrive pkg. Return output.body in that case
-
-	sermonYrDir, filename := filepath.Split(targetFileSpec)
-
-	// Setup dir
-	isDir, _ := fileops.IsDir(sermonYrDir)
-	if !isDir {
-		err = os.Mkdir(sermonYrDir, 0750)
-		if err != nil && !os.IsExist(err) {
-			return serr.Wrap(err, "Error making the directory for sermon year")
-		}
-		logger.Info("Successfully created directory for sermon year", "year", sermonYrDir)
-	}
-	origDir, err := os.Getwd()
+	fileBytes, err = io.ReadAll(output.Body)
 	if err != nil {
-		logger.Warn("Could not obtain the curr working directory")
-	}
-	err = os.Chdir(sermonYrDir)
-	if err != nil {
-		return serr.Wrap(err, "Could not change to the sermon directory")
-	}
-	defer func() {
-		_ = os.Chdir(origDir)
-	}()
-
-	// Create the sermon file locally
-	outFile, err := os.Create(filename)
-	if err != nil {
-		return serr.Wrap(err, "Could not create the sermon file locally")
-	}
-	defer func() {
-		_ = outFile.Close()
-	}()
-
-	_, err = io.Copy(outFile, output.Body)
-	if err != nil {
-		return serr.Wrap(err)
+		return fileBytes, serr.Wrap(err, "Error reading file content from s3 object")
 	}
 
-	log.Printf("Successfully downloaded file %q to local path %q\n", key, targetFileSpec)
-	return nil
+	return fileBytes, nil
 }

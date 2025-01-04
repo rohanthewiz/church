@@ -108,7 +108,7 @@ type EnvConfig struct {
 }
 
 type FTPConfig struct {
-	Enabled       bool   `yaml:"enabled"`
+	Enabled       bool   `yaml:"enabled"` // for now repurposing this for cloud (IDriveE2) upload
 	Host          string `yaml:"host"`
 	Port          string `yaml:"port"`
 	User          string `yaml:"user"`

@@ -3,8 +3,23 @@ package fileops
 import (
 	"os"
 
+	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 )
+
+// EnsureDir ensures that the given directory exists
+func EnsureDir(entry string) (err error) {
+	isDir, _ := IsDir(entry)
+	if !isDir {
+		err = os.Mkdir(entry, 0750)
+		if err != nil && !os.IsExist(err) {
+			logger.LogErr(serr.Wrap(err, "Error creating directory for sermon year"))
+			return
+		}
+		logger.Info("Successfully created directory " + entry)
+	}
+	return
+}
 
 func IsDir(entry string) (isDir bool, err error) {
 	info, err := os.Stat(entry)

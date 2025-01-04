@@ -2,25 +2,26 @@ package sermon_controller
 
 import (
 	"bytes"
-	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
-	"github.com/rohanthewiz/church/chftp"
 	"github.com/rohanthewiz/church/config"
 	ctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/core/idrive"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/template"
+	"github.com/rohanthewiz/church/util/fileops"
 	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 func NewSermon(c echo.Context) error {
@@ -83,23 +84,21 @@ func EditSermon(c echo.Context) error {
 }
 
 func UpsertSermon(c echo.Context) error {
-	const sermonsLocalFilePrefix = "sermons"
-	const sermonsLocalURLPrefix = "media"
-	const ftpUploadDelay = time.Second * 40
-
+	const sermonsURLPrefix = "sermons"
+	const cloudUploadDelay = time.Second * 45
 	var fileUploaded bool
-	var localFilePath string
+	var localFileSpec string
+
 	csrf := c.FormValue("csrf")
 	// Check that this token is present and valid in Redis
 	if !app.VerifyFormToken(csrf) {
-		err := errors.New("Your form is expired. Go back to the form, refresh the page and try again")
+		err := serr.New("Your form is expired. Go back to the form, refresh the page and try again")
 		c.Error(err)
 		return err
 	}
 	// apparently embedded fields cannot be set immediately in  a literal struct
-	// we'll set those after efs is created
+	// we'll set those after the object is created
 	serPres := sermon.Presenter{}
-	// set embedded fields etc
 	serPres.Id = c.FormValue("sermon_id")
 	serPres.Title = c.FormValue("sermon_title")
 	serPres.Summary = c.FormValue("sermon_summary")
@@ -107,12 +106,18 @@ func UpsertSermon(c echo.Context) error {
 	serPres.DateTaught = c.FormValue("sermon_date")
 	serPres.PlaceTaught = c.FormValue("sermon_place")
 	serPres.Teacher = c.FormValue("pastor-teacher")
+	serPres.Categories = strings.Split(c.FormValue("categories"), ",")
+	serPres.ScriptureRefs = strings.Split(c.FormValue("scripture_refs"), ",")
+	serPres.UpdatedBy = c.(*ctx.CustomContext).Session.Username
+	if c.FormValue("published") == "on" {
+		serPres.Published = true
+	}
+	serYear := serPres.GetYear()
 
 	// Here we don't want to always err if form file is just not set
 	sermonAudio, err := c.FormFile("sermon_audio")
-	// If all conditions are good upload the sermon contents
-	if err == nil && sermonAudio != nil && sermonAudio.Filename != "" {
-		sermonTmp, err := sermonAudio.Open() // Todo: move to sermon model
+	if err == nil && sermonAudio != nil && sermonAudio.Filename != "" { // If all conditions are good upload the sermon contents
+		sermonTmp, err := sermonAudio.Open()
 		if err != nil {
 			logger.LogErr(err, "when", "opening sermon from FormFile", "filename", sermonAudio.Filename)
 			c.Error(err)
@@ -120,16 +125,27 @@ func UpsertSermon(c echo.Context) error {
 		}
 		defer sermonTmp.Close()
 
-		localFilePath = path.Join(sermonsLocalFilePrefix, sermonAudio.Filename)
-		initialUrlPath := path.Join(sermonsLocalURLPrefix, sermonAudio.Filename)
-		dest, err := os.Create(localFilePath)
+		localFileSpec = path.Join(config.Options.IDrive.LocalSermonsDir, serYear, sermonAudio.Filename)
+
+		sermonDir := filepath.Dir(localFileSpec)
+		err = fileops.EnsureDir(sermonDir)
 		if err != nil {
-			logger.LogErr(err, "when", "creating destination file for sermon", "filename", sermonAudio.Filename)
+			logger.LogErr(err, "error ensuring local directory exists for sermon", "localFileSpec", localFileSpec)
+			c.Error(err)
+			return err
+		}
+
+		sermonAudioURL := path.Join(sermonsURLPrefix, serYear, sermonAudio.Filename)
+		// Let's test out query escaping later // sermonAudioURL := url.QueryEscape(path.Join(sermonsURLPrefix, serYear, sermonAudio.Filename))
+
+		// Create empty local file
+		dest, err := os.Create(localFileSpec)
+		if err != nil {
+			logger.LogErr(err, "when", "creating local destination file for sermon", "fileSpec", localFileSpec)
 			c.Error(err)
 			return err
 		}
 		defer dest.Close()
-		fileUploaded = true
 
 		// Copy to server
 		if _, err := io.Copy(dest, sermonTmp); err != nil {
@@ -137,57 +153,60 @@ func UpsertSermon(c echo.Context) error {
 			c.Error(err)
 			return err
 		}
-		serPres.AudioLink = fmt.Sprintf("/" + initialUrlPath) // todo URL encode on store
+
+		fileUploaded = true
+
+		serPres.AudioLink = "/" + sermonAudioURL
 		logger.Log("info", "New sermon file uploaded", "upload_path", serPres.AudioLink)
-	} else {
+
+	} else { // We are not uploading a sermon, what else can we do?
 		if c.FormValue("audio-link-ovrd") == "on" {
 			serPres.AudioLink = c.FormValue("audio_link")
-			logger.Log("Info", "Audio link manually overidden to: "+serPres.AudioLink)
+			logger.Log("Info", "Audio link manually overridden to: "+serPres.AudioLink)
 		} else {
 			logger.Log("Debug", "Sermon updated, but audio file not updated")
 		}
 	}
 
-	serPres.Categories = strings.Split(c.FormValue("categories"), ",")
-	serPres.ScriptureRefs = strings.Split(c.FormValue("scripture_refs"), ",")
-	serPres.UpdatedBy = c.(*ctx.CustomContext).Session.Username
-	if c.FormValue("published") == "on" {
-		serPres.Published = true
-	}
-	// fmt.Printf("*|* serPres --> %#v\n", serPres)
+	// Save it
 	slug, err := serPres.Upsert()
+	// fmt.Printf("*|* serPres --> %#v\n", serPres)
 	if err != nil {
 		c.Error(err)
 		return err
 	}
+
 	msg := "Created"
 	if serPres.Id != "0" && serPres.Id != "" {
 		msg = "Updated"
 	}
 
-	if config.Options.FTP.Main.Enabled && fileUploaded { // Transfer to main sermon archive
+	if config.Options.FTP.Main.Enabled && fileUploaded { // Transfer to sermon archive
 		go func() {
-			time.Sleep(ftpUploadDelay)
-			upl := chftp.NewCemaUploader(localFilePath, sermonAudio.Filename, serPres.DateTaught)
-			println("Transferring", localFilePath, "to Main FTP server")
-			err := upl.Run()
+			time.Sleep(cloudUploadDelay)
+
+			logger.Info("Transferring", localFileSpec, "to IDriveE2")
+			err = idrive.PutSermonToIDrive(serYear, localFileSpec)
 			if err != nil {
-				logger.LogErr(err, "Error transferring to Church FTP", "sermon", localFilePath)
-			} else {
-				// Get Sermon Presenter by slug
-				pres, err := sermon.PresenterFromSlug(slug)
-				if err != nil {
-					logger.LogErr(err, "Error finding sermon by slug", "slug", slug)
-				}
-				pres.AudioLink = upl.DestWebPath()
-				_, err = pres.Upsert()
-				if err != nil {
-					logger.LogErr(err, "Error updating Sermon audio link to Church FTP server")
-				}
-				logger.Log("Info", "Sermon transferred to Church FTP server", "sermon_link", pres.AudioLink)
+				logger.LogErr(err, "Error transferring sermon to IDriveE2", "sermon", localFileSpec)
+				return
 			}
+			logger.Log("Info", "Sermon transferred to IDriveE2", "sermon_link", serPres.AudioLink, "slug", slug)
+
+			// No need to change URLs
+			/*			pres, err := sermon.PresenterFromSlug(slug)
+						if err != nil {
+							logger.LogErr(err, "Error finding sermon by slug", "slug", slug)
+						}
+						pres.AudioLink = upl.DestWebPath()
+
+						_, err = pres.Upsert()
+						if err != nil {
+							logger.LogErr(err, "Error updating Sermon audio link to Church FTP server")
+						}*/
 		}()
 	}
+
 	// Backup will be similar
 	redirectTo := "/admin/sermons"
 	if cc, ok := c.(*ctx.CustomContext); ok && cc.Session.FormReferrer != "" {
