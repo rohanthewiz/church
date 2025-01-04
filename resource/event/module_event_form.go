@@ -121,11 +121,17 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 					e("i", "class", "bar").R(),
 				),
 				e("div", "class", "form-group").R(
-					e("input", "name", "contact_url", "type", "text", "placeholder", "(optional)", "value",
-						evt.ContactURL).R(),
-					e("label", "class", "control-label", "for", "contact_url").R(t("Contact URL")),
+					e("input", "name", "contact_phone", "type", "text", "placeholder", "(optional)", "value",
+						evt.ContactPhone).R(),
+					e("label", "class", "control-label", "for", "contact_phone").R(t("Contact Phone")),
 					e("i", "class", "bar").R(),
 				),
+				// e("div", "class", "form-group").R(
+				// 	e("input", "name", "contact_url", "type", "text", "placeholder", "(optional)", "value",
+				// 		evt.ContactURL).R(),
+				// 	e("label", "class", "control-label", "for", "contact_url").R(t("Contact URL")),
+				// 	e("i", "class", "bar").R(),
+				// ),
 			),
 			e("div", "class", "form-group bootstrap-wrapper").R(
 				e("div", "id", "summer1").R(t(evt.Summary)),
@@ -144,7 +150,7 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 				e("label").R(
 					e("input", publishedParams...).R(),
 					e("i", "class", "helper").R(),
-					"Published",
+					t("Published"),
 				),
 				e("i", "class", "bar").R(),
 			),
