@@ -87,6 +87,7 @@ type EnvConfig struct {
 		Port string `yaml:"port"`
 	} `yaml:"redis"`
 	IDrive struct {
+		Enabled         bool   `yaml:"enabled"`
 		EndPoint        string `yaml:"end_point"`
 		Region          string `yaml:"region"`
 		Bucket          string `yaml:"bucket"`
@@ -108,7 +109,7 @@ type EnvConfig struct {
 }
 
 type FTPConfig struct {
-	Enabled       bool   `yaml:"enabled"` // for now repurposing this for cloud (IDriveE2) upload
+	Enabled       bool   `yaml:"enabled"` // Legacy FTP upload (deprecated - use IDrive.Enabled instead)
 	Host          string `yaml:"host"`
 	Port          string `yaml:"port"`
 	User          string `yaml:"user"`
