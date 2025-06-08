@@ -1,6 +1,6 @@
 module github.com/rohanthewiz/church
 
-go 1.21
+go 1.22
 
 toolchain go1.23.2
 
@@ -16,12 +16,12 @@ require (
 	github.com/lib/pq v1.0.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
-	github.com/rohanthewiz/element v0.4.1-0.20240610014730-cae6bd9b5361
+	github.com/rohanthewiz/element v0.5.2
 	github.com/rohanthewiz/gmail_send v1.0.0
 	github.com/rohanthewiz/logger v1.2.5
 	github.com/rohanthewiz/roftp v0.2.0
 	github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e
-	github.com/rohanthewiz/serr v1.2.0
+	github.com/rohanthewiz/serr v1.2.2
 	github.com/stripe/stripe-go v55.14.0+incompatible
 	github.com/vattle/sqlboiler v2.5.0+incompatible
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb
