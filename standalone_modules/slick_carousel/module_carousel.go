@@ -55,15 +55,12 @@ func (m *ModuleSlickCarousel) Render(params map[string]map[string]string, logged
 
 	if len(articles) > 0 {
 		b := element.NewBuilder()
-		e := b.E
-		t := b.Text
 
-		e("div", "class", "ch-module-wrapper ch-"+ModuleTypeSlickCarousel).R(
+		b.DivClass("ch-module-wrapper ch-" + ModuleTypeSlickCarousel).R(
 			func() string {
 				var str string
 				for _, art := range articles {
-					e("div", "class", "ch-carousel-item").R(
-						t(art.Body))
+					b.DivClass("ch-carousel-item").T(art.Body)
 				}
 				return str
 			}(),
@@ -72,8 +69,8 @@ func (m *ModuleSlickCarousel) Render(params map[string]map[string]string, logged
 		// Todo - go ahead and move these to document head
 		// out +=	e("script", "type", "text/javascript", "src", "https://code.jquery.com/jquery-2.1.3.min.js").R()
 		// out +=	e("script", "type", "text/javascript", "src", "https://cdnjs.cloudflare.com/ajax/libs/slick-carousel/1.8.1/slick.min.js").R()
-		e("script", "type", "text/javascript").R(
-			t(`$(document).ready(function(){
+		b.Script("type", "text/javascript").T(
+			`$(document).ready(function(){
 				$('.ch-` + ModuleTypeSlickCarousel + `').slick({
 					dots: true,
 					infinite: true,
@@ -85,8 +82,8 @@ func (m *ModuleSlickCarousel) Render(params map[string]map[string]string, logged
 					slidesToShow: 1,
 					slidesToScroll: 1
 				});
-			});`),
-		)
+			});`)
+
 		return b.String()
 	}
 

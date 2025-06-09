@@ -57,64 +57,61 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 		action = "/update/" + art.Id
 	}
 	b := element.NewBuilder()
-	e := b.Ele
-	t := b.Text
 
-	enInputAttrs := []string{"type", "checkbox", "class", "enabled", "name", "published"}
-	if art.Published {
-		enInputAttrs = append(enInputAttrs, []string{"checked", "checked"}...)
-	}
-
-	elEnabled := b.EleNoRender("input", enInputAttrs...)
-
-	e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(t(operation+" "+m.Name.Singular)),
-		e("form", "method", "post", "action",
+	b.DivClass("wrapper-material-form").R(
+		b.H3("class", "page-title").T(operation+" "+m.Name.Singular),
+		b.Form("method", "post", "action",
 			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
-			e("input", "type", "hidden", "name", "article_id", "value", art.Id).R(),
-			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
+			b.Input("type", "hidden", "name", "article_id", "value", art.Id),
+			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
 
-			e("div", "class", "form-group").R(
-				e("input", "name", "article_title", "type", "text",
-					"required", "required", "value", art.Title).R(), // we are using 'required' here to drive `input:valid` selector
-				e("label", "class", "control-label", "for", "article_title").R(t("Article Title")),
-				e("i", "class", "bar").R(),
+			b.DivClass("form-group").R(
+				b.Input("name", "article_title", "type", "text",
+					"required", "required", "value", art.Title), // we are using 'required' here to drive `input:valid` selector
+				b.Label("class", "control-label", "for", "article_title").T("Article Title"),
+				b.IClass("bar"),
 			),
-			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer1").R(t(art.Summary)),
-				e("textarea", "id", "article_summary", "name", "article_summary", "type", "text", "value", "",
-					"style", "display:none").R(), // this will hold the returned editor contents
-				e("label", "class", "control-label", "for", "article_summary").R(t("Summary / Intro")),
-				// no bar if content editable //e("i", "class", "bar").R(),
+			b.DivClass("form-group bootstrap-wrapper").R(
+				b.Div("id", "summer1").T(art.Summary),
+				b.TextArea("id", "article_summary", "name", "article_summary", "type", "text", "value", "",
+					"style", "display:none"), // this will hold the returned editor contents
+				b.Label("class", "control-label", "for", "article_summary").T("Summary / Intro"),
+				// no bar if content editable //b.IClass("bar"),
 			),
-			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer2").R(t(art.Body)),
-				e("textarea", "id", "article_body", "name", "article_body", "type", "text", "value", "",
-					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "article_body").R(t("Article Body")),
+			b.DivClass("form-group bootstrap-wrapper").R(
+				b.Div("id", "summer2").T(art.Body),
+				b.TextArea("id", "article_body", "name", "article_body", "type", "text", "value", "",
+					"style", "display:none"),
+				b.Label("class", "control-label", "for", "article_body").T("Article Body"),
 			),
-			e("div", "class", "form-group").R(
-				e("input", "type", "text", "name", "categories",
-					"value", strings.Join(art.Categories, ", ")).R(),
-				e("label", "class", "control-label", "for", "categories").R(t("Categories")),
-				e("i", "class", "bar").R(),
+			b.DivClass("form-group").R(
+				b.Input("type", "text", "name", "categories",
+					"value", strings.Join(art.Categories, ", ")),
+				b.Label("class", "control-label", "for", "categories").T("Categories"),
+				b.IClass("bar"),
 			),
-			e("div", "class", "checkbox").R(
-				e("label").R(
-					elEnabled.R(),
-					e("i", "class", "helper").R(),
-					t("Published"),
+			b.DivClass("checkbox").R(
+				b.Label().R(
+					b.Wrap(func() {
+						if art.Published {
+							b.Input("type", "checkbox", "class", "enabled", "name", "published", "checked", "checked")
+						} else {
+							b.Input("type", "checkbox", "class", "enabled", "name", "published")
+						}
+					}),
+					b.IClass("helper"),
+					b.Text("Published"),
 				),
-				e("i", "class", "bar").R(),
+				b.IClass("bar"),
 			),
 
-			e("div", "class", "form-group").R(
-				e("input", "type", "submit", "class", "button", "value", operation).R(),
+			b.DivClass("form-group").R(
+				b.Input("type", "submit", "class", "button", "value", operation),
 			),
 		),
 
-		e("script", "type", "text/javascript").R(
-			t(`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
+		b.Script("type", "text/javascript").T(
+			`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
 			function preSubmit() {
 				var s1 = $('#summer1');
 				var s2 = $('#summer2');
@@ -128,7 +125,6 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 				}
 				return true;
 			}`),
-		),
 	)
 	return b.String()
 }

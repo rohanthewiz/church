@@ -127,25 +127,23 @@ func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn b
 	scriptBody := `new agGrid.Grid(document.querySelector('.users-list-grid'), usersListGridOptions);`
 
 	b := element.NewBuilder()
-	e := b.E
-	t := b.Text
-	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
-		e("div", "class", "ch-module-heading").R(
-			t(m.Opts.Title),
-			func() (s string) {
+
+	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+		b.DivClass("ch-module-heading").R(
+			b.Text(m.Opts.Title),
+			b.Wrap(func() {
 				if m.Opts.IsAdmin {
-					e("a", "class", "btn-add", "href", newPath, "title", "Add User").R(t("+"))
+					b.A("class", "btn-add", "href", newPath, "title", "Add User").T("+")
 				}
-				return
-			}(),
+			}),
 		),
-		e("div", "class", "list-wrapper").R(
-			e("div", "class", "users-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
-			e("script", "type", "text/javascript").R(t(
-				jsConvertColumnDefs, jsConvertRowData, gridOptions,
-				`$(document).ready(function() {`+scriptBody+`});`)),
+		b.DivClass("list-wrapper").R(
+			b.DivClass("users-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`),
+			b.Script("type", "text/javascript").T(
+				jsConvertColumnDefs+jsConvertRowData+gridOptions+
+					`$(document).ready(function() {`+scriptBody+`});`),
 		),
 	)
 
-	return b.S()
+	return b.String()
 }

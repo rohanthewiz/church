@@ -55,7 +55,6 @@ func (m *ModuleSingleEvent) Render(params map[string]map[string]string, loggedIn
 	}
 
 	b := element.NewBuilder()
-	e := b.E
 
 	_ = b.WriteString("<h3>Event (" + evt.Title + `)</h3><table>
 		<tr><td>Name</td><td>` + evt.Title + `</td></tr>
@@ -72,10 +71,10 @@ func (m *ModuleSingleEvent) Render(params map[string]map[string]string, loggedIn
 		<tr><td>Updated At</td><td>` + evt.UpdatedAt + `</td></tr>
 		</table>`)
 	if loggedIn && len(m.Opts.ItemIds) > 0 {
-		e("a", "class", "edit-link", "href", m.GetEditURL()+
+		b.AClass("edit-link", "href", m.GetEditURL()+
 			strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
-			e("img", "class", "edit-icon", "title", "Edit Event", "src", "/assets/images/edit_article.svg").R(),
+			b.ImgClass("edit-icon", "title", "Edit Event", "src", "/assets/images/edit_article.svg").R(),
 		)
 	}
-	return b.S()
+	return b.String()
 }

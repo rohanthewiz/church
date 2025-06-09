@@ -59,88 +59,87 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 	}
 
 	b := element.NewBuilder()
-	e := b.Ele
-	t := b.Text
 
-	elEnabled := e("input", "type", "checkbox", "class", "enabled", "name", "enabled")
-	if usr.Enabled {
-		elEnabled.AddAttributes("checked", "checked")
-	}
-
-	e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(t(operation+" "+m.Name.Singular)),
-		e("form", "method", "post", "action",
+	b.DivClass("wrapper-material-form").R(
+		b.H3("class", "page-title").T(operation+" "+m.Name.Singular),
+		b.Form("method", "post", "action",
 			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
-			e("input", "type", "hidden", "name", "user_id", "value", usr.Id).R(),
-			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "class", "firstname", "name", "firstname", "type", "text",
-						"required", "required", "value", usr.Firstname).R(), // we are using 'required' here to drive `input:valid` selector
-					e("label", "class", "control-label", "for", "firstname").R(t("Firstname")),
-					e("i", "class", "bar").R(),
+			b.Input("type", "hidden", "name", "user_id", "value", usr.Id),
+			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("class", "firstname", "name", "firstname", "type", "text",
+						"required", "required", "value", usr.Firstname), // we are using 'required' here to drive `input:valid` selector
+					b.Label("class", "control-label", "for", "firstname").T("Firstname"),
+					b.IClass("bar"),
 				),
-				e("div", "class", "form-group").R(
-					e("input", "class", "lastname", "name", "lastname", "type", "text",
-						"required", "required", "value", usr.Lastname).R(),
-					e("label", "class", "control-label", "for", "lastname").R(t("Last Name")),
-					e("i", "class", "bar").R(),
-				),
-			),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "class", "username", "name", "username", "type", "text",
-						"required", "required", "value", usr.Username).R(),
-					e("label", "class", "control-label", "for", "username").R(t("Username")),
-					e("i", "class", "bar").R(),
-				),
-				e("div", "class", "form-group").R(
-					e("input", "class", "email_address", "name", "email_address", "type", "text",
-						"required", "required", "value", usr.EmailAddress).R(),
-					e("label", "class", "control-label", "for", "email_address").R(t("Email Address")),
-					e("i", "class", "bar").R(),
+				b.DivClass("form-group").R(
+					b.Input("class", "lastname", "name", "lastname", "type", "text",
+						"required", "required", "value", usr.Lastname),
+					b.Label("class", "control-label", "for", "lastname").T("Last Name"),
+					b.IClass("bar"),
 				),
 			),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "class", "role", "name", "role", "type", "text",
-						"required", "required", "value", strconv.Itoa(usr.Role)).R(),
-					e("label", "class", "control-label", "for", "role").R(t("Role (1 - admin, 5 - publisher, 7 - editor, 9 - registered_user)")),
-					e("i", "class", "bar").R(),
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("class", "username", "name", "username", "type", "text",
+						"required", "required", "value", usr.Username),
+					b.Label("class", "control-label", "for", "username").T("Username"),
+					b.IClass("bar"),
 				),
-				e("div", "class", "checkbox").R(
-					e("label").R(
-						elEnabled.R(),
-						e("i", "class", "helper").R(),
-						t("User enabled"),
+				b.DivClass("form-group").R(
+					b.Input("class", "email_address", "name", "email_address", "type", "text",
+						"required", "required", "value", usr.EmailAddress),
+					b.Label("class", "control-label", "for", "email_address").T("Email Address"),
+					b.IClass("bar"),
+				),
+			),
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("class", "role", "name", "role", "type", "text",
+						"required", "required", "value", strconv.Itoa(usr.Role)),
+					b.Label("class", "control-label", "for", "role").T("Role (1 - admin, 5 - publisher, 7 - editor, 9 - registered_user)"),
+					b.IClass("bar"),
+				),
+				b.DivClass("checkbox").R(
+					b.Label().R(
+						b.Wrap(func() {
+							if usr.Enabled {
+								b.Input("type", "checkbox", "class", "enabled", "name", "enabled", "checked", "checked")
+							} else {
+								b.Input("type", "checkbox", "class", "enabled", "name", "enabled")
+							}
+						}),
+						b.IClass("helper"),
+						b.Text("User enabled"),
 					),
-					e("i", "class", "bar").R(),
+					b.IClass("bar"),
 				),
 			),
-			e("div", "class", "form-group").R(
-				e("input", "class", "password", "name", "password", "type", "password", "value", "").R(),
-				e("label", "class", "control-label", "for", "password").R(t("Password for new user or password change")),
-				e("i", "class", "bar").R(),
+			b.DivClass("form-group").R(
+				b.Input("class", "password", "name", "password", "type", "password", "value", ""),
+				b.Label("class", "control-label", "for", "password").T("Password for new user or password change"),
+				b.IClass("bar"),
 			),
-			e("div", "class", "form-group").R(
-				e("input", "class", "password_confirm", "name", "password_confirm", "type", "password",
-					"value", "").R(),
-				e("label", "class", "control-label", "for", "password_confirm").R(t("Password Confirmation")),
-				e("i", "class", "bar").R(),
+			b.DivClass("form-group").R(
+				b.Input("class", "password_confirm", "name", "password_confirm", "type", "password",
+					"value", ""),
+				b.Label("class", "control-label", "for", "password_confirm").T("Password Confirmation"),
+				b.IClass("bar"),
 			),
-			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer1").R(t(usr.Summary)),
-				e("textarea", "id", "user_summary", "name", "user_summary", "type", "text", "value", "",
-					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "user_summary").R(t("Summary")),
+			b.DivClass("form-group bootstrap-wrapper").R(
+				b.Div("id", "summer1").T(usr.Summary),
+				b.TextArea("id", "user_summary", "name", "user_summary", "type", "text", "value", "",
+					"style", "display:none"),
+				b.Label("class", "control-label", "for", "user_summary").T("Summary"),
 			),
 
-			e("div", "class", "form-group").R(
-				e("input", "type", "submit", "class", "button", "value", operation).R(),
+			b.DivClass("form-group").R(
+				b.Input("type", "submit", "class", "button", "value", operation),
 			),
 		),
 
-		e("script", "type", "text/javascript").R(t(
+		b.Script("type", "text/javascript").T(
 			`$(document).ready(function(){$('#summer1').summernote()});
 			function preSubmit() {
 				var pass = document.querySelector('.password');
@@ -156,8 +155,7 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 					ser_summary.innerHTML = s1.summernote('code');
 				}
 				return true;
-			}
-		`)),
+			}`),
 	)
 	return b.String()
 }

@@ -31,7 +31,7 @@ type MenuItem struct {
 // And render recursively
 func RenderNav(slug string, loggedIn bool) string {
 	b := element.NewBuilder()
-	b.Ele("nav", "id", slug).R(b.WS(buildMenu(slug, loggedIn)))
+	b.Nav("id", slug).T(buildMenu(slug, loggedIn))
 	return b.String()
 }
 

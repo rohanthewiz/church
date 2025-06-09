@@ -63,19 +63,6 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 	}
 
 	b := element.NewBuilder()
-	e := b.Ele
-	t := b.Text
-
-	// Prep some vars
-	published := b.EleNoRender("input", "type", "checkbox", "name", "published")
-	if mnu.Published {
-		published.AddAttributes("checked", "checked")
-	}
-
-	isAdmin := b.EleNoRender("input", "type", "checkbox", "name", "is_admin")
-	if mnu.IsAdmin {
-		isAdmin.AddAttributes("checked", "checked")
-	}
 
 	byts, err := json.Marshal(mnu.Items)
 	if err != nil {
@@ -83,58 +70,70 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 		return "menu error"
 	}
 
-	e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(t(operation+" "+m.Name.Singular)),
-		e("form", "id", "menu_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
-			e("input", "type", "hidden", "id", "items", "name", "items", "value", "").R(),
-			e("input", "type", "hidden", "name", "menu_id", "value", mnu.Id).R(),
-			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
-			e("div", "class", "form-inner").R(
+	b.DivClass("wrapper-material-form").R(
+		b.H3("class", "page-title").T(operation+" "+m.Name.Singular),
+		b.Form("id", "menu_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
+			b.Input("type", "hidden", "id", "items", "name", "items", "value", ""),
+			b.Input("type", "hidden", "name", "menu_id", "value", mnu.Id),
+			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
+			b.DivClass("form-inner").R(
 
-				e("div", "class", "form-inline").R(
-					e("div", "class", "form-group").R(
-						e("input", "name", "menu_title", "type", "text", "value", mnu.Title).R(),
-						e("label", "class", "control-label", "for", "menu_title").R(t("Menu Title")),
-						e("i", "class", "bar").R(),
+				b.DivClass("form-inline").R(
+					b.DivClass("form-group").R(
+						b.Input("name", "menu_title", "type", "text", "value", mnu.Title),
+						b.Label("class", "control-label", "for", "menu_title").T("Menu Title"),
+						b.IClass("bar"),
 					),
-					e("div", "class", "form-group").R(
-						e("input", "class", "form-group__slug", "name", "menu_slug", "type", "text",
-							"placeholder", "slug is automatically generated on save", "value", mnu.Slug).R(),
-						e("label", "class", "control-label form-group__label--disabled", "for", "menu_slug").R(t("Menu Slug")),
-						e("i", "class", "bar").R(),
-					),
-				),
-				e("div", "class", "form-inline").R(
-					e("div", "class", "checkbox").R(
-						e("label").R(
-							published.RenderOpeningTag().R(),
-							e("i", "class", "helper").R(),
-							t("Published"),
-						),
-						e("i", "class", "bar").R(),
-					),
-					e("div", "class", "checkbox").R(
-						e("label").R(
-							isAdmin.RenderOpeningTag().R(),
-							e("i", "class", "helper").R(),
-							t("For Admin Only"),
-						),
-						e("i", "class", "bar").R(),
+					b.DivClass("form-group").R(
+						b.Input("class", "form-group__slug", "name", "menu_slug", "type", "text",
+							"placeholder", "slug is automatically generated on save", "value", mnu.Slug),
+						b.Label("class", "control-label form-group__label--disabled", "for", "menu_slug").T("Menu Slug"),
+						b.IClass("bar"),
 					),
 				),
-				e("div", "class", "form-inline").R(
-					e("div", "class", "form-group").R(
-						e("h3").R(t("Menu Items")),
+				b.DivClass("form-inline").R(
+					b.DivClass("checkbox").R(
+						b.Label().R(
+							b.Wrap(func() {
+								if mnu.Published {
+									b.Input("type", "checkbox", "name", "published", "checked", "checked")
+								} else {
+									b.Input("type", "checkbox", "name", "published")
+								}
+							}),
+							b.IClass("helper"),
+							b.Text("Published"),
+						),
+						b.IClass("bar"),
 					),
-					e("button", "class", "btn-add-menu-item", "title", "Add Menu Item").R(t("+")),
+					b.DivClass("checkbox").R(
+						b.Label().R(
+							b.Wrap(func() {
+								if mnu.IsAdmin {
+									b.Input("type", "checkbox", "name", "is_admin", "checked", "checked")
+								} else {
+									b.Input("type", "checkbox", "name", "is_admin")
+								}
+							}),
+							b.IClass("helper"),
+							b.Text("For Admin Only"),
+						),
+						b.IClass("bar"),
+					),
+				),
+				b.DivClass("form-inline").R(
+					b.DivClass("form-group").R(
+						b.H3().T("Menu Items"),
+					),
+					b.Button("class", "btn-add-menu-item", "title", "Add Menu Item").T("+"),
 				),
 			), // end form-inner
-			e("div", "class", "form-group").R(
-				e("input", "type", "submit", "class", "button", "value", operation).R(),
+			b.DivClass("form-group").R(
+				b.Input("type", "submit", "class", "button", "value", operation),
 			),
 		),
-		e("script", "type", "text/javascript").R(
-			t("var items = JSON.parse(`"+string(byts)+"`);"+
+		b.Script("type", "text/javascript").T(
+			"var items = JSON.parse(`"+string(byts)+"`);"+
 				`var newItem = {
 			label: "", url: "", sub_menu_slug: ""
 		};
@@ -215,7 +214,8 @@ function reorderItems() {
 }
 function hspace() {
 	return '&nbsp;&nbsp;'
-}`)))
+}`),
+	)
 
 	return b.String()
 }
