@@ -20,15 +20,14 @@ func NewModulePaymentReceipt(pres module.Presenter) (module.Module, error) {
 
 func (m ModulePaymentReceipt) Render(params map[string]map[string]string, loggerIn bool) (out string) {
 	b := element.NewBuilder()
-	e := b.Ele
-	t := b.Text
 
-	e("div", "class", "ch-module-wrapper ch-"+m.Opts.ModuleType).R(
-		e("h3", "class", "article-title").R(t("Thanks for your donation!")),
-		e("p", "class", "receipt-info").R(
-			t("Your receipt is available"),
-			e("a", "href", m.Opts.Meta, "target", "_blank").R(t(" here.")),
-			t("<br>Please save a copy for your records, and close the browser window when finished"),
+	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+		b.H3Class("article-title").T("Thanks for your donation!"),
+		b.PClass("receipt-info").R(
+			b.T("Your receipt is available"),
+			b.A("href", m.Opts.Meta, "target", "_blank").T(" here."),
+			b.Br(),
+			b.T("Please save a copy for your records, and close the browser window when finished"),
 		),
 	)
 	return b.String()

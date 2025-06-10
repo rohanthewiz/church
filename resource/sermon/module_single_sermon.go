@@ -50,24 +50,24 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 	}
 
 	b := element.NewBuilder()
-	e := b.Ele
-	t := b.Text
 
-	e("h3", "class", "sermon-title").R(t(ser.Title))
-	e("span", "class", "sermon-sub-title").R(
-		t(ser.Teacher+" - "+ser.DateTaught),
-		e("a", "class", "sermon-play-icon", "href", ser.AudioLink).R(t("download")))
-	e("div").R(t(ser.Summary))
-	e("div").R(t(ser.Body))
-	if loggedIn && len(m.Opts.ItemIds) > 0 {
-		e("a", "class", "edit-link", "href", m.GetEditURL()+
-			strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
-			e("img", "class", "edit-icon", "title", "Edit Sermon", "src", "/assets/images/edit_article.svg").R(),
-		)
-	}
-	e("div", "class", "sermon-footer").R(
-		e("span", "class", "scripture").R(t(strings.Join(ser.ScriptureRefs, ", "))),
-		e("span", "class", "categories").R(t(strings.Join(ser.Categories, ", "))),
+	b.H3Class("sermon-title").T(ser.Title)
+	b.SpanClass("sermon-sub-title").R(
+		b.Text(ser.Teacher+" - "+ser.DateTaught),
+		b.AClass("sermon-play-icon", "href", ser.AudioLink).T("download"))
+	b.Div().T(ser.Summary)
+	b.Div().T(ser.Body)
+	b.Wrap(func() {
+		if loggedIn && len(m.Opts.ItemIds) > 0 {
+			b.AClass("edit-link", "href", m.GetEditURL()+
+				strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
+				b.ImgClass("edit-icon", "title", "Edit Sermon", "src", "/assets/images/edit_article.svg").R(),
+			)
+		}
+	})
+	b.DivClass("sermon-footer").R(
+		b.SpanClass("scripture").T(strings.Join(ser.ScriptureRefs, ", ")),
+		b.SpanClass("categories").T(strings.Join(ser.Categories, ", ")),
 	)
 
 	return b.String()

@@ -56,25 +56,28 @@ func (m *ModuleSingleEvent) Render(params map[string]map[string]string, loggedIn
 
 	b := element.NewBuilder()
 
-	_ = b.WriteString("<h3>Event (" + evt.Title + `)</h3><table>
-		<tr><td>Name</td><td>` + evt.Title + `</td></tr>
-		<tr><td>Event Date</td><td>` + evt.EventDateDisplayLong + `</td></tr>
-		<tr><td>Event Time</td><td>` + evt.EventTime + `</td></tr>
-		<tr><td>Summary</td><td>` + evt.Summary + `</td></tr>
-		<tr><td>Description</td><td>` + evt.Body + `</td></tr>
-		<tr><td>Location</td><td>` + evt.Location + `</td></tr>
-		<tr><td>Contact Person</td><td>` + evt.ContactPerson + `</td></tr>
-		<tr><td>Contact Phone</td><td>` + evt.ContactPhone + `</td></tr>
-		<tr><td>Contact Email</td><td>` + evt.ContactEmail + `</td></tr>
-		<tr><td>Contact URL</td><td>` + evt.ContactURL + `</td></tr>
-		<tr><td>Categories</td><td>` + strings.Join(evt.Categories, ", ") + `</td></tr>
-		<tr><td>Updated At</td><td>` + evt.UpdatedAt + `</td></tr>
-		</table>`)
-	if loggedIn && len(m.Opts.ItemIds) > 0 {
-		b.AClass("edit-link", "href", m.GetEditURL()+
-			strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
-			b.ImgClass("edit-icon", "title", "Edit Event", "src", "/assets/images/edit_article.svg").R(),
-		)
-	}
+	b.H3().T("Event (" + evt.Title + ")")
+	b.Table().R(
+		b.Tr().R(b.Td().T("Name"), b.Td().T(evt.Title)),
+		b.Tr().R(b.Td().T("Event Date"), b.Td().T(evt.EventDateDisplayLong)),
+		b.Tr().R(b.Td().T("Event Time"), b.Td().T(evt.EventTime)),
+		b.Tr().R(b.Td().T("Summary"), b.Td().T(evt.Summary)),
+		b.Tr().R(b.Td().T("Description"), b.Td().T(evt.Body)),
+		b.Tr().R(b.Td().T("Location"), b.Td().T(evt.Location)),
+		b.Tr().R(b.Td().T("Contact Person"), b.Td().T(evt.ContactPerson)),
+		b.Tr().R(b.Td().T("Contact Phone"), b.Td().T(evt.ContactPhone)),
+		b.Tr().R(b.Td().T("Contact Email"), b.Td().T(evt.ContactEmail)),
+		b.Tr().R(b.Td().T("Contact URL"), b.Td().T(evt.ContactURL)),
+		b.Tr().R(b.Td().T("Categories"), b.Td().T(strings.Join(evt.Categories, ", "))),
+		b.Tr().R(b.Td().T("Updated At"), b.Td().T(evt.UpdatedAt)),
+	)
+	b.Wrap(func() {
+		if loggedIn && len(m.Opts.ItemIds) > 0 {
+			b.AClass("edit-link", "href", m.GetEditURL()+
+				strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
+				b.ImgClass("edit-icon", "title", "Edit Event", "src", "/assets/images/edit_article.svg").R(),
+			)
+		}
+	})
 	return b.String()
 }

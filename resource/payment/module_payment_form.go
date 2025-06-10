@@ -46,47 +46,45 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 	givingContactsMsg := fmt.Sprintf("Please contact %s with any questions.",
 		strings.Join(config.Options.GivingContacts, " or "))
 
-	builder := element.NewBuilder()
-	e := builder.Ele
-	t := builder.Text
+	b := element.NewBuilder()
 
-	e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
-		e("h2", "class", "form-title").R(t("Give Securely Online")),
-		e("p", "class", "subtitle").R(
-			t("Transactions are securely processed by Stripe payment services (https://stripe.com/about)<br>",
-				"All donations are tax-deductible. "+givingContactsMsg),
+	b.Form("action", "/payments/create", "method", "post", "id", "payment-form").R(
+		b.H2Class("form-title").T("Give Securely Online"),
+		b.PClass("subtitle").R(
+			b.T("Transactions are securely processed by Stripe payment services (https://stripe.com/about)"),
+			b.Br(),
+			b.T("All donations are tax-deductible. "+givingContactsMsg),
 		),
-		e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
-		e("div", "class", "form-row").R(
-			e("label", "for", "fullname").R(t("First and last name")),
-			e("input", "name", "fullname", "type", "text").R(),
+		b.Input("type", "hidden", "name", "csrf", "value", m.csrf).R(),
+		b.DivClass("form-row").R(
+			b.Label("for", "fullname").T("First and last name"),
+			b.Input("name", "fullname", "type", "text").R(),
 		),
-		e("div", "class", "form-row").R(
-			e("label", "for", "email").R(t("Email")),
-			e("input", "name", "email", "type", "text").R(),
+		b.DivClass("form-row").R(
+			b.Label("for", "email").T("Email"),
+			b.Input("name", "email", "type", "text").R(),
 		),
-		e("div", "class", "form-row").R(
-			e("label", "for", "card-element").R(t("Credit or Debit card")),
-			e("div", "id", "card-element").R(),
+		b.DivClass("form-row").R(
+			b.Label("for", "card-element").T("Credit or Debit card"),
+			b.Div("id", "card-element").R(),
 		),
-		e("div", "class", "form-row").R(
-			e("div", "id", "card-errors", "role", "alert").R(),
+		b.DivClass("form-row").R(
+			b.Div("id", "card-errors", "role", "alert").R(),
 		),
-		e("div", "class", "form-row").R(
-			e("label", "for", "amount").R(t("Giving amount")),
-			e("input", "name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
+		b.DivClass("form-row").R(
+			b.Label("for", "amount").T("Giving amount"),
+			b.Input("name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
 		),
-		e("div", "class", "form-row").R(
-			e("label", "for", "comment").R(t("Comment")),
-			e("textarea", "name", "comment").R(),
+		b.DivClass("form-row").R(
+			b.Label("for", "comment").T("Comment"),
+			b.TextArea("name", "comment").R(),
 		),
-		e("button", "id", "payment_form_submit_btn", "class", "submit-button").R(t("Send My Gift")),
+		b.Button("id", "payment_form_submit_btn", "class", "submit-button").T("Send My Gift"),
 
-		e("script", "type", "text/javascript").R(t(`
+		b.Script("type", "text/javascript").T(`
 			var stripe = Stripe('`+config.Options.Stripe.PubKey+`');
-			var elements = stripe.elements();`,
+			var elements = stripe.elements();`+
 			packed.ModulePaymentForm_js),
-		),
 	)
-	return builder.String()
+	return b.String()
 }
