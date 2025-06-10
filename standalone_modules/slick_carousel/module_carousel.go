@@ -57,13 +57,11 @@ func (m *ModuleSlickCarousel) Render(params map[string]map[string]string, logged
 		b := element.NewBuilder()
 
 		b.DivClass("ch-module-wrapper ch-" + ModuleTypeSlickCarousel).R(
-			func() string {
-				var str string
+			b.Wrap(func() {
 				for _, art := range articles {
 					b.DivClass("ch-carousel-item").T(art.Body)
 				}
-				return str
-			}(),
+			}),
 		)
 
 		// Todo - go ahead and move these to document head
