@@ -35,71 +35,61 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	<script type="text/javascript" src="/assets/js/sweetalert2-7.12.15.all.min.js"></script>`)
 
 	b := element.NewBuilder()
-	e := b.E
 
-	e("script", "type", "text/javascript").R(
-		b.WS(agrid.LinkCellRenderer),
-		b.WS(agrid.ConfirmlinkCellRenderer),
-		b.WS(agrid.ConfirmDelete),
+	b.Script("type", "text/javascript").R(
+		b.T(agrid.LinkCellRenderer),
+		b.T(agrid.ConfirmlinkCellRenderer),
+		b.T(agrid.ConfirmDelete),
 	)
 
-	b.WS(`</head><body class="theme-` + config.Options.Theme + `">`)
+	b.T(`</head><body class="theme-` + config.Options.Theme + `">`)
 
 	// Banner
-	b.WS(view.PgFrame.GetBanner())
+	b.T(view.PgFrame.GetBanner())
 
 	// Menu
-	e("div", "id", "header", "class", "theme-"+config.Options.Theme).R(
-		b.WS(menu.RenderNav("main-menu", loggedIn)),
-	)
+	b.DivClass("theme-"+config.Options.Theme, "id", "header").T(
+		menu.RenderNav("main-menu", loggedIn))
 
 	// Flash
-	b.WS(flsh.Render())
+	b.T(flsh.Render())
 
-	e("div", "id", "mid", "class", "theme-"+config.Options.Theme).R(
+	b.DivClass("theme-"+config.Options.Theme, "id", "mid").R(
 		// Left
-		e("div", "id", "left-side", "class", layout).R(
-			b.WS(page.Render("left", params, loggedIn)),
+		b.DivClass(layout, "id", "left-side").R(
+			b.T(page.Render("left", params, loggedIn)),
 		),
 		// Center
-		e("div", "id", "main", "class", layout).R(
-			func() (str string) { // Page edit link
+		b.DivClass(layout, "id", "main").R(
+			b.Wrap(func() {
 				if loggedIn && page.IsDynamic() {
-					e("div", "class", "page-edit").R(
-						e("a", "class", "edit-link", "href", "/admin/pages/edit/"+page.PresenterId).R(
-							e("img", "class", "edit-icon", "src", "/assets/images/edit_page.svg", "title", "Edit Page").R(),
+					b.DivClass("page-edit").R(
+						b.AClass("edit-link", "href", "/admin/pages/edit/"+page.PresenterId).R(
+							b.ImgClass("edit-icon", "src", "/assets/images/edit_page.svg", "title", "Edit Page").R(),
 						),
 					)
 				}
-				return
-			}(),
-			b.WS(page.Render("center", params, loggedIn)),
+			}),
+			b.T(page.Render("center", params, loggedIn)),
 		),
 		// Right
-		e("div", "id", "right-side", "class", layout).R(
-			b.WS(page.Render("right", params, loggedIn)),
+		b.DivClass(layout, "id", "right-side").R(
+			b.T(page.Render("right", params, loggedIn)),
 		),
 	)
 
-	e("div", "id", "footer", "class", "theme-"+config.Options.Theme).R(
-		b.WS(menu.RenderNav("footer-menu", loggedIn)),
-		b.WS(view.PgFrame.GetCopyright()),
+	b.DivClass("theme-"+config.Options.Theme, "id", "footer").R(
+		b.T(menu.RenderNav("footer-menu", loggedIn)),
+		b.T(view.PgFrame.GetCopyright()),
 	)
 
 	if page.IsAdmin {
-		b.WS(`<script src="/assets/js/jquery.serialize-object.min.js"></script>
+		b.T(`<script src="/assets/js/jquery.serialize-object.min.js"></script>
 	    <script src="/assets/js/bootstrap.js"></script>
 	    <script src="/assets/js/summernote.min.js"></script>`)
 	}
-	// b.WS(`<script type="text/javascript">
-	//	$(document).ready(function() {
-	//		$('#banner').addClass('theme-cobalt');
-	//	});
-	// </script>`)
 
-	b.WS(`</body></html>`)
+	b.T(`</body></html>`)
 
 	buffer.WriteString(b.String())
 }
-
-// assets/js/jquery-3.2.1.min.js

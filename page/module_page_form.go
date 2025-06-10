@@ -64,19 +64,7 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 	}
 
 	b := element.NewBuilder()
-	e := b.E
-	t := b.Text
 
-	// Prep some vars
-	published := b.EleNoRender("input", "type", "checkbox", "name", "published")
-	if pg.Published {
-		published.AddAttributes("checked", "checked")
-	}
-	/*	isAdmin := b.EleNoRender("input", "type", "checkbox", "name", "is_admin")
-		if pg.IsAdmin {
-			isAdmin.AddAttributes("checked", "checked")
-		}
-	*/
 	moduleByts, err := json.Marshal(pg.Modules)
 	if err != nil {
 		logger.LogErr(err, "Error marshalling modules for page form", "modules", fmt.Sprintf("%#v", pg.Modules))
@@ -94,62 +82,67 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 		return "page error - try again or contact the site administrator"
 	}
 
-	e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(t(operation+" "+m.Name.Singular)),
-		e("form", "id", "page_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
-			e("input", "type", "hidden", "id", "modules", "name", "modules", "value", "").R(),
-			e("input", "type", "hidden", "name", "page_id", "value", pg.Id).R(),
-			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
+	b.DivClass("wrapper-material-form").R(
+		b.H3("class", "page-title").T(operation+" "+m.Name.Singular),
+		b.Form("id", "page_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
+			b.Input("type", "hidden", "id", "modules", "name", "modules", "value", ""),
+			b.Input("type", "hidden", "name", "page_id", "value", pg.Id),
+			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
 
-			e("div", "class", "form-inner").R(
-				e("div", "class", "form-inline").R(
-					e("div", "class", "form-group").R(
-						e("input", "name", "page_title", "type", "text", "value", pg.Title).R(),
-						e("label", "class", "control-label", "for", "page_title").R(t("Page Title")),
-						e("i", "class", "bar").R(),
+			b.DivClass("form-inner").R(
+				b.DivClass("form-inline").R(
+					b.DivClass("form-group").R(
+						b.Input("name", "page_title", "type", "text", "value", pg.Title),
+						b.Label("class", "control-label", "for", "page_title").T("Page Title"),
+						b.IClass("bar"),
 					),
-					e("div", "class", "form-group").R(
-						e("input", "class", "form-group__slug", "name", "page_slug", "type", "text",
-							"placeholder", "will be automatically filled in", "value", pg.Slug).R(),
-						e("label", "class", "control-label form-group__label--disabled", "for", "page_slug").R(t("Page Slug (identifier)")),
-						e("i", "class", "bar").R(),
+					b.DivClass("form-group").R(
+						b.Input("class", "form-group__slug", "name", "page_slug", "type", "text",
+							"placeholder", "will be automatically filled in", "value", pg.Slug),
+						b.Label("class", "control-label form-group__label--disabled", "for", "page_slug").T("Page Slug (identifier)"),
+						b.IClass("bar"),
 					),
 				),
-				e("div", "class", "form-group").R(
-					e("input", "name", "available_positions", "type", "text", "placeholder", "combo of left,right,center - must include center",
-						"value", strings.Join(pg.AvailablePositions, ",")).R(),
-					e("label", "class", "control-label", "for", "available_positions").R(t("Available Column Positions")),
-					e("i", "class", "bar").R(),
+				b.DivClass("form-group").R(
+					b.Input("name", "available_positions", "type", "text", "placeholder", "combo of left,right,center - must include center",
+						"value", strings.Join(pg.AvailablePositions, ",")),
+					b.Label("class", "control-label", "for", "available_positions").T("Available Column Positions"),
+					b.IClass("bar"),
 				),
-				e("div", "class", "form-inline").R(
-					e("div", "class", "checkbox").R(
-						e("label").R(
-							published.R(),
-							e("i", "class", "helper").R(),
-							t("Publish Page"),
+				b.DivClass("form-inline").R(
+					b.DivClass("checkbox").R(
+						b.Label().R(
+							b.Wrap(func() {
+								if pg.Published {
+									b.Input("type", "checkbox", "name", "published", "checked", "checked")
+								} else {
+									b.Input("type", "checkbox", "name", "published")
+								}
+							}),
+							b.IClass("helper"),
+							b.Text("Publish Page"),
 						),
-						e("i", "class", "bar").R(),
+						b.IClass("bar"),
 					),
 				),
-				e("div", "class", "form-inline").R(
-					e("div", "class", "form-group").R(
-						e("h3").R(t("Modules (page components)")),
+				b.DivClass("form-inline").R(
+					b.DivClass("form-group").R(
+						b.H3().T("Modules (page components)"),
 					),
-					e("button", "class", "btn-add-module", "title", "Add Module").R(t("+")),
+					b.Button("class", "btn-add-module", "title", "Add Module").T("+"),
 				),
 			), // end form-inner
 
-			e("div", "class", "form-group").R(
-				e("input", "type", "submit", "class", "button", "value", operation).R(),
+			b.DivClass("form-group").R(
+				b.Input("type", "submit", "class", "button", "value", operation),
 			),
 		),
-		e("script", "type", "text/javascript").R(t(
-			"var modules = JSON.parse(`"+string(moduleByts)+"`);",
-			"var moduleTypes = JSON.parse(`"+string(moduleTypesByts)+"`);",
-			"var contentBys = JSON.parse(`"+string(moduleContentBys)+"`);",
-			packed.ModulePageForm_js),
-		),
+		b.Script("type", "text/javascript").T(
+			"var modules = JSON.parse(`"+string(moduleByts)+"`);"+
+				"var moduleTypes = JSON.parse(`"+string(moduleTypesByts)+"`);"+
+				"var contentBys = JSON.parse(`"+string(moduleContentBys)+"`);"+
+				packed.ModulePageForm_js),
 	)
 
-	return b.S()
+	return b.String()
 }

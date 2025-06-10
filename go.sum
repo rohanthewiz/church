@@ -104,6 +104,8 @@ github.com/relistan/rubberneck v1.3.0 h1:8aLmcCgJeveMhJxVFY4++QVr0e2KqhdiL9Ix4Jv
 github.com/relistan/rubberneck v1.3.0/go.mod h1:Rz7t6qPF++kclj7QHhPNssWP94g4bKTi1ebhnQ4gEDg=
 github.com/rohanthewiz/element v0.4.1-0.20240610014730-cae6bd9b5361 h1:K21oUBInEVl6IIfP89aVngikXS8uJvp4TN6onc87Ang=
 github.com/rohanthewiz/element v0.4.1-0.20240610014730-cae6bd9b5361/go.mod h1:yxmrFVnO9eQQ7GbjRfJgJG9u8yHUjTTxy/6ji3PNhXY=
+github.com/rohanthewiz/element v0.5.2 h1:MG0Wmpc6HvD+Pg8go2q2lL+pAX5dPaaKnO3uRp3fi6k=
+github.com/rohanthewiz/element v0.5.2/go.mod h1:cA57S9UGRSaWrMmGC1M+8QCQw/y8kgODiBB0KEwIyzo=
 github.com/rohanthewiz/gmail_send v1.0.0 h1:GxgZf6vF/iozP2YhYg3sgSWJCl2lrc/XNnhOpSRpUuY=
 github.com/rohanthewiz/gmail_send v1.0.0/go.mod h1:p8Gj8BFnaR72GK0hy3q4nuj4v2lkvrubesBeMaQu9C0=
 github.com/rohanthewiz/logger v1.2.5 h1:h9p65AqRc4+9l9blEMin3Se6Lja9+cOi7XPI5+FP5Pk=
@@ -115,6 +117,8 @@ github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e/go.mod h1:YRm0
 github.com/rohanthewiz/serr v1.0.0-rc.3/go.mod h1:4LFlRtUd/2j5PXgWWE9ibW/fVlJSH1acBDwn2pDcIRc=
 github.com/rohanthewiz/serr v1.2.0 h1:zBb2ns/a9e78jbqbbb7knhShpUind7FkrlKj6vghNgQ=
 github.com/rohanthewiz/serr v1.2.0/go.mod h1:WYBghPccoTAUknotbanGZzWnIFREXYI5ULwf5sjznxY=
+github.com/rohanthewiz/serr v1.2.2 h1:uFQXy4Gzf0ZAfdGvUxRmHJbGcFAjYnHBL3k2HiCvgeM=
+github.com/rohanthewiz/serr v1.2.2/go.mod h1:WYBghPccoTAUknotbanGZzWnIFREXYI5ULwf5sjznxY=
 github.com/sirupsen/logrus v1.9.0 h1:trlNQbNUG3OdDrDil03MCb1H2o9nJ1x4/5LYw7byDE0=
 github.com/sirupsen/logrus v1.9.0/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=

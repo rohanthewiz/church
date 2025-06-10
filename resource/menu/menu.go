@@ -31,7 +31,7 @@ type MenuItem struct {
 // And render recursively
 func RenderNav(slug string, loggedIn bool) string {
 	b := element.NewBuilder()
-	b.Ele("nav", "id", slug).R(b.WS(buildMenu(slug, loggedIn)))
+	b.Nav("id", slug).T(buildMenu(slug, loggedIn))
 	return b.String()
 }
 
@@ -43,68 +43,64 @@ func buildMenu(slug string, loggedIn bool) string {
 		return ""
 	}
 
-	sb := &strings.Builder{}
-	w := sb.WriteString
+	b := element.NewBuilder()
 
-	w("<ul>")
-	// logger.LogAsync("Debug", "In buildMenu", "Menu definition", fmt.Sprintf("%#v\n", menuDef))
+	b.Ul().R(
+		b.Wrap(func() {
+			// logger.LogAsync("Debug", "In buildMenu", "Menu definition", fmt.Sprintf("%#v\n", menuDef))
 
-	currentPage := "abc" // todo - set this in the menu edit interface
+			currentPage := "abc" // todo - set this in the menu edit interface
 
-	for _, item := range menuDef.Items {
-		if strings.TrimSpace(item.SubMenuSlug) != "" { // we have a submenu specified
-			submenuDef, err := menuDefFromSlug(item.SubMenuSlug)
-			if err != nil {
-				logger.LogErr(err, "Could not obtain a menu def from slug", "slug",
-					item.SubMenuSlug)
+			for _, item := range menuDef.Items {
+				if strings.TrimSpace(item.SubMenuSlug) != "" { // we have a submenu specified
+					submenuDef, err := menuDefFromSlug(item.SubMenuSlug)
+					if err != nil {
+						logger.LogErr(err, "Could not obtain a menu def from slug", "slug",
+							item.SubMenuSlug)
+					}
+					if !loggedIn && submenuDef.IsAdmin {
+						continue
+					} // authr
+
+					if strings.ToLower(item.Label) == currentPage {
+						b.LiClass("menuitem-active").R(
+							b.A("href", "#").T(item.Label),
+							b.Text(buildMenu(item.SubMenuSlug, loggedIn)),
+						)
+					} else {
+						b.Li().R(
+							b.A("href", "#").T(item.Label),
+							b.Text(buildMenu(item.SubMenuSlug, loggedIn)),
+						)
+					}
+				} else {
+					if strings.ToLower(item.Label) == currentPage {
+						b.LiClass("menuitem-active").R(
+							b.A("href", item.Url).T(item.Label),
+						)
+					} else {
+						b.Li().R(
+							b.A("href", item.Url).T(item.Label),
+						)
+					}
+				}
 			}
-			if !loggedIn && submenuDef.IsAdmin {
-				continue
-			} // authr
 
-			if strings.ToLower(item.Label) == currentPage {
-				w(`<li class="menuitem-active">`)
-			} else {
-				w(`<li>`)
+			if slug == "footer-menu" {
+				if loggedIn {
+					b.Li().R(
+						b.A("href", "/logout").T("Logout"),
+					)
+				} else {
+					b.Li().R(
+						b.A("href", "/login").T("Login"),
+					)
+				}
 			}
+		}),
+	)
 
-			w(`<a href="#">`)
-			w(item.Label)
-			w(`</a>`)
-			w(buildMenu(item.SubMenuSlug, loggedIn))
-		} else {
-			if strings.ToLower(item.Label) == currentPage {
-				w(`<li class="menuitem-active">`)
-			} else {
-				w(`<li>`)
-			}
-			w(`<a href="`)
-			w(item.Url)
-			w(`">`)
-			w(item.Label)
-			w(`</a>`)
-		}
-
-		w(`</li>`)
-	}
-
-	e := element.New
-
-	if slug == "footer-menu" {
-		if loggedIn {
-			e(sb, "li").R(
-				e(sb, "a", "href", "/logout").R(w("Logout")),
-			)
-		} else {
-			e(sb, "li").R(
-				e(sb, "a", "href", "/login").R(w("Login")),
-			)
-		}
-	}
-
-	w("</ul>")
-
-	return sb.String()
+	return b.String()
 }
 
 // Menus are built from the top down

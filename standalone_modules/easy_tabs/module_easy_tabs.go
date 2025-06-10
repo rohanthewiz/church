@@ -63,30 +63,27 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 		for i, art := range articles {
 			ids[i] = stringops.SlugWithRandomString(art.Id)
 		}
-		b := element.NewBuilder()
-		e := b.E
-		t := b.Text
 
-		e("div", "id", modId, "class", "ch-module-wrapper ch-"+ModuleTypeEasyTabs).R(
-			e("ul", "class", "eztabs").R(
-				func() (str string) {
+		b := element.NewBuilder()
+
+		b.DivClass("ch-module-wrapper ch-"+ModuleTypeEasyTabs, "id", modId).R(
+			b.UlClass("eztabs").R(
+				b.Wrap(func() {
 					for i, art := range articles {
-						e("li").R(
-							e("a", "href", "#"+ids[i]).R(t(art.Summary)), // Put the tab id in the article summary
+						b.Li().R(
+							b.A("href", "#"+ids[i]).T(art.Summary), // Put the tab id in the article summary
 						)
 					}
 					return
-				}(),
+				}),
 			),
-			func() (str string) {
+			b.Wrap(func() {
 				for i, art := range articles {
-					e("div", "class", ids[i]).R(t(art.Body))
+					b.DivClass(ids[i]).T(art.Body)
 				}
-				return
-			}(),
+			}),
 		)
-		e("script", "type", "text/javascript").R(
-			t(`(function ($) {
+		b.Script("type", "text/javascript").T(`(function ($) {
             $.fn.easyTabs = function (option) {
                 var param = jQuery.extend({fadeSpeed: "fast", defaultContent: 1, activeClass: 'active'}, option);
                 $(this).each(function () {
@@ -134,10 +131,9 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
                 });
             }
         })(jQuery);`,
-				`$(document).ready(function() {
+			`$(document).ready(function() {
 			$('.ch-easy-tabs').easyTabs({defaultContent:1});
-		});`),
-		)
+		});`)
 	}
 
 	return

@@ -1,10 +1,11 @@
 package article
 
 import (
-	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/logger"
-	"bytes"
 	"fmt"
+
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
+	"github.com/rohanthewiz/logger"
 )
 
 const ModuleTypeArticlesBlog = "articles_blog"
@@ -20,7 +21,7 @@ func NewModuleArticlesBlog(pres module.Presenter) (module.Module, error) {
 
 	// Work out local condition
 	cond := "1 = 1"
-	if !mod.Opts.IsAdmin && !mod.Opts.ShowUnpublished{
+	if !mod.Opts.IsAdmin && !mod.Opts.ShowUnpublished {
 		cond = "published = true"
 	}
 	// merge with any incoming condition
@@ -38,40 +39,43 @@ func (m ModuleArticlesBlog) getData() ([]Presenter, error) {
 		//fmt.Println("*|* About to run PresentersFromIds", "m.Opts.ItemIds", m.Opts.ItemIds)
 		return PresentersFromIds(m.Opts.ItemIds)
 	}
-	return QueryArticles(m.Opts.Condition, "updated_at " + m.Order(), m.Opts.Limit, m.Opts.Offset)
+	return QueryArticles(m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
-
 func (m *ModuleArticlesBlog) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to this module
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to this module
 		m.SetLimitAndOffset(opts)
 	}
 
 	articles, err := m.getData()
 	if err != nil {
-		logger.LogErr(err, "Error obtaining data in ArticlesBlog module", "module_options",  fmt.Sprintf("%#v", m.Opts))
+		logger.LogErr(err, "Error obtaining data in ArticlesBlog module", "module_options", fmt.Sprintf("%#v", m.Opts))
 		return ""
 	}
 
-	out := new(bytes.Buffer)
-	ows := out.WriteString // a little abbrev here
-	ows(`<div class="ch-module-wrapper ch-`); ows(m.Opts.ModuleType)
-	ows(`"><div class="ch-module-heading">`);
-	ows(`</div><div class="ch-module-body">`)
-	if len(articles) < 1 {
-		ows(`<p>No Articles</p>`)
-	} else {
-		ows(`<div class="title">`); ows(m.Opts.Title); ows(`</div>`)
-		for _, art := range articles {
-			ows(`<div class="article"><div class="article__title">`)
-			ows(`<a href="/`)
-			ows(m.Opts.ItemsURLPath + "/" + art.Id); ows(`">`)
-			ows(art.Title); ows(`</a></div><div>`)
-			ows(art.Summary); ows("</div></div>")
-		}
-	}
-	m.RenderPagination(len(articles))
-	ows("</div></div>")
+	b := element.NewBuilder()
 
-	return out.String()
+	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+		b.DivClass("ch-module-heading").R(),
+		b.DivClass("ch-module-body").R(
+			b.Wrap(func() {
+				if len(articles) < 1 {
+					b.P().T("No Articles")
+				} else {
+					b.DivClass("title").T(m.Opts.Title)
+					for _, art := range articles {
+						b.DivClass("article").R(
+							b.DivClass("article__title").R(
+								b.A("href", "/"+m.Opts.ItemsURLPath+"/"+art.Id).T(art.Title),
+							),
+							b.Div().T(art.Summary),
+						)
+					}
+				}
+				m.RenderPagination(len(articles))
+			}),
+		),
+	)
+
+	return b.String()
 }

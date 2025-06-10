@@ -181,7 +181,7 @@ func UpsertSermon(c echo.Context) error {
 		msg = "Updated"
 	}
 
-	if config.Options.FTP.Main.Enabled && fileUploaded { // Transfer to sermon archive
+	if config.Options.IDrive.Enabled && fileUploaded { // Transfer to sermon archive
 		go func() {
 			time.Sleep(cloudUploadDelay)
 

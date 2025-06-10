@@ -52,24 +52,22 @@ func (m *ModuleSingleArticle) Render(params map[string]map[string]string, logged
 		klass += " " + m.Opts.CustomClass
 	}
 	b := element.NewBuilder()
-	e := b.E
-	t := b.Text
-	e("div", "class", klass).R(
-		e("h3", "class", "article-title").R(t(art.Title)),
-		e("p").R(t(art.Summary)),
-		e("p").R(t(art.Body)),
-		func() (str string) {
+	b.DivClass(klass).R(
+		b.H3Class("article-title").T(art.Title),
+		b.P().T(art.Summary),
+		b.P().T(art.Body),
+		b.Wrap(func() {
 			// if len(art.Categories) > 0 {
 			//	str = e("div", "class", "categories").R(strings.Join(art.Categories, ", "))
 			// }
 			if loggedIn && len(m.Opts.ItemIds) > 0 {
-				e("a", "class", "edit-link", "href", m.GetEditURL()+
+				b.AClass("edit-link", "href", m.GetEditURL()+
 					strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
-					e("img", "class", "edit-icon", "title", "Edit Article", "src", "/assets/images/edit_article.svg").R(),
+					b.ImgClass("edit-icon", "title", "Edit Article", "src", "/assets/images/edit_article.svg").R(),
 				)
 			}
 			return
-		}(),
+		}),
 	)
-	return b.S()
+	return b.String()
 }

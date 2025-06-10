@@ -27,16 +27,10 @@ func (f pageFrame) GetBanner() (out string) {
 	}
 
 	b := element.NewBuilder()
-	e := b.Ele
-	e("div", "id", "banner", "class", "theme-"+config.Options.Theme).R(
-		e("div", "id", "banner-wrapper").R(
-			b.WS(config.Options.BannerInnerHTML),
-		),
-		e("div", "id", "banner-extension").R(
-			b.WS(config.Options.BannerExt),
-		),
+	b.DivClass("theme-"+config.Options.Theme, "id", "banner").R(
+		b.Div("id", "banner-wrapper").T(config.Options.BannerInnerHTML),
+		b.Div("id", "banner-extension").T(config.Options.BannerExt),
 	)
-
 	return b.String()
 }
 
@@ -47,8 +41,8 @@ func (f pageFrame) GetCopyright() (out string) {
 	} // cached
 
 	b := element.NewBuilder()
-	b.Ele("div", "id", "copyright").R(
-		b.WS("&copy; " + time.Now().Format("2006") + " " + config.Options.CopyrightOwner),
+	b.Div("id", "copyright").R(
+		b.T("&copy; " + time.Now().Format("2006") + " " + config.Options.CopyrightOwner),
 	)
 	return b.String()
 }
