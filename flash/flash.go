@@ -1,18 +1,19 @@
 package flash
 
 import (
-	"encoding/json"
 	"encoding/base64"
+	"encoding/json"
+
 	"github.com/labstack/echo"
-	"bytes"
 	"github.com/rohanthewiz/church/resource/cookie"
+	"github.com/rohanthewiz/element"
 )
 
 const flash_cookie_name = "flash_cookie"
 
 type Flash struct {
-	Info string `json:"info"`
-	Warn string `json:"warn"`
+	Info  string `json:"info"`
+	Warn  string `json:"warn"`
 	Error string `json:"error"`
 }
 
@@ -55,25 +56,35 @@ func Get(c echo.Context) (*Flash, error) {
 }
 
 func (f Flash) Render() string {
-	out := new(bytes.Buffer)
-	ows := out.WriteString
-	if f.Info != "" || f.Warn != "" || f.Error != "" {
-		ows(`<div id="flash" onclick="this.style.display = 'none';" title="Click to close">`)
-		if f.Info != "" {
-			ows(`<div class="flash-info">`)
-			ows(f.Info)
-		}
-		if f.Warn != "" {
-			ows(`<div class="flash-warn">`)
-			ows(f.Warn)
-		}
-		if f.Error != "" {
-			ows(`<div class="flash-error">`)
-			ows(f.Error)
-		}
-		ows(`<div class="flash-close"> <b>X</b></div>`)
-		ows(`</div></div>`)
+	if f.Info == "" && f.Warn == "" && f.Error == "" {
+		return ""
 	}
 
-	return out.String()
+	b := element.NewBuilder()
+
+	b.Div("id", "flash", "onclick", "this.style.display = 'none';", "title", "Click to close").R(
+		b.Wrap(func() {
+			flashMessages := []struct {
+				message   string
+				flashType string
+			}{
+				{f.Info, "flash-info"},
+				{f.Warn, "flash-warn"},
+				{f.Error, "flash-error"},
+			}
+
+			for _, flash := range flashMessages {
+				if flash.message != "" {
+					b.DivClass(flash.flashType).R(
+						b.T(flash.message),
+						b.DivClass("flash-close").R(
+							b.B().T("X"),
+						),
+					)
+				}
+			}
+		}),
+	)
+
+	return b.String()
 }
