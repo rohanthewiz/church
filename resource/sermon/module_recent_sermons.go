@@ -68,7 +68,15 @@ func (m *ModuleRecentSermons) Render(params map[string]map[string]string, logged
 							b.Tr().R(
 								b.Td().T(ser.DateTaughtShort),
 								b.Td().R(b.A("href", "/sermons/"+ser.Id).T(ser.Title)),
-								b.Td().R(b.AClass("sermon-play-icon", "href", ser.AudioLink).T(html.TriangleRightSmall)),
+								b.Td().R(
+									b.Wrap(func() {
+										if ser.AudioLink != "" {
+											b.AClass("sermon-play-icon", "href", ser.AudioLink).T(html.TriangleRightSmall)
+										} else {
+											b.T("")
+										}
+									}),
+								),
 							)
 						}
 					}
