@@ -20,6 +20,7 @@ import (
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/sermon_controller"
 	"github.com/rohanthewiz/church/user_controller"
+	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
 )
 
@@ -39,6 +40,20 @@ func Serve() {
 	e.Static("/assets", "dist")
 	e.Static("/media", "sermons") // TODO - path_from_proj_root(config.Options.IDrive.LocalSermonsDir)
 	e.GET("/", page_controller.HomePage)
+
+	e.GET("/debug/set", func(c echo.Context) error {
+		element.DebugSet()
+		return c.HTMLBlob(http.StatusOK, []byte("<h3>Debug mode set.</h3> <a href='/'>Home</a>"))
+	})
+
+	e.GET("/debug/show", func(c echo.Context) error {
+		return c.HTMLBlob(http.StatusOK, []byte(element.DebugShow()))
+	})
+
+	e.GET("/debug/clear", func(c echo.Context) error {
+		element.DebugClear()
+		return c.HTMLBlob(http.StatusOK, []byte("<h3>Debug mode is off.</h3> <a href='/'>Home</a>"))
+	})
 
 	e.GET("/login", authctlr.LoginHandler)
 	e.GET("/logout", authctlr.LogoutHandler)
