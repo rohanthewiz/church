@@ -16,7 +16,7 @@ require (
 	github.com/lib/pq v1.0.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
-	github.com/rohanthewiz/element v0.5.2
+	github.com/rohanthewiz/element v0.5.3-0.20250616033411-bce519ecf7f1
 	github.com/rohanthewiz/gmail_send v1.0.0
 	github.com/rohanthewiz/logger v1.2.5
 	github.com/rohanthewiz/roftp v0.2.0

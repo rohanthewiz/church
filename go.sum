@@ -106,6 +106,8 @@ github.com/rohanthewiz/element v0.4.1-0.20240610014730-cae6bd9b5361 h1:K21oUBInE
 github.com/rohanthewiz/element v0.4.1-0.20240610014730-cae6bd9b5361/go.mod h1:yxmrFVnO9eQQ7GbjRfJgJG9u8yHUjTTxy/6ji3PNhXY=
 github.com/rohanthewiz/element v0.5.2 h1:MG0Wmpc6HvD+Pg8go2q2lL+pAX5dPaaKnO3uRp3fi6k=
 github.com/rohanthewiz/element v0.5.2/go.mod h1:cA57S9UGRSaWrMmGC1M+8QCQw/y8kgODiBB0KEwIyzo=
+github.com/rohanthewiz/element v0.5.3-0.20250616033411-bce519ecf7f1 h1:GkkKwZsvI/avdWI6A55Nq0LPrz2ZpftrmcHfS1wxqkI=
+github.com/rohanthewiz/element v0.5.3-0.20250616033411-bce519ecf7f1/go.mod h1:cA57S9UGRSaWrMmGC1M+8QCQw/y8kgODiBB0KEwIyzo=
 github.com/rohanthewiz/gmail_send v1.0.0 h1:GxgZf6vF/iozP2YhYg3sgSWJCl2lrc/XNnhOpSRpUuY=
 github.com/rohanthewiz/gmail_send v1.0.0/go.mod h1:p8Gj8BFnaR72GK0hy3q4nuj4v2lkvrubesBeMaQu9C0=
 github.com/rohanthewiz/logger v1.2.5 h1:h9p65AqRc4+9l9blEMin3Se6Lja9+cOi7XPI5+FP5Pk=
