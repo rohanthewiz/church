@@ -164,7 +164,7 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 			}),
 		),
 		b.DivClass("ch-sermons-list-wrapper").R(
-			b.DivClass("sermons-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`), // Todo make height -ve param into a config
+			b.DivClass("sermons-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(), // Todo make height -ve param into a config
 			b.Script("type", "text/javascript").T(
 				jsConvertColumnDefs+jsConvertRowData+gridOptions+ // sermonsListRenderer,
 					`$(document).ready(function() {`+scriptBody+`});`),
