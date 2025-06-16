@@ -156,7 +156,7 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 			}),
 		),
 		b.DivClass("list-wrapper").R(
-			b.DivClass("events-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`),
+			b.DivClass("events-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
 			b.Script("type", "text/javascript").T(
 				jsConvertColumnDefs+jsConvertRowData+gridOptions+ // eventsListRenderer,
 					`$(document).ready(function() {`+scriptBody+`});`),

@@ -152,7 +152,7 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 			}),
 		),
 		b.DivClass("list-wrapper").R(
-			b.DivClass("articles-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`),
+			b.DivClass("articles-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
 			b.Script("type", "text/javascript").T(
 				jsConvertColumnDefs+jsConvertRowData+contentRenderer+gridOptions+
 					`$(document).ready(function() {`+scriptBody+`});`),
