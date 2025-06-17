@@ -55,6 +55,12 @@ func Serve() {
 		return c.HTMLBlob(http.StatusOK, []byte("<h3>Debug mode is off.</h3> <a href='/'>Home</a>"))
 	})
 
+	e.GET("/debug/clear-issues", func(c echo.Context) error {
+		element.DebugClearIssues()
+		return c.HTMLBlob(http.StatusOK,
+			[]byte("<h3>Issues cleared (debug mode still active).</h3> <a href='/'>Home</a> | <a href='/debug/show'>View Debug</a>"))
+	})
+
 	e.GET("/login", authctlr.LoginHandler)
 	e.GET("/logout", authctlr.LogoutHandler)
 	e.POST("/auth", authctlr.AuthHandler) // Attempt login
