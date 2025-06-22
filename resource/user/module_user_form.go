@@ -71,13 +71,13 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 					b.Input("class", "firstname", "name", "firstname", "type", "text",
 						"required", "required", "value", usr.Firstname), // we are using 'required' here to drive `input:valid` selector
 					b.Label("class", "control-label", "for", "firstname").T("Firstname"),
-					b.IClass("bar"),
+					b.IClass("bar").R(),
 				),
 				b.DivClass("form-group").R(
 					b.Input("class", "lastname", "name", "lastname", "type", "text",
 						"required", "required", "value", usr.Lastname),
 					b.Label("class", "control-label", "for", "lastname").T("Last Name"),
-					b.IClass("bar"),
+					b.IClass("bar").R(),
 				),
 			),
 			b.DivClass("form-inline").R(
@@ -85,13 +85,13 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 					b.Input("class", "username", "name", "username", "type", "text",
 						"required", "required", "value", usr.Username),
 					b.Label("class", "control-label", "for", "username").T("Username"),
-					b.IClass("bar"),
+					b.IClass("bar").R(),
 				),
 				b.DivClass("form-group").R(
 					b.Input("class", "email_address", "name", "email_address", "type", "text",
 						"required", "required", "value", usr.EmailAddress),
 					b.Label("class", "control-label", "for", "email_address").T("Email Address"),
-					b.IClass("bar"),
+					b.IClass("bar").R(),
 				),
 			),
 			b.DivClass("form-inline").R(
@@ -99,7 +99,7 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 					b.Input("class", "role", "name", "role", "type", "text",
 						"required", "required", "value", strconv.Itoa(usr.Role)),
 					b.Label("class", "control-label", "for", "role").T("Role (1 - admin, 5 - publisher, 7 - editor, 9 - registered_user)"),
-					b.IClass("bar"),
+					b.IClass("bar").R(),
 				),
 				b.DivClass("checkbox").R(
 					b.Label().R(
@@ -110,27 +110,27 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 								b.Input("type", "checkbox", "class", "enabled", "name", "enabled")
 							}
 						}),
-						b.IClass("helper"),
-						b.Text("User enabled"),
+						b.IClass("helper").R(),
+						b.T("User enabled"),
 					),
-					b.IClass("bar"),
+					b.IClass("bar").R(),
 				),
 			),
 			b.DivClass("form-group").R(
 				b.Input("class", "password", "name", "password", "type", "password", "value", ""),
 				b.Label("class", "control-label", "for", "password").T("Password for new user or password change"),
-				b.IClass("bar"),
+				b.IClass("bar").R(),
 			),
 			b.DivClass("form-group").R(
 				b.Input("class", "password_confirm", "name", "password_confirm", "type", "password",
 					"value", ""),
 				b.Label("class", "control-label", "for", "password_confirm").T("Password Confirmation"),
-				b.IClass("bar"),
+				b.IClass("bar").R(),
 			),
 			b.DivClass("form-group bootstrap-wrapper").R(
 				b.Div("id", "summer1").T(usr.Summary),
 				b.TextArea("id", "user_summary", "name", "user_summary", "type", "text", "value", "",
-					"style", "display:none"),
+					"style", "display:none").R(),
 				b.Label("class", "control-label", "for", "user_summary").T("Summary"),
 			),
 
