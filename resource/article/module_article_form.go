@@ -69,26 +69,26 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 				b.Input("name", "article_title", "type", "text",
 					"required", "required", "value", art.Title), // we are using 'required' here to drive `input:valid` selector
 				b.Label("class", "control-label", "for", "article_title").T("Article Title"),
-				b.IClass("bar"),
+				b.IClass("bar").T(""),
 			),
 			b.DivClass("form-group bootstrap-wrapper").R(
 				b.Div("id", "summer1").T(art.Summary),
 				b.TextArea("id", "article_summary", "name", "article_summary", "type", "text", "value", "",
-					"style", "display:none"), // this will hold the returned editor contents
+					"style", "display:none").T(""), // this will hold the returned editor contents
 				b.Label("class", "control-label", "for", "article_summary").T("Summary / Intro"),
 				// no bar if content editable //b.IClass("bar"),
 			),
 			b.DivClass("form-group bootstrap-wrapper").R(
 				b.Div("id", "summer2").T(art.Body),
 				b.TextArea("id", "article_body", "name", "article_body", "type", "text", "value", "",
-					"style", "display:none"),
+					"style", "display:none").T(""),
 				b.Label("class", "control-label", "for", "article_body").T("Article Body"),
 			),
 			b.DivClass("form-group").R(
 				b.Input("type", "text", "name", "categories",
 					"value", strings.Join(art.Categories, ", ")),
 				b.Label("class", "control-label", "for", "categories").T("Categories"),
-				b.IClass("bar"),
+				b.IClass("bar").T(""),
 			),
 			b.DivClass("checkbox").R(
 				b.Label().R(
@@ -99,10 +99,10 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 							b.Input("type", "checkbox", "class", "enabled", "name", "published")
 						}
 					}),
-					b.IClass("helper"),
+					b.IClass("helper").T(""),
 					b.Text("Published"),
 				),
-				b.IClass("bar"),
+				b.IClass("bar").T(""),
 			),
 
 			b.DivClass("form-group").R(
