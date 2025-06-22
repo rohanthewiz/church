@@ -56,7 +56,7 @@ func (m *ModuleRecentArticles) Render(params map[string]map[string]string, logge
 
 	b := element.NewBuilder()
 
-	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+	b.DivClass("ch-module-wrapper ch-" + m.Opts.ModuleType).R(
 		b.DivClass("ch-module-heading ch-clickable-heading", "onclick", "window.location = '/articles'").T(m.Opts.Title),
 		b.DivClass("ch-module-body").R(
 			b.Table().R(
