@@ -127,7 +127,7 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 			}),
 		),
 		b.DivClass("list-wrapper").R(
-			b.DivClass("list-grid ag-theme-material", "style", `width: 98vw; height: 780px`),
+			b.DivClass("list-grid ag-theme-material", "style", `width: 98vw; height: 780px`).R(),
 			b.Script("type", "text/javascript").T(
 				jsConvertColumnDefs+jsConvertRowData+gridOptions+
 					`$(document).ready(function() {`+scriptBody+`});`),
