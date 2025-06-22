@@ -120,7 +120,7 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 								}
 							}),
 							b.IClass("helper").R(),
-							b.Text("Publish Page"),
+							b.T("Publish Page"),
 						),
 						b.IClass("bar").R(),
 					),
