@@ -82,13 +82,13 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 					b.DivClass("form-group").R(
 						b.Input("name", "menu_title", "type", "text", "value", mnu.Title),
 						b.Label("class", "control-label", "for", "menu_title").T("Menu Title"),
-						b.IClass("bar"),
+						b.IClass("bar").R(),
 					),
 					b.DivClass("form-group").R(
 						b.Input("class", "form-group__slug", "name", "menu_slug", "type", "text",
 							"placeholder", "slug is automatically generated on save", "value", mnu.Slug),
 						b.Label("class", "control-label form-group__label--disabled", "for", "menu_slug").T("Menu Slug"),
-						b.IClass("bar"),
+						b.IClass("bar").R(),
 					),
 				),
 				b.DivClass("form-inline").R(
@@ -101,10 +101,10 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 									b.Input("type", "checkbox", "name", "published")
 								}
 							}),
-							b.IClass("helper"),
-							b.Text("Published"),
+							b.IClass("helper").R(),
+							b.T("Published"),
 						),
-						b.IClass("bar"),
+						b.IClass("bar").R(),
 					),
 					b.DivClass("checkbox").R(
 						b.Label().R(
@@ -115,10 +115,10 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 									b.Input("type", "checkbox", "name", "is_admin")
 								}
 							}),
-							b.IClass("helper"),
-							b.Text("For Admin Only"),
+							b.IClass("helper").R(),
+							b.T("For Admin Only"),
 						),
-						b.IClass("bar"),
+						b.IClass("bar").R(),
 					),
 				),
 				b.DivClass("form-inline").R(

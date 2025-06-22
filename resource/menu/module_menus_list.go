@@ -127,7 +127,7 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 
 	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		b.DivClass("ch-module-heading").R(
-			b.Text(m.Opts.Title),
+			b.T(m.Opts.Title),
 			b.Wrap(func() {
 				if m.Opts.IsAdmin {
 					b.AClass("btn-add", "href", newPath, "title", "Add Menu").T("+")
@@ -135,7 +135,7 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 			}),
 		),
 		b.DivClass("list-wrapper").R(
-			b.DivClass("menu-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`),
+			b.DivClass("menu-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
 			b.Script("type", "text/javascript").T(
 				jsConvertColumnDefs+jsConvertRowData+gridOptions+
 					`$(document).ready(function() {`+scriptBody+`});`),
