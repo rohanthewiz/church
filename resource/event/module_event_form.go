@@ -73,12 +73,12 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 				b.DivClass("form-group").R(
 					b.Input("name", "event_title", "type", "text", "required", "required", "value", evt.Title),
 					b.Label("class", "control-label", "for", "event_title").T("Event Title"),
-					b.IClass("bar"),
+					b.IClass("bar").T(""),
 				),
 				b.DivClass("form-group").R(
 					b.Input("name", "event_location", "type", "text", "required", "required", "value", evt.Location),
 					b.Label("class", "control-label", "for", "event_location").T("Location"),
-					b.IClass("bar"),
+					b.IClass("bar").T(""),
 				),
 			),
 			b.DivClass("form-inline").R(
@@ -98,26 +98,26 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 					b.Input("name", "contact_person", "type", "text", "placeholder", "(optional)", "value",
 						evt.ContactPerson),
 					b.Label("class", "control-label", "for", "contact_person").T("Contact Person"),
-					b.IClass("bar"),
+					b.IClass("bar").T(""),
 				),
 				b.DivClass("form-group").R(
 					b.Input("name", "categories", "type", "text", "value", strings.Join(evt.Categories, ", "),
 						"placeholder", "(optional)"),
 					b.Label("class", "control-label", "for", "categories").T("Tags (comma separated)"),
-					b.IClass("bar"),
+					b.IClass("bar").T(""),
 				),
 			),
 			b.DivClass("form-inline").R(
 				b.DivClass("form-group").R(
 					b.Input("name", "contact_email", "type", "text", "value", evt.ContactEmail),
 					b.Label("class", "control-label", "for", "contact_email").T("Contact Email"),
-					b.IClass("bar"),
+					b.IClass("bar").T(""),
 				),
 				b.DivClass("form-group").R(
 					b.Input("name", "contact_phone", "type", "text", "placeholder", "(optional)", "value",
 						evt.ContactPhone),
 					b.Label("class", "control-label", "for", "contact_phone").T("Contact Phone"),
-					b.IClass("bar"),
+					b.IClass("bar").T(""),
 				),
 				// b.DivClass("form-group").R(
 				// 	b.Input("name", "contact_url", "type", "text", "placeholder", "(optional)", "value",
@@ -129,13 +129,13 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 			b.DivClass("form-group bootstrap-wrapper").R(
 				b.Div("id", "summer1").T(evt.Summary),
 				b.TextArea("id", "event_summary", "name", "event_summary", "type", "text", "value", "",
-					"style", "display:none"),
+					"style", "display:none").T(""),
 				b.Label("class", "control-label", "for", "event_summary").T("Summary"),
 			),
 			b.DivClass("form-group bootstrap-wrapper").R(
 				b.Div("id", "summer2").T(evt.Body),
 				b.TextArea("id", "event_body", "name", "event_body", "type", "text", "value", "",
-					"style", "display:none"),
+					"style", "display:none").T(""),
 				b.Label("class", "control-label", "for", "event_body").T("Event Body"),
 			),
 
@@ -148,10 +148,10 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 							b.Input("type", "checkbox", "name", "published")
 						}
 					}),
-					b.IClass("helper"),
+					b.IClass("helper").T(""),
 					b.Text("Published"),
 				),
-				b.IClass("bar"),
+				b.IClass("bar").T(""),
 			),
 
 			b.DivClass("form-group").R(
