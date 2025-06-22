@@ -65,12 +65,12 @@ func buildMenu(slug string, loggedIn bool) string {
 					if strings.ToLower(item.Label) == currentPage {
 						b.LiClass("menuitem-active").R(
 							b.A("href", "#").T(item.Label),
-							b.Text(buildMenu(item.SubMenuSlug, loggedIn)),
+							b.T(buildMenu(item.SubMenuSlug, loggedIn)),
 						)
 					} else {
 						b.Li().R(
 							b.A("href", "#").T(item.Label),
-							b.Text(buildMenu(item.SubMenuSlug, loggedIn)),
+							b.T(buildMenu(item.SubMenuSlug, loggedIn)),
 						)
 					}
 				} else {

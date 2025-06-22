@@ -148,7 +148,7 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 
 	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		b.DivClass("ch-module-heading").R(
-			b.Text(m.Opts.Title),
+			b.T(m.Opts.Title),
 			b.Wrap(func() {
 				if m.Opts.IsAdmin {
 					b.AClass("btn-add", "href", newPath, "title", "Add Events").T("+")

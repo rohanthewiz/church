@@ -119,7 +119,7 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 
 	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
 		b.DivClass("ch-module-heading").R(
-			b.Text(m.Opts.Title),
+			b.T(m.Opts.Title),
 			b.Wrap(func() {
 				if m.Opts.IsAdmin {
 					b.A("class", "btn-add", "href", newPath, "title", "Add Page").T("+")

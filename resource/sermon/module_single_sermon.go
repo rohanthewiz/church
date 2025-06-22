@@ -53,7 +53,7 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 
 	b.H3Class("sermon-title").T(ser.Title)
 	b.SpanClass("sermon-sub-title").R(
-		b.Text(ser.Teacher+" - "+ser.DateTaught),
+		b.T(ser.Teacher+" - "+ser.DateTaught),
 		b.AClass("sermon-play-icon", "href", ser.AudioLink).T("download"))
 	b.Div().T(ser.Summary)
 	b.Div().T(ser.Body)

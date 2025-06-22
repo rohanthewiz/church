@@ -149,7 +149,7 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 						}
 					}),
 					b.IClass("helper").T(""),
-					b.Text("Published"),
+					b.T("Published"),
 				),
 				b.IClass("bar").T(""),
 			),

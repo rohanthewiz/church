@@ -100,7 +100,7 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 						}
 					}),
 					b.IClass("helper").T(""),
-					b.Text("Published"),
+					b.T("Published"),
 				),
 				b.IClass("bar").T(""),
 			),
