@@ -118,8 +118,8 @@ func findSermonBySlug(slug string) (*models.Sermon, error) {
 }
 
 func QuerySermons(condition, order string, limit, offset int64) (presenters []Presenter, err error) {
-	Log("Debug", "Sermon query", "condition:", condition, " order:", order,
-		" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
+	// Log("Debug", "Sermon query", "condition:", condition, " order:", order,
+	//	" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
 	dbH, err := db.Db()
 	if err != nil {
 		return

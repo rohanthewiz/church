@@ -55,7 +55,7 @@ func UpsertPayment(c echo.Context) error {
 	fullname := c.FormValue("fullname")
 	email := c.FormValue("email")
 	comment := c.FormValue("comment")
-	logger.Log("Info", fmt.Sprintf("Stripe token: '%s'", paymentToken)) // Todo - this is a debug
+	// logger.Debug(fmt.Sprintf("Stripe token: '%s'", paymentToken))
 	amt, err := strconv.ParseFloat(strAmount, 64)
 	if err != nil {
 		logger.LogErr(err, "Unable to parse donation amount")

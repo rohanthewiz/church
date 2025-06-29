@@ -12,8 +12,8 @@ import (
 )
 
 func QueryArticles(condition, order string, limit, offset int64) (presenters []Presenter, err error) {
-	Log("Debug", "Article query", "condition:", condition, " order:", order,
-		" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
+	// Log("Debug", "Article query", "condition:", condition, " order:", order,
+	//	" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
 	db, err := db.Db()
 	if err != nil {
 		return

@@ -35,7 +35,7 @@ func GetSermon(year, fName string) (fileBytes []byte, err error) {
 		return fileBytes, nil
 	}
 
-	logger.Info("Serving cached sermon", "sermon", relFileSpec)
+	logger.Debug("Serving cached sermon", "sermon", relFileSpec)
 	fileBytes, err = os.ReadFile(localFileSpec)
 	if err != nil {
 		return fileBytes, serr.Wrap(err, "could not read cached sermon file from server")

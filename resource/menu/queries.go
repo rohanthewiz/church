@@ -1,19 +1,19 @@
 package menu
 
 import (
-	"github.com/rohanthewiz/church/models"
+	"fmt"
 	theDB "github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
-	"fmt"
-	"strconv"
 	"github.com/vattle/sqlboiler/queries/qm"
+	"strconv"
 )
 
 func UpsertMenu(menuDef MenuDef) error {
 	db, err := theDB.Db()
 	if err != nil {
-		return  err
+		return err
 	}
 	model, create, err := modelFromMenuDef(menuDef)
 	if err != nil {
@@ -60,9 +60,11 @@ func DeleteMenuById(id string) error {
 	const when = "When deleting menu by id"
 	dbH, err := theDB.Db()
 	if err != nil {
-		return  err
+		return err
 	}
-	if id == "" { return serr.NewSErr("Id to delete is empty string", "when", when) }
+	if id == "" {
+		return serr.NewSErr("Id to delete is empty string", "when", when)
+	}
 	intId, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Menu id to integer", "Id", id, "when", when)
@@ -80,7 +82,7 @@ func findModelById(id int64) (*models.MenuDef, error) {
 		return nil, serr.Wrap(err, "Error finding menu by id")
 	}
 	mn, err := models.MenuDefs(db, qm.Where("id = ?", id)).One()
-	if  err != nil {
+	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving menu definition by id", "id", fmt.Sprintf("%d", id))
 	}
 	return mn, err
@@ -92,21 +94,21 @@ func findModelBySlug(slug string) (*models.MenuDef, error) {
 		return nil, serr.Wrap(err, "Error finding menu by slug")
 	}
 	mn, err := models.MenuDefs(dbH, qm.Where("slug = ?", slug)).One()
-	if  err != nil {
+	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving menu definition by slug", "slug", slug)
 	}
 	return mn, err
 }
 
 func queryMenus(condition, order string, limit int64, offset int64) ([]MenuDef, error) {
-	fmt.Println("condition:", condition, " order:", order, " limit:", limit, " offset:", offset)
+	// fmt.Println("condition:", condition, " order:", order, " limit:", limit, " offset:", offset)
 	presenters := []MenuDef{}
 	db, err := theDB.Db()
 	if err != nil {
 		return presenters, err
 	}
 	modelMenuDefs, err := models.MenuDefs(db, qm.Where(condition), qm.OrderBy(order), qm.Limit(int(limit)),
-			qm.Offset(int(offset))).All()
+		qm.Offset(int(offset))).All()
 	if err != nil {
 		logger.LogErr(err, "Error obtaining list of menus")
 		return presenters, err
@@ -119,6 +121,8 @@ func queryMenus(condition, order string, limit int64, offset int64) ([]MenuDef, 
 		}
 		presenters = append(presenters, pres)
 	}
-	if len(errs) > 0 { err = errs[0]}  // todo - better way
+	if len(errs) > 0 {
+		err = errs[0]
+	} // todo - better way
 	return presenters, err
 }

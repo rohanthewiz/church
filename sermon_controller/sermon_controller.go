@@ -162,9 +162,9 @@ func UpsertSermon(c echo.Context) error {
 	} else { // We are not uploading a sermon, what else can we do?
 		if c.FormValue("audio-link-ovrd") == "on" {
 			serPres.AudioLink = c.FormValue("audio_link")
-			logger.Log("Info", "Audio link manually overridden to: "+serPres.AudioLink)
+			logger.Warn("Audio link manually overridden to: " + serPres.AudioLink)
 		} else {
-			logger.Log("Debug", "Sermon updated, but audio file not updated")
+			logger.Log("Info", "Sermon updated, but audio file not updated")
 		}
 	}
 

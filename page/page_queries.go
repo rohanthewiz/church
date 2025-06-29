@@ -41,7 +41,7 @@ func UpsertPage(pres Presenter) (pgUrl string, err error) {
 }
 
 func queryPages(condition, order string, limit int64, offset int64) ([]Presenter, error) {
-	fmt.Println("condition:", condition, " order:", order, " limit:", limit, " offset:", offset)
+	// fmt.Println("condition:", condition, " order:", order, " limit:", limit, " offset:", offset)
 	presenters := []Presenter{}
 	dbH, err := db.Db()
 	if err != nil {

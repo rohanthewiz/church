@@ -1,7 +1,6 @@
 package event
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/rohanthewiz/church/db"
@@ -31,7 +30,7 @@ func UpComingEvents() ([]Presenter, error) {
 
 // Condition is the condition expression without leading/trailing WHERE and AND
 func QueryEvents(condition, order string, limit int64, offset int64) ([]Presenter, error) {
-	fmt.Println("condition:", condition, " order:", order, " limit:", limit, " offset:", offset)
+	// fmt.Println("condition:", condition, " order:", order, " limit:", limit, " offset:", offset)
 	var pres []Presenter
 
 	db, err := db.Db()

@@ -10,15 +10,15 @@ import (
 )
 
 func SetFormReferrer(c echo.Context) (err error) {
-	//key, err := cookie.Get(c, CookieName)
-	//if err != nil || key == "" {
+	// key, err := cookie.Get(c, CookieName)
+	// if err != nil || key == "" {
 	//	return err
-	//}
+	// }
 	//
-	//sess, err := GetSession(key)
-	//if err != nil {
+	// sess, err := GetSession(key)
+	// if err != nil {
 	//	return err
-	//}
+	// }
 	cc, ok := c.(*CustomContext)
 	if !ok {
 		err = serr.NewSErr("Couldn't typecast Echo context to CustomContext")
@@ -26,10 +26,10 @@ func SetFormReferrer(c echo.Context) (err error) {
 		return
 	}
 
-	//sess, err := GetSession(key)
-	//if err != nil {
+	// sess, err := GetSession(key)
+	// if err != nil {
 	//	return serr.Wrap(err, "Unable to obtain session", "key", key)
-	//}
+	// }
 	sess := cc.Session
 
 	sess.FormReferrer = c.Request().Referer()
@@ -37,14 +37,14 @@ func SetFormReferrer(c echo.Context) (err error) {
 }
 
 func SetLastDonationURL(c echo.Context, url string) (err error) {
-	//key, err := cookie.Get(c, CookieName)
-	//if err != nil {
+	// key, err := cookie.Get(c, CookieName)
+	// if err != nil {
 	//	return serr.Wrap(err, "Unable to get value of session cookie")
-	//}
+	// }
 	//
-	//if key == "" {
+	// if key == "" {
 	//	return serr.NewSErr("Session cookie is empty")
-	//}
+	// }
 	cc, ok := c.(*CustomContext)
 	if !ok {
 		err = serr.NewSErr("Couldn't typecast Echo context to CustomContext")
@@ -53,7 +53,7 @@ func SetLastDonationURL(c echo.Context, url string) (err error) {
 	}
 	sess := cc.Session
 	sess.LastGivingReceiptURL = url
-	logger.Log("Info", fmt.Sprintf("On set of Last Donation URL - Session -> %#v\n", sess))
+	logger.Debug("Info", fmt.Sprintf("On set of Last Donation URL into session -> %#v\n", sess))
 	return sess.Save(sess.Key)
 }
 
@@ -71,4 +71,3 @@ func GetFormReferrer(c echo.Context) (ref string, err error) {
 	ref = sess.FormReferrer
 	return
 }
-

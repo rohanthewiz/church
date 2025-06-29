@@ -92,7 +92,7 @@ func UpsertMenu(c echo.Context) error {
 	// The entire form data is serialized into the "modules" field (behavior of the js serializer)
 	// We are only interested in the Items portions of that though
 	formJson := strings.TrimSpace(c.FormValue("items"))
-	logger.Log("Info", "Form data", "json", formJson)
+	logger.Debug("Form data", "json", formJson)
 	if formJson == "" {
 		err := errors.New("No items received for menu")
 		c.Error(err)
