@@ -30,7 +30,7 @@ func PageFromId(id string) (*Page, error) {
 }
 
 func PageFromSlug(slug string) (pg *Page, err error) {
-	fmt.Printf("In PageFromSlug - slug: '%s'\n", slug)
+	// fmt.Printf("In PageFromSlug - slug: '%s'\n", slug)
 	pres, err := presenterFromSlug(slug)
 	if err != nil {
 		return pg, err

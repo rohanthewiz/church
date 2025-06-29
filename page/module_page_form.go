@@ -59,7 +59,7 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 			return "" // todo - error presentation to user
 		}
 		logger.LogAsync("Debug", "Existing page object for module form", "page object", fmt.Sprintf("%#v", pg))
-		println("|* Page has:", len(pg.Modules), "modules")
+		logger.DebugF("Page %q has: %d module(s)", pg.Title, len(pg.Modules))
 		action = "/update/" + pg.Id
 	}
 
@@ -93,20 +93,20 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 				b.DivClass("form-inline").R(
 					b.DivClass("form-group").R(
 						b.Input("name", "page_title", "type", "text", "value", pg.Title),
-						b.Label("class", "control-label", "for", "page_title").T("Page Title"),
+						b.LabelClass("control-label", "for", "page_title").T("Page Title"),
 						b.IClass("bar").R(),
 					),
 					b.DivClass("form-group").R(
-						b.Input("class", "form-group__slug", "name", "page_slug", "type", "text",
+						b.InputClass("form-group__slug", "name", "page_slug", "type", "text",
 							"placeholder", "will be automatically filled in", "value", pg.Slug),
-						b.Label("class", "control-label form-group__label--disabled", "for", "page_slug").T("Page Slug (identifier)"),
+						b.LabelClass("control-label form-group__label--disabled", "for", "page_slug").T("Page Slug (identifier)"),
 						b.IClass("bar").R(),
 					),
 				),
 				b.DivClass("form-group").R(
 					b.Input("name", "available_positions", "type", "text", "placeholder", "combo of left,right,center - must include center",
 						"value", strings.Join(pg.AvailablePositions, ",")),
-					b.Label("class", "control-label", "for", "available_positions").T("Available Column Positions"),
+					b.LabelClass("control-label", "for", "available_positions").T("Available Column Positions"),
 					b.IClass("bar").R(),
 				),
 				b.DivClass("form-inline").R(
@@ -129,7 +129,7 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 					b.DivClass("form-group").R(
 						b.H3().T("Modules (page components)"),
 					),
-					b.Button("class", "btn-add-module", "title", "Add Module").T("+"),
+					b.ButtonClass("btn-add-module", "title", "Add Module").T("+"),
 				),
 			), // end form-inner
 
