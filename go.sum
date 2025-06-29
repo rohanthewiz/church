@@ -118,6 +118,8 @@ github.com/rohanthewiz/logger v1.2.5 h1:h9p65AqRc4+9l9blEMin3Se6Lja9+cOi7XPI5+FP
 github.com/rohanthewiz/logger v1.2.5/go.mod h1:1A2v/8q3ue3vJ5mguli3gsyhWrlXZGWrVocdEv1svXE=
 github.com/rohanthewiz/logger v1.2.6-0.20250629094739-ed78df210be4 h1:wgoZjg2pNyGileKbNYnIViyvLXqy5rJhyZc94sWwqUc=
 github.com/rohanthewiz/logger v1.2.6-0.20250629094739-ed78df210be4/go.mod h1:o3rrESS5qF/ZnUmXhOCqzYnUM/aN1eaPeObPITZ393w=
+github.com/rohanthewiz/logger v1.2.6-0.20250629230320-0408cb361a66 h1:XVGFdJhinNWdkbUPXIVF+jaCTtICKrwhh+zhSL9n/6s=
+github.com/rohanthewiz/logger v1.2.6-0.20250629230320-0408cb361a66/go.mod h1:o3rrESS5qF/ZnUmXhOCqzYnUM/aN1eaPeObPITZ393w=
 github.com/rohanthewiz/roftp v0.2.0 h1:xujy3kJqenUOMBBVcaiCwK9b8vfQEa/QloXNdOaXuqo=
 github.com/rohanthewiz/roftp v0.2.0/go.mod h1:6ZcuAouzs2a/hNzm/iWKSL3UtUwR13ztNioVhegwCp8=
 github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e h1:wGzjMo9KDLXn1u3rNpJ0FYmtXrGdbS4HJ+EExvT3o9M=

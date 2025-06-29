@@ -18,7 +18,7 @@ require (
 	github.com/pkg/errors v0.8.0
 	github.com/rohanthewiz/element v0.5.3-0.20250621223353-5dc8294d4f85
 	github.com/rohanthewiz/gmail_send v1.0.0
-	github.com/rohanthewiz/logger v1.2.6-0.20250629094739-ed78df210be4
+	github.com/rohanthewiz/logger v1.2.6-0.20250629230320-0408cb361a66
 	github.com/rohanthewiz/roftp v0.2.0
 	github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e
 	github.com/rohanthewiz/serr v1.2.4
