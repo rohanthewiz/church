@@ -63,6 +63,7 @@ type EnvConfig struct {
 		Format    string `yaml:"format"`
 		InfoPath  string `yaml:"info_path"`
 		ErrorPath string `yaml:"error_path"`
+		// SlackAPICfg logger.SlackAPICfg `yaml:"slack_api_cfg"`
 	} `yaml:"log"`
 	PG struct {
 		Host     string `yaml:"host"`
