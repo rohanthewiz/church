@@ -16,7 +16,7 @@ require (
 	github.com/lib/pq v1.0.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
-	github.com/rohanthewiz/element v0.5.3-0.20250621223353-5dc8294d4f85
+	github.com/rohanthewiz/element v0.5.3-0.20250705120752-1d1179513658
 	github.com/rohanthewiz/gmail_send v1.0.0
 	github.com/rohanthewiz/logger v1.2.6-0.20250629230320-0408cb361a66
 	github.com/rohanthewiz/roftp v0.2.0
@@ -56,6 +56,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.33.1 // indirect
 	github.com/relistan/rubberneck v1.3.0 // indirect
+	github.com/rohanthewiz/rweb v0.1.15-0.20250705101651-20d3af4f8c5e // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect

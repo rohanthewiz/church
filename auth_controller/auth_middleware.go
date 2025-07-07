@@ -19,7 +19,7 @@ func AdminGuard(next echo.HandlerFunc) echo.HandlerFunc {
 			Info("Successfully authorized for admin: " + cc.Session.Username)
 			return next(c)
 		}
-		Warn("In Authorization - Admin is false - redirecting")
+		// Turning this off for deployment // Warn("In Authorization - Admin is false - redirecting")
 		app.Redirect(c, "/login", "Login required")
 		return nil
 	}

@@ -3,6 +3,7 @@ package sermon_controller
 import (
 	"bytes"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -125,7 +126,15 @@ func UpsertSermon(c echo.Context) error {
 		}
 		defer sermonTmp.Close()
 
-		localFileSpec = path.Join(config.Options.IDrive.LocalSermonsDir, serYear, sermonAudio.Filename)
+		// Apparently sermonAudio.Filename is already coming in url encoded
+		filenameDecoded, err := url.QueryUnescape(sermonAudio.Filename)
+		if err != nil {
+			logger.LogErr(err, "when", "un-escaping filename", "filename", sermonAudio.Filename)
+			c.Error(err)
+			return err
+		}
+
+		localFileSpec = path.Join(config.Options.IDrive.LocalSermonsDir, serYear, filenameDecoded)
 
 		sermonDir := filepath.Dir(localFileSpec)
 		err = fileops.EnsureDir(sermonDir)
@@ -136,7 +145,6 @@ func UpsertSermon(c echo.Context) error {
 		}
 
 		sermonAudioURL := path.Join(sermonsURLPrefix, serYear, sermonAudio.Filename)
-		// Let's test out query escaping later // sermonAudioURL := url.QueryEscape(path.Join(sermonsURLPrefix, serYear, sermonAudio.Filename))
 
 		// Create empty local file
 		dest, err := os.Create(localFileSpec)
@@ -147,7 +155,7 @@ func UpsertSermon(c echo.Context) error {
 		}
 		defer dest.Close()
 
-		// Copy to server
+		// Copy file contents
 		if _, err := io.Copy(dest, sermonTmp); err != nil {
 			logger.LogErr(err, "when", "copying sermon from FormFile to dest", "filename", sermonAudio.Filename)
 			c.Error(err)
@@ -157,14 +165,14 @@ func UpsertSermon(c echo.Context) error {
 		fileUploaded = true
 
 		serPres.AudioLink = "/" + sermonAudioURL
-		logger.Log("info", "New sermon file uploaded", "upload_path", serPres.AudioLink)
+		logger.Info("New sermon file uploaded", "upload_path", serPres.AudioLink)
 
 	} else { // We are not uploading a sermon, what else can we do?
 		if c.FormValue("audio-link-ovrd") == "on" {
 			serPres.AudioLink = c.FormValue("audio_link")
 			logger.Warn("Audio link manually overridden to: " + serPres.AudioLink)
 		} else {
-			logger.Log("Info", "Sermon updated, but audio file not updated")
+			logger.Info("Sermon updated, but audio file not updated")
 		}
 	}
 
@@ -191,19 +199,7 @@ func UpsertSermon(c echo.Context) error {
 				logger.LogErr(err, "Error transferring sermon to IDriveE2", "sermon", localFileSpec)
 				return
 			}
-			logger.Log("Info", "Sermon transferred to IDriveE2", "sermon_link", serPres.AudioLink, "slug", slug)
-
-			// No need to change URLs
-			/*			pres, err := sermon.PresenterFromSlug(slug)
-						if err != nil {
-							logger.LogErr(err, "Error finding sermon by slug", "slug", slug)
-						}
-						pres.AudioLink = upl.DestWebPath()
-
-						_, err = pres.Upsert()
-						if err != nil {
-							logger.LogErr(err, "Error updating Sermon audio link to Church FTP server")
-						}*/
+			logger.Info("Sermon transferred to IDriveE2", "sermonFile", localFileSpec, "slug", slug)
 		}()
 	}
 
