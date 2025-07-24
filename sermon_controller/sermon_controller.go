@@ -126,7 +126,7 @@ func UpsertSermon(c echo.Context) error {
 		}
 		defer sermonTmp.Close()
 
-		// Apparently sermonAudio.Filename is already coming in url encoded
+		// Apparently sermonAudio.Filename is coming in url encoded
 		filenameDecoded, err := url.QueryUnescape(sermonAudio.Filename)
 		if err != nil {
 			logger.LogErr(err, "when", "un-escaping filename", "filename", sermonAudio.Filename)

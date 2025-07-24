@@ -16,12 +16,12 @@ require (
 	github.com/lib/pq v1.0.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
-	github.com/rohanthewiz/element v0.5.3-0.20250705120752-1d1179513658
+	github.com/rohanthewiz/element v0.5.4
 	github.com/rohanthewiz/gmail_send v1.0.0
-	github.com/rohanthewiz/logger v1.2.6-0.20250629230320-0408cb361a66
+	github.com/rohanthewiz/logger v1.2.16
 	github.com/rohanthewiz/roftp v0.2.0
 	github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e
-	github.com/rohanthewiz/serr v1.2.4
+	github.com/rohanthewiz/serr v1.2.16
 	github.com/stripe/stripe-go v55.14.0+incompatible
 	github.com/vattle/sqlboiler v2.5.0+incompatible
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb
@@ -56,12 +56,11 @@ require (
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.33.1 // indirect
 	github.com/relistan/rubberneck v1.3.0 // indirect
-	github.com/rohanthewiz/rweb v0.1.15-0.20250705101651-20d3af4f8c5e // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect
 	golang.org/x/net v0.24.0 // indirect
-	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/relistan/rubberneck.v1 v1.0.1 // indirect
