@@ -57,13 +57,14 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 	)
 	// Mobile-friendly audio player with controls
 	b.DivClass("sermon-audio-wrapper", "style", "margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-radius: 8px;").R(
-		b.Audio("controls", "controls", "style", "width: 100%; max-width: 600px;").R(
+		b.Audio("controls", "controls", "style", "width: 100%; max-width: 440px;").R(
 			b.Source("src", ser.AudioLink, "type", "audio/mpeg").R(),
 			b.T("Your browser does not support the audio element."),
 		),
-		b.DivClass("sermon-download-link", "style", "margin-top: 10px;").R(
-			b.A("href", ser.AudioLink, "title", "download", "style", "color: #333; text-decoration: none; font-size: 14px;").T("📥 Download Audio"),
-		),
+		// b.DivClass("sermon-download-link", "style", "margin-top: 10px;").R(
+		// 	b.A("href", ser.AudioLink, "title", "download (right-click then \"Save link as\")",
+		// 		"style", "color: #333; text-decoration: none; font-size: 14px;").T("📥 Download"),
+		// ),
 	)
 	b.Div().T(ser.Summary)
 	b.Div().T(ser.Body)

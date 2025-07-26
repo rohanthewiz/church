@@ -71,10 +71,10 @@ func (m *ModuleRecentSermons) Render(params map[string]map[string]string, logged
 								b.Td().R(
 									b.Wrap(func() {
 										if ser.AudioLink != "" {
-											b.AClass("sermon-play-icon", "href", ser.AudioLink).T(html.TriangleRightSmall)
-											b.T("&nbsp;")
-											b.A("href", ser.AudioLink, "title", "download", "style",
-												"text-decoration: none; font-size: 12px;").T("📥")
+											b.AClass("sermon-play-icon", "style", "font-size:0.9em", "href", ser.AudioLink).T(html.TriangleRightSmall)
+											// b.T("&nbsp;")
+											// b.A("href", ser.AudioLink, "title", "download", "style",
+											// 	"text-decoration: none; font-size: 12px;").T("📥")
 										} else {
 											b.T("")
 										}
