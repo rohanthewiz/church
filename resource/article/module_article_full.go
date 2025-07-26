@@ -1,12 +1,14 @@
 package article
 
 import (
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"strings"
-	"github.com/rohanthewiz/serr"
-	"fmt"
 	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 // This module should not be used for now
@@ -32,13 +34,13 @@ func (m ModuleArticleFull) getData() (pres Presenter, err error) {
 			return pres, serr.Wrap(errors.New("No item ids found"),
 				"module_options", fmt.Sprintf("%#v", m.Opts))
 		}
-		pres, err = presenterFromId(m.Opts.ItemIds[0])  // Todo presenterFromId for other resources
+		pres, err = presenterFromId(m.Opts.ItemIds[0]) // Todo presenterFromId for other resources
 	}
 	return
 }
 
 func (m *ModuleArticleFull) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
 
@@ -47,12 +49,19 @@ func (m *ModuleArticleFull) Render(params map[string]map[string]string, loggedIn
 		LogErr(err, "Error rendering module", "module_type", m.Opts.ModuleType)
 		return ""
 	}
-	out := ""
-	if art.Published {
-		out = "<h3>" + art.Title + "</h3><div>" + art.Summary + "</div><div>" + art.Body + "</div>"
-		if len(art.Categories) > 0 {
-			out += `<div class="categories">` + strings.Join(art.Categories, ", ") + "</div>"
+
+	b := element.NewBuilder()
+
+	b.Wrap(func() {
+		if art.Published {
+			b.H3().T(art.Title)
+			b.Div().T(art.Summary)
+			b.Div().T(art.Body)
+			if len(art.Categories) > 0 {
+				b.DivClass("categories").T(strings.Join(art.Categories, ", "))
+			}
 		}
-	}
-	return out
+	})
+
+	return b.String()
 }

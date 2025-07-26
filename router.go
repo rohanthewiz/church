@@ -1,12 +1,16 @@
 package church
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/admin"
 	"github.com/rohanthewiz/church/admin_controller"
 	"github.com/rohanthewiz/church/article_controller"
 	authctlr "github.com/rohanthewiz/church/auth_controller"
+	"github.com/rohanthewiz/church/basectlr"
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/core/idrive"
 	"github.com/rohanthewiz/church/event_controller"
 	"github.com/rohanthewiz/church/menu_controller"
 	"github.com/rohanthewiz/church/page"
@@ -16,6 +20,8 @@ import (
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/sermon_controller"
 	"github.com/rohanthewiz/church/user_controller"
+	"github.com/rohanthewiz/element"
+	"github.com/rohanthewiz/logger"
 )
 
 // todo !! setup cert renew on a chron job
@@ -26,24 +32,46 @@ func Serve() {
 	admin.AuthBootstrap()
 	page.RegisterModules()
 
+	idrive.InitClient()
+
 	e := echo.New()
-	//Did not work -> e.Pre(middleware.HTTPSWWWRedirect())
+	// Did not work -> e.Pre(middleware.HTTPSWWWRedirect())
 
 	e.Static("/assets", "dist")
-	e.Static("/media", "sermons")
+	e.Static("/media", "sermons") // TODO - path_from_proj_root(config.Options.IDrive.LocalSermonsDir)
 	e.GET("/", page_controller.HomePage)
+
+	e.GET("/debug/set", func(c echo.Context) error {
+		element.DebugSet()
+		return c.HTMLBlob(http.StatusOK, []byte("<h3>Debug mode set.</h3> <a href='/'>Home</a>"))
+	})
+
+	e.GET("/debug/show", func(c echo.Context) error {
+		return c.HTMLBlob(http.StatusOK, []byte(element.DebugShow()))
+	})
+
+	e.GET("/debug/clear", func(c echo.Context) error {
+		element.DebugClear()
+		return c.HTMLBlob(http.StatusOK, []byte("<h3>Debug mode is off.</h3> <a href='/'>Home</a>"))
+	})
+
+	e.GET("/debug/clear-issues", func(c echo.Context) error {
+		element.DebugClearIssues()
+		return c.HTMLBlob(http.StatusOK,
+			[]byte("<h3>Issues cleared (debug mode still active).</h3> <a href='/'>Home</a> | <a href='/debug/show'>View Debug</a>"))
+	})
 
 	e.GET("/login", authctlr.LoginHandler)
 	e.GET("/logout", authctlr.LogoutHandler)
 	e.POST("/auth", authctlr.AuthHandler) // Attempt login
 
-	//?username=joe&password=secret&token=abc12345678&
+	// ?username=joe&password=secret&token=abc12345678&
 	e.GET("/super", admin_controller.SetupSuperAdmin) // (API) Establish first SuperAdmin
 
 	// API
 	e.GET("/api/v1/sermons", sermon.APISermons)
 	e.GET("/calendar", calendar.GetFullCalendarEvents)
-	//e.GET("/adduser", authctlr.RegisterUser)  // todo auth! POST (bootstrap super admin)
+	// e.GET("/adduser", authctlr.RegisterUser)  // todo auth! POST (bootstrap super admin)
 
 	// Non-admin dynamic pages (the majority of the pages) are handled here
 	pgs := e.Group("pages")
@@ -74,6 +102,35 @@ func Serve() {
 	ser.Use(authctlr.UseCustomContext) // store authentication in custom context
 	ser.GET("", sermon_controller.ListSermons)
 	ser.GET("/:id", sermon_controller.ShowSermon)
+
+	// TODO - move this code to the sermons controller
+	// sergrp := e.Group("sermons")
+	ser.GET("/:year/:filename", func(c echo.Context) error {
+		year := c.Param("year")
+		filename := c.Param("filename")
+		// Not sure if we need any escaping for now
+		// Need to test QueryUnescape feature on existing sermon filenames - that were not queryEscaped previously
+		// filename, err := url.QueryUnescape(c.Param("filename"))
+		// if err != nil {
+		// 	logger.Err(err, "error unescaping filename", "filename", filename)
+		// 	return c.JSON(http.StatusNotImplemented, map[string]string{
+		// 		"error_message":     "Sorry, we couldn't find the sermon you requested: " + filename,
+		// 		"technical_details": err.Error(),
+		// 	})
+		// }
+		// fmt.Printf("**-> year %s, sermon %s\n", year, filename)
+
+		byts, err := idrive.GetSermon(year, filename)
+		if err != nil {
+			logger.Err(err, "error getting sermon", "year", year, "sermon", filename)
+			return c.JSON(http.StatusNotImplemented, map[string]string{
+				"error_message":     "Sorry, we couldn't find the sermon you requested.",
+				"technical_details": err.Error(),
+			})
+		}
+
+		return basectlr.SendAudioFile(c, filename, byts)
+	})
 
 	// Admin group uses authentication middleware
 	ad := e.Group(config.AdminPrefix)
@@ -140,8 +197,8 @@ func startTLS(e *echo.Echo) {
 		config.Options.Server.CertFile, config.Options.Server.KeyFile))
 }
 
-//func startAutoTLS(e *echo.Echo) {
+// func startAutoTLS(e *echo.Echo) {
 //	e.AutoTLSManager.HostPolicy = autocert.HostWhitelist(config.Options.Server.Domain)
 //	e.AutoTLSManager.Cache = autocert.DirCache("/var/certs")
 //	e.Logger.Fatal(e.StartAutoTLS(":" + config.Options.Server.Port))
-//}
+// }

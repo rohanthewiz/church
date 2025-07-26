@@ -1,13 +1,14 @@
 package auth_controller
 
 import (
+	"strings"
+
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/app"
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/resource/session"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
-	"strings"
 )
 
 // Authorization middleware - Read the Admin value on the custom context
@@ -15,10 +16,10 @@ import (
 func AdminGuard(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if cc, ok := c.(*cctx.CustomContext); ok && cc.Admin {
-			Log("Info", "Successfully authorized for admin")
+			Info("Successfully authorized for admin: " + cc.Session.Username)
 			return next(c)
 		}
-		Log("Warn", "In Authorization - Admin is false - redirecting")
+		// Turning this off for deployment // Warn("In Authorization - Admin is false - redirecting")
 		app.Redirect(c, "/login", "Login required")
 		return nil
 	}
@@ -26,11 +27,13 @@ func AdminGuard(next echo.HandlerFunc) echo.HandlerFunc {
 
 // Middleware for storing session in our custom context
 // Logged in means we have
-// 		1) a valid session cookie
-// 		2) a (non-expired) session in redis whose key is the value of the session cookie
+//  1. a valid session cookie
+//  2. a (non-expired) session in redis whose key is the value of the session cookie
+//
 // Note: Form tokens will use the same concept
-// 		1) a valid form token,
-// 		2) a (non-expired) session in redis whose key is the value of the form token
+//  1. a valid form token,
+//  2. a (non-expired) session in redis whose key is the value of the form token
+//
 // Be sure to return the custom context to the next handler
 func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -51,19 +54,19 @@ func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
 			}
 			// The session may have expired or was not written into the store as yet or some other error
 			// so create a fresh session
-			sess = session.Session{ Key: sessKey }
+			sess = session.Session{Key: sessKey}
 		}
 		if sess.Username != "" { // admins must have a username in sesssion
 			cc.Admin = true
 		}
 		cc.Session = sess
-		//Log("Info", "Extending session", "username", username, "session_key", sessKey)
+		// Log("Info", "Extending session", "username", username, "session_key", sessKey)
 		_ = sess.Extend()
 		return next(cc)
 	}
 }
 
-//func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
+// func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
 //	return func(c echo.Context) error {
 //		Log("Info", "Request: " + c.Request().Method + " " + c.Request().RequestURI)
 //
@@ -97,9 +100,9 @@ func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
 //		sess.Extend(sessKey)
 //		return next(c)
 //	}
-//}
+// }
 
-//func LoadSessionIntoNonAdminContext(next echo.HandlerFunc) echo.HandlerFunc {
+// func LoadSessionIntoNonAdminContext(next echo.HandlerFunc) echo.HandlerFunc {
 //	return func(c echo.Context) error {
 //		Log("Info", "Request: " + c.Request().Method + " " + c.Request().RequestURI)
 //
@@ -132,4 +135,4 @@ func UseCustomContext(next echo.HandlerFunc) echo.HandlerFunc {
 //		sess.Extend(sessKey)
 //		return next(c)
 //	}
-//}
+// }

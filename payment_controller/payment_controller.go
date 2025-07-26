@@ -3,6 +3,8 @@ package payment_controller
 import (
 	"errors"
 	"fmt"
+	"strconv"
+
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
@@ -14,7 +16,6 @@ import (
 	"github.com/rohanthewiz/logger"
 	"github.com/stripe/stripe-go"
 	"github.com/stripe/stripe-go/charge"
-	"strconv"
 )
 
 func NewPayment(c echo.Context) error {
@@ -54,7 +55,7 @@ func UpsertPayment(c echo.Context) error {
 	fullname := c.FormValue("fullname")
 	email := c.FormValue("email")
 	comment := c.FormValue("comment")
-	logger.Log("Info", fmt.Sprintf("Stripe token: '%s'", paymentToken)) // Todo - this is a debug
+	// logger.Debug(fmt.Sprintf("Stripe token: '%s'", paymentToken))
 	amt, err := strconv.ParseFloat(strAmount, 64)
 	if err != nil {
 		logger.LogErr(err, "Unable to parse donation amount")
@@ -164,51 +165,51 @@ Receipt Link: <a href="` + chg.ReceiptURL + `">Online Receipt</a><br>
 	}
 }
 
-//func ListPayments(c echo.Context) error {
+// func ListPayments(c echo.Context) error {
 //	pg, err := page.PaymentsList()
 //	if err != nil { c.Error(err); return err }
 //	c.HTMLBlob(200, base.RenderPageList(pg, c))
 //	return  nil
-//}
+// }
 //
-//func EditPayment(c echo.Context) error {
+// func EditPayment(c echo.Context) error {
 //	pg, err := page.PaymentForm()
 //	if err != nil { c.Error(err); return err }
 //	c.HTMLBlob(200, base.RenderPageSingle(pg, c))
 //	return  nil
-//}
+// }
 
-//efs := payment.Presenter{}
-//efs.Id = c.FormValue("payment_id")
-//efs.Username = strings.TrimSpace(c.FormValue("username"))
-//efs.EmailAddress = strings.TrimSpace(c.FormValue("email_address"))
-//efs.Firstname = strings.TrimSpace(c.FormValue("firstname"))
-//efs.Lastname = strings.TrimSpace(c.FormValue("lastname"))
-//efs.Summary = c.FormValue("user_summary")
-//efs.Password = c.FormValue("password")  // do not trim space!
-//efs.PasswordConfirmation = c.FormValue("password_confirm")  // do not trim space!
-//efs.UpdatedBy = c.(*ctx.CustomContext).Username
-//role, err := strconv.ParseInt(c.FormValue("role"), 10, 64)
-//if err != nil { logger.LogErr(err, "Error converting role"); return err }
-//efs.Role = int(role)
-//if c.FormValue("enabled") == "on" {
+// efs := payment.Presenter{}
+// efs.Id = c.FormValue("payment_id")
+// efs.Username = strings.TrimSpace(c.FormValue("username"))
+// efs.EmailAddress = strings.TrimSpace(c.FormValue("email_address"))
+// efs.Firstname = strings.TrimSpace(c.FormValue("firstname"))
+// efs.Lastname = strings.TrimSpace(c.FormValue("lastname"))
+// efs.Summary = c.FormValue("user_summary")
+// efs.Password = c.FormValue("password")  // do not trim space!
+// efs.PasswordConfirmation = c.FormValue("password_confirm")  // do not trim space!
+// efs.UpdatedBy = c.(*ctx.CustomContext).Username
+// role, err := strconv.ParseInt(c.FormValue("role"), 10, 64)
+// if err != nil { logger.LogErr(err, "Error converting role"); return err }
+// efs.Role = int(role)
+// if c.FormValue("enabled") == "on" {
 //	efs.Enabled = true
-//}
+// }
 //
-//err = efs.UpsertPayment()
-//if err != nil {
+// err = efs.UpsertPayment()
+// if err != nil {
 //	logger.LogErr(err, "Error in payment upsert", "payment_presenter", fmt.Sprintf("%#v", efs))
 //	c.Error(err)
 //	return err
-//}
+// }
 
-//func DeletePayment(c echo.Context) error {
+// func DeletePayment(c echo.Context) error {
 //	err := payment.DeletePaymentById(c.Param("id"))
 //	msg := "Payment with id: " + c.Param("id") + " deleted"
 //	if err != nil {
 //		msg = "Error attempting to delete payment with id: " + c.Param("id")
-//		logger.LogErrAsync(err, "when", "deleting payment")
+//		logger.LogErr(err, "when", "deleting payment")
 //	}
 //	app.Redirect(c, "/admin/payments", msg)
 //	return nil
-//}
+// }

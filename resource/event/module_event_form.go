@@ -3,11 +3,12 @@ package event
 import (
 	"fmt"
 	"strings"
-	"github.com/rohanthewiz/serr"
-	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
+
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
+	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 type ModuleEventForm struct {
@@ -22,7 +23,7 @@ func NewModuleEventForm(pres module.Presenter) (module.Module, error) {
 	mod := new(ModuleEventForm)
 	mod.Name = pres.Name
 	mod.Opts = pres.Opts
-	//Slug is set only when the module model (db) is created. mod.Opts.Slug = string_util.SlugWithRandomString(title)
+	// Slug is set only when the module model (db) is created. mod.Opts.Slug = string_util.SlugWithRandomString(title)
 
 	csrf, err := app.GenerateFormToken()
 	if err != nil {
@@ -36,7 +37,7 @@ func NewModuleEventForm(pres module.Presenter) (module.Module, error) {
 func (m ModuleEventForm) getData() (pres Presenter, err error) {
 	evt, err := findEventById(m.Opts.ItemIds[0])
 	if err != nil {
-		return pres, serr.Wrap(err, "Unable to obtain event with id: " + fmt.Sprintf("%d", m.Opts.ItemIds[0]))
+		return pres, serr.Wrap(err, "Unable to obtain event with id: "+fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 	}
 	return presenterFromModel(evt), err
 }
@@ -45,7 +46,8 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	evt := Presenter{}; var err error
+	evt := Presenter{}
+	var err error
 
 	operation := "Create"
 	action := ""
@@ -60,98 +62,105 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 		action = "/update/" + evt.Id
 	}
 
-	e := element.New
+	b := element.NewBuilder()
 
-	published := e("input", "type", "checkbox", "name", "published")
-	if evt.Published {
-		published.AddAttributes("checked", "checked")
-	}
-
-	out := e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation + " " + m.Name.Singular),
-		e("form", "method", "post", "action", "/admin/" + m.Name.Plural + action, "onSubmit", "return preSubmit();").R(
-			e("input", "type", "hidden", "name", "event_id", "value", evt.Id).R(),
-			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "name", "event_title", "type", "text", "required", "required", "value", evt.Title).R(),
-					e("label", "class", "control-label", "for", "event_title").R("Event Title"),
-					e("i", "class", "bar").R(),
+	b.DivClass("wrapper-material-form").R(
+		b.H3("class", "page-title").T(operation+" "+m.Name.Singular),
+		b.Form("method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
+			b.Input("type", "hidden", "name", "event_id", "value", evt.Id),
+			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("name", "event_title", "type", "text", "required", "required", "value", evt.Title),
+					b.Label("class", "control-label", "for", "event_title").T("Event Title"),
+					b.IClass("bar").T(""),
 				),
-				e("div", "class", "form-group").R(
-					e("input", "name", "event_location", "type", "text", "required", "required", "value", evt.Location).R(),
-					e("label", "class", "control-label", "for", "event_location").R("Location"),
-					e("i", "class", "bar").R(),
+				b.DivClass("form-group").R(
+					b.Input("name", "event_location", "type", "text", "required", "required", "value", evt.Location),
+					b.Label("class", "control-label", "for", "event_location").T("Location"),
+					b.IClass("bar").T(""),
 				),
 			),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "name", "event_date", "type", "date", "value", evt.EventDate).R(),
-					e("label", "class", "control-label", "for", "event_date").R("Event Date"),
-					//e("i", "class", "bar").R(),
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("name", "event_date", "type", "date", "value", evt.EventDate),
+					b.Label("class", "control-label", "for", "event_date").T("Event Date"),
+					// b.IClass("bar"),
 				),
-				e("div", "class", "form-group").R(
-					e("input", "name", "event_time", "type", "time", "value", evt.EventTime).R(),
-					e("label", "class", "control-label", "for", "event_time").R("Event Time"),
-					//e("i", "class", "bar").R(),
-				),
-			),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "name", "contact_person", "type", "text", "placeholder", "(optional)", "value",
-						evt.ContactPerson).R(),
-					e("label", "class", "control-label", "for", "contact_person").R("Contact Person"),
-					e("i", "class", "bar").R(),
-				),
-				e("div", "class", "form-group").R(
-					e("input", "name", "categories", "type", "text", "value", strings.Join(evt.Categories, ", "),
-						"placeholder", "(optional)").R(),
-					e("label", "class", "control-label", "for", "categories").R("Tags (comma separated)"),
-					e("i", "class", "bar").R(),
+				b.DivClass("form-group").R(
+					b.Input("name", "event_time", "type", "time", "value", evt.EventTime),
+					b.Label("class", "control-label", "for", "event_time").T("Event Time"),
+					// b.IClass("bar"),
 				),
 			),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "name", "contact_email", "type", "text", "value", evt.ContactEmail).R(),
-					e("label", "class", "control-label", "for", "contact_email").R("Contact Email"),
-					e("i", "class", "bar").R(),
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("name", "contact_person", "type", "text", "placeholder", "(optional)", "value",
+						evt.ContactPerson),
+					b.Label("class", "control-label", "for", "contact_person").T("Contact Person"),
+					b.IClass("bar").T(""),
 				),
-				e("div", "class", "form-group").R(
-					e("input", "name", "contact_url", "type", "text", "placeholder", "(optional)", "value",
-						evt.ContactURL).R(),
-					e("label", "class", "control-label", "for", "contact_url").R("Contact URL"),
-					e("i", "class", "bar").R(),
+				b.DivClass("form-group").R(
+					b.Input("name", "categories", "type", "text", "value", strings.Join(evt.Categories, ", "),
+						"placeholder", "(optional)"),
+					b.Label("class", "control-label", "for", "categories").T("Tags (comma separated)"),
+					b.IClass("bar").T(""),
 				),
 			),
-			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer1").R(evt.Summary),
-				e("textarea", "id", "event_summary", "name", "event_summary", "type", "text", "value", "",
-					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "event_summary").R("Summary"),
-			),
-			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer2").R(evt.Body),
-				e("textarea", "id", "event_body", "name", "event_body", "type", "text", "value", "",
-					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "event_body").R("Event Body"),
-			),
-
-			e("div", "class", "checkbox").R(
-				e("label").R(
-					published.R(),
-					e("i", "class", "helper").R(),
-					"Published",
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("name", "contact_email", "type", "text", "value", evt.ContactEmail),
+					b.Label("class", "control-label", "for", "contact_email").T("Contact Email"),
+					b.IClass("bar").T(""),
 				),
-				e("i", "class", "bar").R(),
+				b.DivClass("form-group").R(
+					b.Input("name", "contact_phone", "type", "text", "placeholder", "(optional)", "value",
+						evt.ContactPhone),
+					b.Label("class", "control-label", "for", "contact_phone").T("Contact Phone"),
+					b.IClass("bar").T(""),
+				),
+				// b.DivClass("form-group").R(
+				// 	b.Input("name", "contact_url", "type", "text", "placeholder", "(optional)", "value",
+				// 		evt.ContactURL),
+				// 	b.Label("class", "control-label", "for", "contact_url").T("Contact URL"),
+				// 	b.IClass("bar"),
+				// ),
+			),
+			b.DivClass("form-group bootstrap-wrapper").R(
+				b.Div("id", "summer1").T(evt.Summary),
+				b.TextArea("id", "event_summary", "name", "event_summary", "type", "text", "value", "",
+					"style", "display:none").T(""),
+				b.Label("class", "control-label", "for", "event_summary").T("Summary"),
+			),
+			b.DivClass("form-group bootstrap-wrapper").R(
+				b.Div("id", "summer2").T(evt.Body),
+				b.TextArea("id", "event_body", "name", "event_body", "type", "text", "value", "",
+					"style", "display:none").T(""),
+				b.Label("class", "control-label", "for", "event_body").T("Event Body"),
 			),
 
-			e("div", "class", "form-group").R(
-				e("input", "type", "submit", "class", "button", "value", operation).R(),
+			b.DivClass("checkbox").R(
+				b.Label().R(
+					b.Wrap(func() {
+						if evt.Published {
+							b.Input("type", "checkbox", "name", "published", "checked", "checked")
+						} else {
+							b.Input("type", "checkbox", "name", "published")
+						}
+					}),
+					b.IClass("helper").T(""),
+					b.T("Published"),
+				),
+				b.IClass("bar").T(""),
+			),
+
+			b.DivClass("form-group").R(
+				b.Input("type", "submit", "class", "button", "value", operation),
 			),
 		),
 
-		//e("div", "id", "react-app").R(),
-		e("script", "type", "text/javascript").R(
+		// b.Div("id", "react-app"),
+		b.Script("type", "text/javascript").T(
 			`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
 			function preSubmit() {  // todo validate fields here
 				var s1 = $("#summer1");
@@ -169,5 +178,5 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 		`),
 	)
 
-	return out
+	return b.String()
 }

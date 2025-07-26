@@ -1,13 +1,14 @@
 package event
 
 import (
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"fmt"
-	"strings"
 	"errors"
+	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
 )
 
 const ModuleTypeSingleEvent = "event_single"
@@ -24,17 +25,20 @@ func NewModuleSingleEvent(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleSingleEvent) getData() (pres Presenter, err error) {
-	if len(m.Opts.ItemIds) < 1 { return }
+	if len(m.Opts.ItemIds) < 1 {
+		return
+	}
 	evt, err := findEventById(m.Opts.ItemIds[0])
 	if err != nil {
-		LogErr(err, "Unable to obtain event", "event_id",  fmt.Sprintf("%d", m.Opts.ItemIds[0]))
+		LogErr(err, "Unable to obtain event", "event_id", fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 		return pres, err
 	}
-	return presenterFromModel(evt), err
+	return presenterFromModel(evt,
+		PresenterParams{TimeNormalFormat: "3:04 PM", DateLongFormat: "1/2/2006", DateTimeFormat: "1/2/2006 3:04 PM TZ"}), err
 }
 
 func (m *ModuleSingleEvent) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
 	// Safety - todo add to all modules
@@ -49,26 +53,31 @@ func (m *ModuleSingleEvent) Render(params map[string]map[string]string, loggedIn
 		LogErr(err, "Error in module render")
 		return ""
 	}
-	e := element.New
-	out := "<h3>Event (" + evt.Title + `)</h3><table>
-		<tr><td>Name</td><td>` + evt.Title + `</td></tr>
-		<tr><td>Event Date</td><td>` + evt.EventDate + `</td></tr>
-		<tr><td>Event Time</td><td>` + evt.EventTime + `</td></tr>
-		<tr><td>Summary</td><td>` + evt.Summary + `</td></tr>
-		<tr><td>Description</td><td>` + evt.Body + `</td></tr>
-		<tr><td>Location</td><td>` + evt.Location + `</td></tr>
-		<tr><td>Contact Person</td><td>` + evt.ContactPerson + `</td></tr>
-		<tr><td>Contact Phone</td><td>` + evt.ContactPhone + `</td></tr>
-		<tr><td>Contact Email</td><td>` + evt.ContactEmail + `</td></tr>
-		<tr><td>Contact URL</td><td>` + evt.ContactURL + `</td></tr>
-		<tr><td>Categories</td><td>` + strings.Join(evt.Categories, ", ") + `</td></tr>
-		<tr><td>Updated At</td><td>` + evt.UpdatedAt + `</td></tr>
-		</table>`
-	if loggedIn && len(m.Opts.ItemIds) > 0 {
-		out += e("a", "class", "edit-link", "href", m.GetEditURL() +
-			strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
-			e("img", "class", "edit-icon", "title", "Edit Event", "src", "/assets/images/edit_article.svg").R(),
-		)
-	}
-	return out
+
+	b := element.NewBuilder()
+
+	b.H3().T("Event (" + evt.Title + ")")
+	b.Table().R(
+		b.Tr().R(b.Td().T("Name"), b.Td().T(evt.Title)),
+		b.Tr().R(b.Td().T("Event Date"), b.Td().T(evt.EventDateDisplayLong)),
+		b.Tr().R(b.Td().T("Event Time"), b.Td().T(evt.EventTime)),
+		b.Tr().R(b.Td().T("Summary"), b.Td().T(evt.Summary)),
+		b.Tr().R(b.Td().T("Description"), b.Td().T(evt.Body)),
+		b.Tr().R(b.Td().T("Location"), b.Td().T(evt.Location)),
+		b.Tr().R(b.Td().T("Contact Person"), b.Td().T(evt.ContactPerson)),
+		b.Tr().R(b.Td().T("Contact Phone"), b.Td().T(evt.ContactPhone)),
+		b.Tr().R(b.Td().T("Contact Email"), b.Td().T(evt.ContactEmail)),
+		b.Tr().R(b.Td().T("Contact URL"), b.Td().T(evt.ContactURL)),
+		b.Tr().R(b.Td().T("Categories"), b.Td().T(strings.Join(evt.Categories, ", "))),
+		b.Tr().R(b.Td().T("Updated At"), b.Td().T(evt.UpdatedAt)),
+	)
+	b.Wrap(func() {
+		if loggedIn && len(m.Opts.ItemIds) > 0 {
+			b.AClass("edit-link", "href", m.GetEditURL()+
+				strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
+				b.ImgClass("edit-icon", "title", "Edit Event", "src", "/assets/images/edit_article.svg").R(),
+			)
+		}
+	})
+	return b.String()
 }

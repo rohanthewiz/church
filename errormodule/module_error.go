@@ -2,6 +2,7 @@ package errormodule
 
 import (
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
 )
 
 const ModuleTypeError = "error_module"
@@ -17,9 +18,18 @@ func NewModuleError(opts module.Opts) *ModuleError {
 }
 
 func (m *ModuleError) Render(params map[string]map[string]string, loggedIn bool) string {
-	out := `<div class="ch-module-wrapper ch-` + m.Opts.ModuleType + `"><div class="ch-module-heading">` + "" +
-		`</div><div class="ch-module-body">`
-	out += `<tr><td colspan="2">` +  m.Opts.Title + `</td></tr>`
-	out += "</table></div></div>"
-	return out
+	b := element.NewBuilder()
+
+	b.DivClass("ch-module-wrapper", "ch-"+m.Opts.ModuleType).R(
+		b.DivClass("ch-module-heading"), // empty heading
+		b.DivClass("ch-module-body").R(
+			b.Table().R(
+				b.Tr().R(
+					b.Td("colspan", "2").T(m.Opts.Title),
+				),
+			),
+		),
+	)
+
+	return b.String()
 }

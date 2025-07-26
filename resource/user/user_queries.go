@@ -1,19 +1,19 @@
 package user
 
 import (
-	"github.com/rohanthewiz/church/models"
-	"strconv"
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/db"
-	"github.com/rohanthewiz/serr"
 	"fmt"
+	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/models"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 	. "github.com/vattle/sqlboiler/queries/qm"
+	"strconv"
 )
 
 func (p Presenter) UpsertUser() error {
 	db, err := db.Db()
 	if err != nil {
-		return  err
+		return err
 	}
 	usr, create, err := modelFromPresenter(p)
 	if err != nil {
@@ -58,14 +58,15 @@ func findByIdOrCreate(id string) (model *models.User) {
 	return
 }
 
-
 func DeleteUserById(id string) error {
 	const when = "When deleting user by id"
 	dbH, err := db.Db()
 	if err != nil {
-		return  err
+		return err
 	}
-	if id == "" { return serr.NewSErr("Id to delete is empty string", "when", when) }
+	if id == "" {
+		return serr.NewSErr("Id to delete is empty string", "when", when)
+	}
 	intId, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		return serr.Wrap(err, "unable to convert User id to integer", "Id", id, "when", when)
@@ -97,15 +98,15 @@ func findUserByUsername(username string) (*models.User, error) {
 		return nil, serr.Wrap(err, "Error obtaining DB handle")
 	}
 	usr, err := models.Users(dbH, Where("user = ?", username)).One()
-	if  err != nil {
+	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving user by username", "username", username)
 	}
 	return usr, err
 }
 
 func QueryUsers(condition, order string, limit, offset int64) (presenters []Presenter, err error) {
-	Log("Debug", "User query", "condition:", condition, " order:", order,
-		" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
+	// Log("Debug", "User query", "condition:", condition, " order:", order,
+	//	" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
 	dbH, err := db.Db()
 	if err != nil {
 		return

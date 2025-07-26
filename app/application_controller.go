@@ -1,14 +1,15 @@
 package app
 
 import (
-	"github.com/rohanthewiz/roredis"
 	"net/http"
-	"github.com/labstack/echo"
-	"github.com/rohanthewiz/church/resource/auth"
 	"time"
-	"github.com/rohanthewiz/church/flash"
-	"github.com/rohanthewiz/serr"
+
+	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/flash"
+	"github.com/rohanthewiz/church/resource/auth"
+	"github.com/rohanthewiz/roredis"
+	"github.com/rohanthewiz/serr"
 )
 
 // Note on Redirect: the SeeOther code (303) is the preferred code when redirecting after a post
@@ -17,7 +18,7 @@ import (
 func Redirect(c echo.Context, url, fl_msg string) {
 	if fl_msg != "" {
 		fl := flash.NewFlash()
-		fl.Info = fl_msg  // todo warn and error
+		fl.Info = fl_msg // todo warn and error
 		fl.Set(c)
 	}
 	c.Redirect(http.StatusSeeOther, url)
@@ -34,10 +35,15 @@ func GenerateFormToken() (token string, err error) {
 	return
 }
 
+// VerifyFormToken checks that the token is present and valid in Redis
 func VerifyFormToken(token string) bool {
 	str, err := roredis.Get(token)
-	if err != nil { return false }
-	if str == "true" { return true }
+	if err != nil {
+		return false
+	}
+	if str == "true" {
+		return true
+	}
 	return false
 }
 

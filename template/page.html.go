@@ -2,20 +2,20 @@ package template
 
 import (
 	"bytes"
-	"github.com/rohanthewiz/church/resource/menu"
-	"github.com/rohanthewiz/church/flash"
-	"github.com/rohanthewiz/church/page"
-	"github.com/rohanthewiz/element"
+
 	"github.com/rohanthewiz/church/agrid"
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/flash"
+	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/menu"
 	"github.com/rohanthewiz/church/view"
+	"github.com/rohanthewiz/element"
 )
 
 func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[string]map[string]string, loggedIn bool) {
 	layout := page.GetLayout()
-	e := element.New
-	w := buffer.WriteString
-	w(`<!DOCTYPE html>
+
+	buffer.WriteString(`<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8">
@@ -33,63 +33,63 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	<script type="text/javascript" src="/assets/js/slick-1.8.1.min.js"></script>
 	<script type="text/javascript" src="/assets/js/ag-grid.min.js"></script>
 	<script type="text/javascript" src="/assets/js/sweetalert2-7.12.15.all.min.js"></script>`)
-	w( e("script", "type", "text/javascript").R(
-		agrid.LinkCellRenderer,
-		agrid.ConfirmlinkCellRenderer,
-		agrid.ConfirmDelete),
+
+	b := element.NewBuilder()
+
+	b.Script("type", "text/javascript").R(
+		b.T(agrid.LinkCellRenderer),
+		b.T(agrid.ConfirmlinkCellRenderer),
+		b.T(agrid.ConfirmDelete),
 	)
-	w(`</head><body class="theme-` + config.Options.Theme + `">`)
+
+	b.T(`</head><body class="theme-` + config.Options.Theme + `">`)
 
 	// Banner
-	w(view.PageFrame.GetBanner())
-	// Menu
-	w(e("div", "id", "header", "class", "theme-" + config.Options.Theme).R(
-		menu.RenderNav("main-menu", loggedIn),
-	))
-	// Flash
-	w(flsh.Render())
+	b.T(view.PgFrame.GetBanner())
 
-	w(e("div", "id", "mid", "class", "theme-" + config.Options.Theme).R(
+	// Menu
+	b.DivClass("theme-"+config.Options.Theme, "id", "header").T(
+		menu.RenderNav("main-menu", loggedIn))
+
+	// Flash
+	b.T(flsh.Render())
+
+	b.DivClass("theme-"+config.Options.Theme, "id", "mid").R(
 		// Left
-		e("div", "id", "left-side", "class", layout).R(
-			page.Render("left", params, loggedIn),
+		b.DivClass(layout, "id", "left-side").R(
+			b.T(page.Render("left", params, loggedIn)),
 		),
 		// Center
-		e("div", "id", "main", "class", layout).R(
-			func() (str string) { // Page edit link
+		b.DivClass(layout, "id", "main").R(
+			b.Wrap(func() {
 				if loggedIn && page.IsDynamic() {
-					str = e("div", "class", "page-edit").R(
-						e("a", "class", "edit-link", "href", "/admin/pages/edit/" + page.PresenterId).R(
-							e("img", "class", "edit-icon", "src", "/assets/images/edit_page.svg", "title", "Edit Page").R(),
+					b.DivClass("page-edit").R(
+						b.AClass("edit-link", "href", "/admin/pages/edit/"+page.PresenterId).R(
+							b.ImgClass("edit-icon", "src", "/assets/images/edit_page.svg", "title", "Edit Page").R(),
 						),
 					)
 				}
-				return
-			}(),
-			page.Render("center", params, loggedIn),
+			}),
+			b.T(page.Render("center", params, loggedIn)),
 		),
 		// Right
-		e("div", "id", "right-side", "class", layout).R(
-			page.Render("right", params, loggedIn),
+		b.DivClass(layout, "id", "right-side").R(
+			b.T(page.Render("right", params, loggedIn)),
 		),
-	))
+	)
 
-	w(e("div", "id", "footer", "class", "theme-" + config.Options.Theme).R(
-		menu.RenderNav("footer-menu", loggedIn),
-		view.PageFrame.GetCopyright(),
-	))
+	b.DivClass("theme-"+config.Options.Theme, "id", "footer").R(
+		b.T(menu.RenderNav("footer-menu", loggedIn)),
+		b.T(view.PgFrame.GetCopyright()),
+	)
 
 	if page.IsAdmin {
-		w(`<script src="/assets/js/jquery.serialize-object.min.js"></script>
+		b.T(`<script src="/assets/js/jquery.serialize-object.min.js"></script>
 	    <script src="/assets/js/bootstrap.js"></script>
 	    <script src="/assets/js/summernote.min.js"></script>`)
 	}
-	//w(`<script type="text/javascript">
-	//	$(document).ready(function() {
-	//		$('#banner').addClass('theme-cobalt');
-	//	});
-	//</script>`)
 
-	w(`</body></html>`)
+	b.T(`</body></html>`)
+
+	buffer.WriteString(b.String())
 }
-//assets/js/jquery-3.2.1.min.js

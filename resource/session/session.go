@@ -2,10 +2,11 @@ package session
 
 import (
 	"encoding/json"
+	"time"
+
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/roredis"
 	"github.com/rohanthewiz/serr"
-	"time"
 )
 
 const CookieName = "church_session"
@@ -15,6 +16,7 @@ const KeyNotExists = "Key does not exist"
 // Store attributes about the user's session. We will serialize the session under the session key.
 // We will have one session per user
 // Note: We will treat the actual session store as a simple key - value, so
+//
 //	we can easily swap out stores
 type Session struct {
 	Key                  string `json:"key"` // keep the key with the session so we have a means of updating it later
@@ -39,7 +41,7 @@ func (sess Session) Save(key string) (err error) {
 		return
 	}
 	if sess.Key != "" && sess.Key != key {
-		logger.Log("Warn", "We have an inconsistency problem. Key in session: " + sess.Key, ", Key for store: " + key)
+		logger.Log("Warn", "We have an inconsistency problem. Key in session: "+sess.Key, ", Key for store: "+key)
 	}
 	sess.Key = key // save the key inside the session also for easy access to update
 	errorStage := " when saving session"
@@ -51,7 +53,7 @@ func (sess Session) Save(key string) (err error) {
 	if err != nil {
 		return serr.Wrap(err, "Error saving to session store")
 	}
-	logger.Log("Info", "*** Session saved. Key: " + key + " session: " + strSession)
+	logger.Log("Debug", "*** Session saved. Key: "+key+" session: "+strSession)
 	return err
 }
 
@@ -69,7 +71,7 @@ func GetSession(key string) (sess Session, err error) {
 		return sess, serr.Wrap(err, "Error unmarshalling session", "key", key, "rawData", str)
 	}
 	if sess.Key != "" && sess.Key != key {
-		logger.Log("Warn", "We have an inconsistency problem. Key in session: " + sess.Key, ", Key for store: " + key)
+		logger.Log("Warn", "We have an inconsistency problem. Key in session: "+sess.Key, ", Key for store: "+key)
 	}
 	sess.Key = key // ensure key is stored in the session, so we have a means of update
 	return
@@ -86,7 +88,7 @@ func DestroySession(sess_val string) (err error) {
 		if err != nil {
 			logger.Log("Info", "Unable to delete session", "session_key", sess_val, "Error", err.Error())
 		}
-		//Log("Info", "Logout", "stage", "Deleted Session from store")
+		// Log("Info", "Logout", "stage", "Deleted Session from store")
 	}
 	return
 }

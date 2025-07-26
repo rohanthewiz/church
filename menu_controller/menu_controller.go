@@ -1,19 +1,21 @@
 package menu_controller
 
 import (
-	"github.com/labstack/echo"
 	"bytes"
-	"github.com/rohanthewiz/church/template"
-	ctx "github.com/rohanthewiz/church/context"
-	"github.com/rohanthewiz/church/page"
-	"github.com/rohanthewiz/church/flash"
-	"github.com/rohanthewiz/church/app"
-	"strings"
-	"github.com/rohanthewiz/logger"
-	"errors"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
+
+	"github.com/labstack/echo"
+	"github.com/rohanthewiz/church/app"
+	ctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/flash"
+	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/menu"
+	"github.com/rohanthewiz/church/template"
+	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 // Admin Pages
@@ -27,10 +29,10 @@ func NewMenu(c echo.Context) error {
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNew(c), map[string]map[string]string{}, app.IsLoggedIn(c))
 	c.HTMLBlob(200, buf.Bytes())
-	return  nil
+	return nil
 }
 
-//func AdminShowMenu(c echo.Context) error {
+// func AdminShowMenu(c echo.Context) error {
 //	pg, err := menu.MenuFromId(c.Param("id"))
 //	if err != nil {
 //		logger.LogErr(err, "Error in AdminShowMenu", "location", logger.FunctionLoc())
@@ -41,7 +43,7 @@ func NewMenu(c echo.Context) error {
 //	template.Page(buf, pg, flash.GetOrNew(c), map[string]map[string]string{})
 //	c.HTMLBlob(200, buf.Bytes())
 //	return  nil
-//}
+// }
 
 func AdminListMenus(c echo.Context) error {
 	pg, err := page.MenusList()
@@ -51,9 +53,9 @@ func AdminListMenus(c echo.Context) error {
 	}
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNew(c), map[string]map[string]string{
-		pg.MainModuleSlug(): {"offset": c.QueryParam("offset"), "limit": c.QueryParam("limit")} }, app.IsLoggedIn(c))
+		pg.MainModuleSlug(): {"offset": c.QueryParam("offset"), "limit": c.QueryParam("limit")}}, app.IsLoggedIn(c))
 	c.HTMLBlob(200, buf.Bytes())
-	return  nil
+	return nil
 }
 
 func EditMenu(c echo.Context) error {
@@ -64,10 +66,10 @@ func EditMenu(c echo.Context) error {
 		return err
 	}
 	buf := new(bytes.Buffer)
-	template.Page(buf, pg, flash.GetOrNew(c), map[string]map[string]string{pg.MainModuleSlug(): {"id": c.Param("id") }},
-			app.IsLoggedIn(c))
+	template.Page(buf, pg, flash.GetOrNew(c), map[string]map[string]string{pg.MainModuleSlug(): {"id": c.Param("id")}},
+		app.IsLoggedIn(c))
 	c.HTMLBlob(200, buf.Bytes())
-	return  nil
+	return nil
 }
 
 func UpsertMenu(c echo.Context) error {
@@ -79,7 +81,7 @@ func UpsertMenu(c echo.Context) error {
 	mnu := menu.MenuDef{}
 	mnu.Id = strings.TrimSpace(c.FormValue("menu_id"))
 	mnu.Title = strings.TrimSpace(c.FormValue("menu_title"))
-	//slugs are updated on the backend only //mnu.Slug = strings.TrimSpace(c.FormValue("menu_slug"))
+	// slugs are updated on the backend only //mnu.Slug = strings.TrimSpace(c.FormValue("menu_slug"))
 	if c.FormValue("published") == "on" {
 		mnu.Published = true
 	}
@@ -90,17 +92,18 @@ func UpsertMenu(c echo.Context) error {
 	// The entire form data is serialized into the "modules" field (behavior of the js serializer)
 	// We are only interested in the Items portions of that though
 	formJson := strings.TrimSpace(c.FormValue("items"))
-	logger.Log("Info", "Form data", "json", formJson)
+	logger.Debug("Form data", "json", formJson)
 	if formJson == "" {
 		err := errors.New("No items received for menu")
-		c.Error(err); return err
+		c.Error(err)
+		return serr.Wrap(err)
 	}
 	form := menu.FormMenuObject{}
 	err := json.Unmarshal([]byte(formJson), &form)
 	for _, item := range form.Items {
 		menuItemDef := menu.MenuItemDef{
-			Label: strings.TrimSpace(item.Label),
-			Url: strings.TrimSpace(item.Url),
+			Label:       strings.TrimSpace(item.Label),
+			Url:         strings.TrimSpace(item.Url),
 			SubMenuSlug: item.SubMenuSlug,
 		}
 		mnu.Items = append(mnu.Items, menuItemDef)
@@ -111,15 +114,15 @@ func UpsertMenu(c echo.Context) error {
 
 	err = menu.UpsertMenu(mnu)
 	if err != nil {
-		logger.LogErr(err, "Error in event upsert", "log_location", logger.FunctionLoc())
+		logger.LogErr(serr.Wrap(err, "Error in event upsert"))
 		c.Error(err)
-		return err
+		return serr.Wrap(err)
 	}
 	msg := "Created"
 	if mnu.Id != "0" && mnu.Id != "" {
 		msg = "Updated"
 	}
-	app.Redirect(c, "/admin/menus", "Menu " + msg)
+	app.Redirect(c, "/admin/menus", "Menu "+msg)
 	return nil
 }
 
@@ -128,7 +131,7 @@ func DeleteMenu(c echo.Context) error {
 	msg := "Menu with id: " + c.Param("id") + " deleted"
 	if err != nil {
 		msg = "Error attempting to delete menu with id: " + c.Param("id")
-		logger.LogErrAsync(err, "when", "deleting menu")
+		logger.LogErr(err, "when", "deleting menu")
 	}
 	app.Redirect(c, "/admin/menus", msg)
 	return nil

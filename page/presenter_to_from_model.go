@@ -1,46 +1,51 @@
 package page
 
 import (
-	"fmt"
-	"strings"
-	"github.com/rohanthewiz/church/models"
-	"github.com/rohanthewiz/church/config"
-	"github.com/rohanthewiz/serr"
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"gopkg.in/nullbio/null.v6"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/serr"
+	"gopkg.in/nullbio/null.v6"
 )
 
 func PageFromId(id string) (*Page, error) {
 	intId, err := strconv.ParseInt(id, 10, 64)
-	if err != nil { return nil, serr.Wrap(err, "Error converting page id to int", "location", FunctionLoc()) }
+	if err != nil {
+		return nil, serr.Wrap(err, "Error converting page id to int")
+	}
 	model, err := findPageById(intId)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	pres, err := presenterFromModel(model)
 	if err != nil {
-		return nil, serr.Wrap(err, "Error in page model to presenter", "location", FunctionLoc())
+		return nil, serr.Wrap(err, "Error in page model to presenter")
 	}
 	return pageFromPresenter(pres), nil
 }
 
 func PageFromSlug(slug string) (pg *Page, err error) {
-	fmt.Printf("In PageFromSlug - slug: '%s'\n", slug)
+	// fmt.Printf("In PageFromSlug - slug: '%s'\n", slug)
 	pres, err := presenterFromSlug(slug)
-	if err != nil { return pg, err }
+	if err != nil {
+		return pg, err
+	}
 	return pageFromPresenter(pres), nil
 }
 
 func presenterFromSlug(slug string) (pres Presenter, err error) {
 	model, err := findPageBySlug(slug)
 	if err != nil {
-		return pres, serr.Wrap(err, "Error finding page by slug", "location", FunctionLoc())
+		return pres, serr.Wrap(err, "Error finding page by slug")
 	}
 	pres, err = presenterFromModel(model)
 	if err != nil {
-		return pres, serr.Wrap(err, "Error in page model to presenter", "location", FunctionLoc())
+		return pres, serr.Wrap(err, "Error in page model to presenter")
 	}
 	return
 }
@@ -87,12 +92,12 @@ func modelFromPresenter(pres Presenter) (model *models.Page, create_op bool, err
 	if title := strings.TrimSpace(pres.Title); title != "" {
 		model.Title = title
 	} else {
-		er := serr.Wrap(errors.New("Page title should not be blank"), "location", FunctionLoc())
+		er := serr.New("Page title should not be blank")
 		return nil, create_op, er
 	}
-	if create_op {  // Allow slug update only on create to maintain external references
-		pres.CreateSlug() // slug has to be unique only on the page
-		model.Slug = pres.Slug  // todo: optimize
+	if create_op { // Allow slug update only on create to maintain external references
+		pres.CreateSlug()      // slug has to be unique only on the page
+		model.Slug = pres.Slug // todo: optimize
 	}
 	model.Published = pres.Published
 	model.IsAdmin = pres.IsAdmin

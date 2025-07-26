@@ -2,6 +2,7 @@ package easy_tabs
 
 import (
 	"fmt"
+
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/auth"
@@ -23,7 +24,7 @@ func NewModuleEasyTabs(pres module.Presenter) (module.Module, error) {
 
 	// Work out local condition
 	cond := "1 = 1"
-	if !mod.Opts.IsAdmin && !mod.Opts.ShowUnpublished{
+	if !mod.Opts.IsAdmin && !mod.Opts.ShowUnpublished {
 		cond = "published = true"
 	}
 	// merge with any incoming condition
@@ -34,22 +35,23 @@ func NewModuleEasyTabs(pres module.Presenter) (module.Module, error) {
 
 	return module.Module(mod), nil
 }
+
 // Opts.ItemIds take precedence over other parameters
 func (m ModuleEasyTabs) getData() ([]article.Presenter, error) {
 	if len(m.Opts.ItemIds) > 0 {
-		//fmt.Println("*|* About to run presentersFromIds", "m.Opts.ItemIds", m.Opts.ItemIds)
+		// fmt.Println("*|* About to run presentersFromIds", "m.Opts.ItemIds", m.Opts.ItemIds)
 		return article.PresentersFromIds(m.Opts.ItemIds)
 	}
-	return article.QueryArticles(m.Opts.Condition, "updated_at " + m.Order(), m.Opts.Limit, m.Opts.Offset)
+	return article.QueryArticles(m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
 func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bool) (out string) {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to this module
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to this module
 		m.SetLimitAndOffset(opts)
 	}
 	articles, err := m.getData()
 	if err != nil {
-		logger.LogErr(err, "Error obtaining article data for EasyTabs module", "module_options",  fmt.Sprintf("%#v", m.Opts))
+		logger.LogErr(err, "Error obtaining article data for EasyTabs module", "module_options", fmt.Sprintf("%#v", m.Opts))
 		return
 	}
 
@@ -61,27 +63,27 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 		for i, art := range articles {
 			ids[i] = stringops.SlugWithRandomString(art.Id)
 		}
-		e := element.New
-		out = e("div", "id", modId, "class", "ch-module-wrapper ch-" + ModuleTypeEasyTabs).R(
-			e("ul", "class", "eztabs").R(
-				func() (str string) {
+
+		b := element.NewBuilder()
+
+		b.DivClass("ch-module-wrapper ch-"+ModuleTypeEasyTabs, "id", modId).R(
+			b.UlClass("eztabs").R(
+				b.Wrap(func() {
 					for i, art := range articles {
-						str += e("li").R(
-							e("a", "href", "#" + ids[i]).R(art.Summary), // Put the tab id in the article summary
+						b.Li().R(
+							b.A("href", "#"+ids[i]).T(art.Summary), // Put the tab id in the article summary
 						)
 					}
 					return
-				}(),
+				}),
 			),
-			func() (str string) {
+			b.Wrap(func() {
 				for i, art := range articles {
-					str += e("div", "class", ids[i]).R(art.Body)
+					b.DivClass(ids[i]).T(art.Body)
 				}
-				return
-			}(),
+			}),
 		)
-		out +=	e("script", "type", "text/javascript").R(
-			`(function ($) {
+		b.Script("type", "text/javascript").T(`(function ($) {
             $.fn.easyTabs = function (option) {
                 var param = jQuery.extend({fadeSpeed: "fast", defaultContent: 1, activeClass: 'active'}, option);
                 $(this).each(function () {
@@ -129,10 +131,9 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
                 });
             }
         })(jQuery);`,
-        `$(document).ready(function() {
+			`$(document).ready(function() {
 			$('.ch-easy-tabs').easyTabs({defaultContent:1});
-		});`,
-        )
+		});`)
 	}
 
 	return

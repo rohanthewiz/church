@@ -5,6 +5,7 @@ import (
 
 	"github.com/rohanthewiz/church/core/html"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
 )
 
@@ -53,19 +54,39 @@ func (m *ModuleRecentSermons) Render(params map[string]map[string]string, logged
 		return ""
 	}
 
-	out := `<div class="ch-module-wrapper ch-` + m.Opts.ModuleType +
-		`"><div class="ch-module-heading ch-clickable-heading" onclick="window.location = '/sermons'">` +
-		m.Opts.Title + `</div><div class="ch-module-body"><table>`
+	b := element.NewBuilder()
 
-	if len(sermons) < 1 {
-		out += `<tr><td colspan="3">No recent sermons</td></tr>`
-	} else {
-		for _, ser := range sermons {
-			out += "<tr><td>" + ser.DateTaughtShort + `</td><td><a href="/sermons/` + ser.Id + `">` + ser.Title +
-				`</a></td><td><a class="sermon-play-icon" href="` + ser.AudioLink + `">` + html.TriangleRightSmall + `</a></td></tr>`
-		}
-	}
-	out += "</table></div></div>"
+	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+		b.DivClass("ch-module-heading ch-clickable-heading", "onclick", "window.location = '/sermons'").T(m.Opts.Title),
+		b.DivClass("ch-module-body").R(
+			b.Table().R(
+				b.Wrap(func() {
+					if len(sermons) < 1 {
+						b.Tr().R(b.Td("colspan", "3").T("No recent sermons"))
+					} else {
+						for _, ser := range sermons {
+							b.Tr().R(
+								b.Td().T(ser.DateTaughtShort),
+								b.Td().R(b.A("href", "/sermons/"+ser.Id).T(ser.Title)),
+								b.Td().R(
+									b.Wrap(func() {
+										if ser.AudioLink != "" {
+											b.AClass("sermon-play-icon", "style", "font-size:0.9em", "href", ser.AudioLink).T(html.TriangleRightSmall)
+											// b.T("&nbsp;")
+											// b.A("href", ser.AudioLink, "title", "download", "style",
+											// 	"text-decoration: none; font-size: 12px;").T("📥")
+										} else {
+											b.T("")
+										}
+									}),
+								),
+							)
+						}
+					}
+				}),
+			),
+		),
+	)
 
-	return out
+	return b.String()
 }

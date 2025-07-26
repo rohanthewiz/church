@@ -2,8 +2,10 @@ package event
 
 import (
 	"strconv"
-	. "github.com/rohanthewiz/logger"
+
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
+	"github.com/rohanthewiz/logger"
 )
 
 const ModuleTypeUpcomingEvents = "events_upcoming"
@@ -32,12 +34,12 @@ func NewModuleUpcomingEvents(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleUpcomingEvents) GetData() ([]Presenter, error) {
-	return QueryEvents(m.Opts.Condition, "event_date " + m.Order(), m.Opts.Limit, 0)
+	return QueryEvents(m.Opts.Condition, "event_date "+m.Order(), m.Opts.Limit, 0)
 }
 
 func (m *ModuleUpcomingEvents) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
-		if id, ok := opts["limit"]; ok {  // I only ever see us changing the limit
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
+		if id, ok := opts["limit"]; ok { // I only ever see us changing the limit
 			limit, err := strconv.ParseInt(id, 10, 64)
 			if err == nil {
 				m.Opts.Limit = limit
@@ -48,19 +50,35 @@ func (m *ModuleUpcomingEvents) Render(params map[string]map[string]string, logge
 	evts, err := m.GetData()
 
 	if err != nil {
-		Log("Error", "Error obtaining data in ModuleUpComingEvents", "error", err.Error())
+		logger.LogErr(err, "Error obtaining data in ModuleUpComingEvents", "error")
 		return ""
 	}
-	out := `<div class="ch-module-wrapper ch-` + m.Opts.ModuleType + `"><div class="ch-module-heading ch-clickable-heading" onclick="window.location = '/events'">` + m.Opts.Title +
-		`</div><div class="ch-module-body"><table>`
-	if len(evts) < 1 {
-		out += `<tr><td colspan="2">No upcoming events</td></tr>`
-	} else {
-		for _, evt := range evts {
-			out += "<tr><td>" + evt.EventDate + `</td><td><a href="/events/` + evt.Id + `">` + evt.Title + "</a></td></tr>"
-		}
-	}
 
-	out += "</table></div></div>"
-	return out
+	b := element.NewBuilder()
+
+	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+		b.DivClass("ch-module-heading ch-clickable-heading", "onclick", "window.location = '/events'").T(m.Opts.Title),
+		b.DivClass("ch-module-body").R(
+			b.Table().R(
+				b.Wrap(func() {
+					if len(evts) < 1 {
+						b.Tr().R(
+							b.Td("colspan", "2").T("No upcoming events"),
+						)
+					} else {
+						for _, evt := range evts {
+							b.Tr().R(
+								b.Td().T(evt.EventDate),
+								b.Td().R(
+									b.A("href", "/events/"+evt.Id).T(evt.Title),
+								),
+							)
+						}
+					}
+				}),
+			),
+		),
+	)
+
+	return b.String()
 }

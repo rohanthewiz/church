@@ -3,11 +3,12 @@ package sermon
 import (
 	"fmt"
 	"strings"
-	"github.com/rohanthewiz/serr"
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
+
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeSermonForm = "sermon_form"
@@ -39,10 +40,11 @@ func (m ModuleSermonForm) getData() (pres Presenter, err error) {
 }
 
 func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	ser := Presenter{}; var err error
+	ser := Presenter{}
+	var err error
 
 	operation := "Create"
 	action := ""
@@ -56,114 +58,112 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 		action = "/update/" + ser.Id
 	}
 
-	e := element.New
+	b := element.NewBuilder()
 
-	published := e("input", "type", "checkbox", "name", "published")
-	if ser.Published {
-		published.AddAttributes("checked", "checked")
-	}
-	audioLinkOvrd := e("input", "type", "checkbox", "name", "audio-link-ovrd")
-
-	out := e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation + " " + m.Name.Singular),
-		e("form", "method", "post", "enctype", "multipart/form-data", "action",
-			"/admin/" + m.Name.Plural + action, "onSubmit", "return preSubmit();").R(
-			e("input", "type", "hidden", "name", "sermon_id", "value", ser.Id).R(),
-			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "name", "sermon_title", "type", "text",
-						"required", "required", "value", ser.Title).R(),  // we are using 'required' here to drive `input:valid` selector
-					e("label", "class", "control-label", "for", "sermon_title").R("Sermon Title"),
-					e("i", "class", "bar").R(),
+	b.DivClass("wrapper-material-form").R(
+		b.H3Class("page-title").T(operation+" "+m.Name.Singular),
+		b.Form("method", "post", "enctype", "multipart/form-data", "action",
+			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
+			b.Input("type", "hidden", "name", "sermon_id", "value", ser.Id),
+			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("name", "sermon_title", "type", "text",
+						"required", "required", "value", ser.Title), // we are using 'required' here to drive `input:valid` selector
+					b.LabelClass("control-label", "for", "sermon_title").T("Sermon Title"),
+					b.IClass("bar").R(),
 				),
-				e("div", "class", "form-group").R(
-					e("input", "name", "sermon_date", "type", "date", "value", ser.DateTaught).R(), // todo - maual validation
-					e("label", "class", "control-label", "for", "sermon_date").R("Sermon Date"),
-					//e("i", "class", "bar").R(),
+				b.DivClass("form-group").R(
+					b.Input("name", "sermon_date", "type", "date", "value", ser.DateTaught), // todo - maual validation
+					b.LabelClass("control-label", "for", "sermon_date").T("Sermon Date"),
+					// b.I("class", "bar"),
 				),
 			),
-			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer1").R(ser.Summary),
-				e("textarea", "id", "sermon_summary", "name", "sermon_summary", "type", "text", "value", "",
+			b.DivClass("form-group bootstrap-wrapper").R(
+				b.Div("id", "summer1").T(ser.Summary),
+				b.TextArea("id", "sermon_summary", "name", "sermon_summary", "type", "text", "value", "",
 					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "sermon_summary").R("Summary"),
+				b.LabelClass("control-label", "for", "sermon_summary").T("Summary"),
 			),
-			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer2").R(ser.Body),
-				e("textarea", "id", "sermon_body", "name", "sermon_body", "type", "text", "value", "",
+			b.DivClass("form-group bootstrap-wrapper").R(
+				b.Div("id", "summer2").T(ser.Body),
+				b.TextArea("id", "sermon_body", "name", "sermon_body", "type", "text", "value", "",
 					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "sermon_body").R("Sermon Body"),
+				b.LabelClass("control-label", "for", "sermon_body").T("Sermon Body"),
 			),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "name", "pastor-teacher", "type", "text",
-						"required", "required", "value", ser.Teacher).R(),
-					e("label", "class", "control-label", "for", "pastor-teacher").R("Pastor / Teacher"),
-					e("i", "class", "bar").R(),
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("name", "pastor-teacher", "type", "text",
+						"required", "required", "value", ser.Teacher),
+					b.LabelClass("control-label", "for", "pastor-teacher").T("Pastor / Teacher"),
+					b.IClass("bar").R(),
 				),
-				e("div", "class", "form-group").R(
-					e("input", "name", "sermon_place", "type", "text", "placeholder", "(optional)", "value",
-							ser.PlaceTaught).R(),
-					e("label", "class", "control-label", "for", "sermon_place").R("Place Taught"),
-					e("i", "class", "bar").R(),
-				),
-			),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "name", "sermon_audio", "type", "file", "value", "").R(),
-					e("label", "class", "control-label", "for", "sermon_audio").R("Upload Audio File"),
-					e("i", "class", "bar").R(),
-				),
-				e("div", "class", "form-group").R( // todo - autogenerate this link
-					e("input", "name", "audio_link", "type", "text", "placeholder", "(automatically generated)",
-							"value", ser.AudioLink).R(),
-					e("label", "class", "control-label", "for", "audio_link",
-							).R("Link to Sermon"),
-					e("i", "class", "bar").R(),
+				b.DivClass("form-group").R(
+					b.Input("name", "sermon_place", "type", "text", "placeholder", "(optional)", "value",
+						ser.PlaceTaught),
+					b.LabelClass("control-label", "for", "sermon_place").T("Place Taught"),
+					b.IClass("bar").R(),
 				),
 			),
-			e("div", "class", "form-inline").R(
-				e("div", "class", "form-group").R(
-					e("input", "name", "categories", "type", "text", "value", strings.Join(ser.Categories, ", "),
-						"placeholder", "(optional)").R(),
-					e("label", "class", "control-label", "for", "categories").R("Tags (comma separated)"),
-					e("i", "class", "bar").R(),
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("name", "sermon_audio", "type", "file", "value", ""),
+					b.LabelClass("control-label", "for", "sermon_audio").T("Upload Audio File"),
+					b.IClass("bar").R(),
 				),
-				e("div", "class", "form-group").R(
-					e("input", "name", "scripture_refs", "type", "text", "value", strings.Join(ser.ScriptureRefs, ", "),
-						"placeholder", "(optional)").R(),
-					e("label", "class", "control-label", "for", "scripture_refs").
-							R("Scripture references (comma separated)"),
-					e("i", "class", "bar").R(),
+				b.DivClass("form-group").R( // todo - autogenerate this link
+					b.Input("name", "audio_link", "type", "text", "placeholder", "(automatically generated)",
+						"value", ser.AudioLink),
+					b.LabelClass("control-label", "for", "audio_link").T("Link to Sermon"),
+					b.IClass("bar").R(),
 				),
 			),
-			e("div", "class", "form-inline").R(
-    			e("div", "class", "checkbox").R(
-    				e("label").R(
-    					published.R(),
-    					e("i", "class", "helper").R(),
-    					"Published",
-    				),
-    				e("i", "class", "bar").R(),
-    			),
-    			e("div", "class", "checkbox").R(
-    				e("label").R(
-    					audioLinkOvrd.R(),
-    					e("i", "class", "helper").R(),
-    					"Audio Link Override (webmaster only)",
-    				),
-    				e("i", "class", "bar").R(),
-    			),
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Input("name", "categories", "type", "text", "value", strings.Join(ser.Categories, ", "),
+						"placeholder", "(optional)"),
+					b.LabelClass("control-label", "for", "categories").T("Tags (comma separated)"),
+					b.IClass("bar").R(),
+				),
+				b.DivClass("form-group").R(
+					b.Input("name", "scripture_refs", "type", "text", "value", strings.Join(ser.ScriptureRefs, ", "),
+						"placeholder", "(optional)"),
+					b.LabelClass("control-label", "for", "scripture_refs").T("Scripture references (comma separated)"),
+					b.IClass("bar").R(),
+				),
+			),
+			b.DivClass("form-inline").R(
+				b.DivClass("checkbox").R(
+					b.Label().R(
+						b.Wrap(func() {
+							if ser.Published || operation == "Create" {
+								b.Input("type", "checkbox", "name", "published", "checked", "checked")
+							} else {
+								b.Input("type", "checkbox", "name", "published")
+							}
+						}),
+						b.IClass("helper").R(),
+						b.T("Published"),
+					),
+					b.IClass("bar").R(),
+				),
+				b.DivClass("checkbox").R(
+					b.Label().R(
+						b.Input("type", "checkbox", "name", "audio-link-ovrd"),
+						b.IClass("helper").R(),
+						b.T("Audio Link Override (webmaster only)"),
+					),
+					b.IClass("bar").R(),
+				),
 			),
 
-			e("div", "class", "form-group").R(
-				e("input", "type", "submit", "class", "button", "value", operation).R(),
+			b.DivClass("form-group").R(
+				b.InputClass("button", "type", "submit", "value", operation),
 			),
 		),
 
-		//e("div", "id", "react-app").R(),
-		e("script", "type", "text/javascript").R(
+		// b.Div("id", "react-app"),
+		b.Script("type", "text/javascript").T(
 			`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
 			function preSubmit() {
 				var s1 = $('#summer1');
@@ -177,8 +177,8 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 					body.innerHTML = s2.summernote('code');
 				}
 				return true;
-			}`,
-		),
+			}`),
 	)
-	return out
+
+	return b.String()
 }

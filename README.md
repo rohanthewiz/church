@@ -18,7 +18,10 @@ The project started from the need to build a sustainable website for a small chu
 - Images uploaded via the online editor are resized then stored locally on the server
 - Styling - See the Contributing section for the policy on styling - basically do your own, but don't contribute it back so projects can be styled differently.See the example app for an example (coming soon) using [stylus] (http://stylus-lang.com) - my CSS processor of choice.
 - BTW Bootstrap is only used in the online editor Summer Note. I therefore limit Bootstrap CSS to just form scope.
-- And don't worry, Docker will come. Let's just everything jiving smoothly first.  
+- And don't worry, Docker will come. Let's just everything jiving smoothly first. 
+
+## AI  Assistant Context
+See `.claude-context.md` for detailed framework documentation and coding guidelines
 
 ## STOP !!! The platform has drastically changed!
 Church is now a **Go module**, so some of the below may not apply. Give me a bit to update the README.
@@ -172,7 +175,7 @@ vips -v
 - You can manually migrate each of the sql files (though not recommended) `psql -h localhost -d church_development -U myuser -f db/migrate/20170419004813_CreateUsersTable.sql`
 
 ### Configuration
-- `cp options.yml.sample options.yml`
+- `cp options-sample.yml options.yml`
 - Update config params: `sudo nano cfg/options.yml`
 
 #### Create a Random Seeds file

@@ -1,13 +1,14 @@
 package article
 
 import (
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/serr"
 	"errors"
 	"fmt"
+	"strconv"
+
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
-		"strconv"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeSingleArticle = "article_single"
@@ -32,13 +33,13 @@ func (m ModuleSingleArticle) getData() (pres Presenter, err error) {
 			return pres, serr.Wrap(errors.New("No item ids found"),
 				"module_options", fmt.Sprintf("%#v", m.Opts))
 		}
-		pres, err = presenterFromId(m.Opts.ItemIds[0])  // Todo presenterFromId for other resources
+		pres, err = presenterFromId(m.Opts.ItemIds[0]) // Todo presenterFromId for other resources
 	}
 	return
 }
 
 func (m *ModuleSingleArticle) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us (there may be none)
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us (there may be none)
 		m.SetId(opts)
 	}
 	art, err := m.getData()
@@ -47,24 +48,26 @@ func (m *ModuleSingleArticle) Render(params map[string]map[string]string, logged
 		return ""
 	}
 	klass := "ch-module-wrapper ch-" + m.Opts.ModuleType
-	if m.Opts.CustomClass != "" { klass += " " + m.Opts.CustomClass }
-	e := element.New
-	out := e("div", "class", klass).R(
-		e("h3", "class", "article-title").R(art.Title),
-		e("p").R(art.Summary),
-		e("p").R(art.Body),
-		func() (str string) {
-			//if len(art.Categories) > 0 {
+	if m.Opts.CustomClass != "" {
+		klass += " " + m.Opts.CustomClass
+	}
+	b := element.NewBuilder()
+	b.DivClass(klass).R(
+		b.H3Class("article-title").T(art.Title),
+		b.P().T(art.Summary),
+		b.P().T(art.Body),
+		b.Wrap(func() {
+			// if len(art.Categories) > 0 {
 			//	str = e("div", "class", "categories").R(strings.Join(art.Categories, ", "))
-			//}
+			// }
 			if loggedIn && len(m.Opts.ItemIds) > 0 {
-				str += e("a", "class", "edit-link", "href", m.GetEditURL() +
-						strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
-					e("img", "class", "edit-icon", "title", "Edit Article", "src", "/assets/images/edit_article.svg").R(),
+				b.AClass("edit-link", "href", m.GetEditURL()+
+					strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
+					b.ImgClass("edit-icon", "title", "Edit Article", "src", "/assets/images/edit_article.svg").R(),
 				)
 			}
 			return
-		}(),
+		}),
 	)
-	return out
+	return b.String()
 }

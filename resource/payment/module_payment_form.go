@@ -1,6 +1,9 @@
 package payment
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/module"
@@ -39,44 +42,49 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	e := element.New
-	out = e("form", "action", "/payments/create", "method", "post", "id", "payment-form").R(
-		e("h2", "class", "form-title").R("Give Securely Online"),
-		e("p", "class", "subtitle").R(
-			"Transactions are securely processed by Stripe payment services (https://stripe.com/about)<br>",
-			"All donations are tax-deductible. Please contact Landra Allison, or Rohan Allison with any questions.",
-		),
-		e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
-		e("div", "class", "form-row").R(
-			e("label", "for", "fullname").R("First and last name"),
-			e("input", "name", "fullname", "type", "text").R(),
-		),
-		e("div", "class", "form-row").R(
-			e("label", "for", "email").R("Email"),
-			e("input", "name", "email", "type", "text").R(),
-		),
-		e("div", "class", "form-row").R(
-			e("label", "for", "card-element").R("Credit or Debit card"),
-			e("div", "id", "card-element").R(),
-		),
-		e("div", "class", "form-row").R(
-			e("div", "id", "card-errors", "role", "alert").R(),
-		),
-		e("div", "class", "form-row").R(
-			e("label", "for", "amount").R("Giving amount"),
-			e("input", "name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
-		),
-		e("div", "class", "form-row").R(
-			e("label", "for", "comment").R("Comment"),
-			e("textarea", "name", "comment").R(),
-		),
-		e("button", "id", "payment_form_submit_btn", "class", "submit-button").R("Send My Gift"),
 
-		e("script", "type", "text/javascript").R(`
-			var stripe = Stripe('`+config.Options.Stripe.PubKey+`');
-			var elements = stripe.elements();`,
-			packed.ModulePaymentForm_js,
+	givingContactsMsg := fmt.Sprintf("Please contact %s with any questions.",
+		strings.Join(config.Options.GivingContacts, " or "))
+
+	b := element.NewBuilder()
+
+	b.Form("action", "/payments/create", "method", "post", "id", "payment-form").R(
+		b.H2Class("form-title").T("Give Securely Online"),
+		b.PClass("subtitle").R(
+			b.T("Transactions are securely processed by Stripe payment services (https://stripe.com/about)"),
+			b.Br(),
+			b.T("All donations are tax-deductible. "+givingContactsMsg),
 		),
+		b.Input("type", "hidden", "name", "csrf", "value", m.csrf).R(),
+		b.DivClass("form-row").R(
+			b.Label("for", "fullname").T("First and last name"),
+			b.Input("name", "fullname", "type", "text").R(),
+		),
+		b.DivClass("form-row").R(
+			b.Label("for", "email").T("Email"),
+			b.Input("name", "email", "type", "text").R(),
+		),
+		b.DivClass("form-row").R(
+			b.Label("for", "card-element").T("Credit or Debit card"),
+			b.Div("id", "card-element").R(),
+		),
+		b.DivClass("form-row").R(
+			b.Div("id", "card-errors", "role", "alert").R(),
+		),
+		b.DivClass("form-row").R(
+			b.Label("for", "amount").T("Giving amount"),
+			b.Input("name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
+		),
+		b.DivClass("form-row").R(
+			b.Label("for", "comment").T("Comment"),
+			b.TextArea("name", "comment").R(),
+		),
+		b.Button("id", "payment_form_submit_btn", "class", "submit-button").T("Send My Gift"),
+
+		b.Script("type", "text/javascript").T(`
+			var stripe = Stripe('`+config.Options.Stripe.PubKey+`');
+			var elements = stripe.elements();`+
+			packed.ModulePaymentForm_js),
 	)
-	return
+	return b.String()
 }

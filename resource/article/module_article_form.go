@@ -3,11 +3,12 @@ package article
 import (
 	"fmt"
 	"strings"
-	"github.com/rohanthewiz/serr"
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
+
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeArticleForm = "article_form"
@@ -23,14 +24,14 @@ func NewModuleArticleForm(pres module.Presenter) (module.Module, error) {
 	mod.Opts = pres.Opts
 	csrf, err := app.GenerateFormToken()
 	if err != nil {
-		return nil, serr.Wrap(err, "Could not generate form token", "location", FunctionLoc())
+		return nil, serr.Wrap(err)
 	}
 	mod.csrf = csrf
 	return module.Module(mod), nil
 }
 
 func (m ModuleArticleForm) getData() (artPres Presenter, err error) {
-	art, err := findArticleById(m.Opts.ItemIds[0])  // len check safety on caller
+	art, err := findArticleById(m.Opts.ItemIds[0]) // len check safety on caller
 	if err != nil {
 		return artPres, serr.Wrap(err, "Unable to obtain article")
 	}
@@ -38,10 +39,11 @@ func (m ModuleArticleForm) getData() (artPres Presenter, err error) {
 }
 
 func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
-	art := Presenter{}; var err error
+	art := Presenter{}
+	var err error
 
 	operation := "Create"
 	action := ""
@@ -54,58 +56,61 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 		}
 		action = "/update/" + art.Id
 	}
-	e := element.New
-	elEnabled := e("input", "type", "checkbox", "class", "enabled", "name", "published")
-	if art.Published {
-		elEnabled.AddAttributes("checked", "checked")
-	}
-	out := e("div", "class", "wrapper-material-form").R(
-		e("h3", "class", "page-title").R(operation + " " + m.Name.Singular),
-		e("form", "method", "post", "action",
-			"/admin/" + m.Name.Plural + action, "onSubmit", "return preSubmit();").R(
-			e("input", "type", "hidden", "name", "article_id", "value", art.Id).R(),
-			e("input", "type", "hidden", "name", "csrf", "value", m.csrf).R(),
+	b := element.NewBuilder()
 
-			e("div", "class", "form-group").R(
-				e("input", "name", "article_title", "type", "text",
-					"required", "required", "value", art.Title).R(),  // we are using 'required' here to drive `input:valid` selector
-				e("label", "class", "control-label", "for", "article_title").R("Article Title"),
-				e("i", "class", "bar").R(),
+	b.DivClass("wrapper-material-form").R(
+		b.H3("class", "page-title").T(operation+" "+m.Name.Singular),
+		b.Form("method", "post", "action",
+			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
+			b.Input("type", "hidden", "name", "article_id", "value", art.Id),
+			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
+
+			b.DivClass("form-group").R(
+				b.Input("name", "article_title", "type", "text",
+					"required", "required", "value", art.Title), // we are using 'required' here to drive `input:valid` selector
+				b.Label("class", "control-label", "for", "article_title").T("Article Title"),
+				b.IClass("bar").T(""),
 			),
-			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer1").R(art.Summary),
-				e("textarea", "id", "article_summary", "name", "article_summary", "type", "text", "value", "",
-					"style", "display:none").R(), // this will hold the returned editor contents
-				e("label", "class", "control-label", "for", "article_summary").R("Summary / Intro"),
-				// no bar if content editable //e("i", "class", "bar").R(),
+			b.DivClass("form-group bootstrap-wrapper").R(
+				b.Div("id", "summer1").T(art.Summary),
+				b.TextArea("id", "article_summary", "name", "article_summary", "type", "text", "value", "",
+					"style", "display:none").T(""), // this will hold the returned editor contents
+				b.Label("class", "control-label", "for", "article_summary").T("Summary / Intro"),
+				// no bar if content editable //b.IClass("bar"),
 			),
-			e("div", "class", "form-group bootstrap-wrapper").R(
-				e("div", "id", "summer2").R(art.Body),
-				e("textarea", "id", "article_body", "name", "article_body", "type", "text", "value", "",
-					"style", "display:none").R(),
-				e("label", "class", "control-label", "for", "article_body").R("Article Body"),
+			b.DivClass("form-group bootstrap-wrapper").R(
+				b.Div("id", "summer2").T(art.Body),
+				b.TextArea("id", "article_body", "name", "article_body", "type", "text", "value", "",
+					"style", "display:none").T(""),
+				b.Label("class", "control-label", "for", "article_body").T("Article Body"),
 			),
-			e("div", "class", "form-group").R(
-				e("input", "type", "text", "name", "categories",
-					"value", strings.Join(art.Categories, ", ")).R(),
-				e("label", "class", "control-label", "for", "categories").R("Categories"),
-				e("i", "class", "bar").R(),
+			b.DivClass("form-group").R(
+				b.Input("type", "text", "name", "categories",
+					"value", strings.Join(art.Categories, ", ")),
+				b.Label("class", "control-label", "for", "categories").T("Categories"),
+				b.IClass("bar").T(""),
 			),
-			e("div", "class", "checkbox").R(
-				e("label").R(
-					elEnabled.R(),
-					e("i", "class", "helper").R(),
-					"Published",
+			b.DivClass("checkbox").R(
+				b.Label().R(
+					b.Wrap(func() {
+						if art.Published {
+							b.Input("type", "checkbox", "class", "enabled", "name", "published", "checked", "checked")
+						} else {
+							b.Input("type", "checkbox", "class", "enabled", "name", "published")
+						}
+					}),
+					b.IClass("helper").T(""),
+					b.T("Published"),
 				),
-				e("i", "class", "bar").R(),
+				b.IClass("bar").T(""),
 			),
 
-			e("div", "class", "form-group").R(
-				e("input", "type", "submit", "class", "button", "value", operation).R(),
+			b.DivClass("form-group").R(
+				b.Input("type", "submit", "class", "button", "value", operation),
 			),
 		),
 
-		e("script", "type", "text/javascript").R(
+		b.Script("type", "text/javascript").T(
 			`$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
 			function preSubmit() {
 				var s1 = $('#summer1');
@@ -119,8 +124,7 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 					body.innerHTML = s2.summernote('code');
 				}
 				return true;
-			}`,
-		),
+			}`),
 	)
-	return out
+	return b.String()
 }

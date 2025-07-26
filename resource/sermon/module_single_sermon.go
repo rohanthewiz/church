@@ -1,14 +1,15 @@
 package sermon
 
 import (
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"strings"
-	"github.com/rohanthewiz/serr"
-	"fmt"
 	"errors"
-	"github.com/rohanthewiz/element"
+	"fmt"
 	strconv "strconv"
+	"strings"
+
+	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeSingleSermon = "sermon_single"
@@ -39,7 +40,7 @@ func (m ModuleSingleSermon) getData() (pres Presenter, err error) {
 }
 
 func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedIn bool) string {
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to us
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
 	ser, err := m.getData()
@@ -47,22 +48,38 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 		LogErr(err, "Error in module render")
 		return ""
 	}
-	e := element.New
-	out := e("h3", "class", "sermon-title").R(ser.Title)
-	out += e("span", "class", "sermon-sub-title").R(
-		ser.Teacher + " - " + ser.DateTaught,
-		e("a", "class", "sermon-play-icon", "href", ser.AudioLink).R("download"))
-	out += e("div").R(ser.Summary)
-	out += e("div").R(ser.Body)
-	if loggedIn && len(m.Opts.ItemIds) > 0 {
-		out += e("a", "class", "edit-link", "href", m.GetEditURL() +
-			strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
-			e("img", "class", "edit-icon", "title", "Edit Sermon", "src", "/assets/images/edit_article.svg").R(),
-		)
-	}
-	out += e("div", "class", "sermon-footer").R(
-		e("span", "class", "scripture").R(strings.Join(ser.ScriptureRefs, ", ")),
-		e("span", "class", "categories").R(strings.Join(ser.Categories, ", ")),
+
+	b := element.NewBuilder()
+
+	b.H3Class("sermon-title").T(ser.Title)
+	b.SpanClass("sermon-sub-title").R(
+		b.T(ser.Teacher + " - " + ser.DateTaught),
 	)
-	return out
+	// Mobile-friendly audio player with controls
+	b.DivClass("sermon-audio-wrapper", "style", "margin: 20px 0; padding: 15px; background-color: #f5f5f5; border-radius: 8px;").R(
+		b.Audio("controls", "controls", "style", "width: 100%; max-width: 440px;").R(
+			b.Source("src", ser.AudioLink, "type", "audio/mpeg").R(),
+			b.T("Your browser does not support the audio element."),
+		),
+		// b.DivClass("sermon-download-link", "style", "margin-top: 10px;").R(
+		// 	b.A("href", ser.AudioLink, "title", "download (right-click then \"Save link as\")",
+		// 		"style", "color: #333; text-decoration: none; font-size: 14px;").T("📥 Download"),
+		// ),
+	)
+	b.Div().T(ser.Summary)
+	b.Div().T(ser.Body)
+	b.Wrap(func() {
+		if loggedIn && len(m.Opts.ItemIds) > 0 {
+			b.AClass("edit-link", "href", m.GetEditURL()+
+				strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
+				b.ImgClass("edit-icon", "title", "Edit Sermon", "src", "/assets/images/edit_article.svg").R(),
+			)
+		}
+	})
+	b.DivClass("sermon-footer").R(
+		b.SpanClass("scripture").T(strings.Join(ser.ScriptureRefs, ", ")),
+		b.SpanClass("categories").T(strings.Join(ser.Categories, ", ")),
+	)
+
+	return b.String()
 }

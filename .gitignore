@@ -1,8 +1,14 @@
 .idea/
+.vscode/
+.zed/
+.claude/
+
 .DS_Store
 
 church
 
 vendor/
+
+
 
 sqlboiler.toml

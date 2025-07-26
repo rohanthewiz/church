@@ -4,7 +4,6 @@
 package config
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -19,6 +18,10 @@ const (
 	IncomingDateTimeFormat = "2006-01-02 15:04 MST" // 2017-06-10 19:30 CST
 	DisplayDateTimeFormat  = "2006-01-02 15:04"     // 3:04 PM"
 	DisplayDateFormat      = "2006-01-02"
+
+	PresenterDateFormat   = "2006-01-02"
+	DisplayDateFormatLong = "01/02/2006"
+
 	DisplayShortDateFormat = "1/2"
 	DisplayTimeFormat      = "15:04"
 )
@@ -45,6 +48,7 @@ type ConfigAll struct {
 type EnvConfig struct {
 	Theme           string `yaml:"theme"`
 	BannerInnerHTML string `yaml:"banner_inner_html"`
+	BannerExt       string `yaml:"banner_ext"`
 	CopyrightOwner  string `yaml:"copyright_owner"`
 	AppTimeout      int64  `yaml:"app_timeout"` // App max time in minutes
 	Server          struct {
@@ -59,6 +63,7 @@ type EnvConfig struct {
 		Format    string `yaml:"format"`
 		InfoPath  string `yaml:"info_path"`
 		ErrorPath string `yaml:"error_path"`
+		// SlackAPICfg logger.SlackAPICfg `yaml:"slack_api_cfg"`
 	} `yaml:"log"`
 	PG struct {
 		Host     string `yaml:"host"`
@@ -82,11 +87,21 @@ type EnvConfig struct {
 		Host string `yaml:"host"`
 		Port string `yaml:"port"`
 	} `yaml:"redis"`
+	IDrive struct {
+		Enabled         bool   `yaml:"enabled"`
+		EndPoint        string `yaml:"end_point"`
+		Region          string `yaml:"region"`
+		Bucket          string `yaml:"bucket"`
+		AccessKey       string `yaml:"access_key"`
+		SecretKey       string `yaml:"secret_key"`
+		LocalSermonsDir string `yaml:"local_sermons_dir"`
+	} `yaml:"idrive"`
 	Stripe struct {
 		PubKey  string `yaml:"pub_key"`
 		PrivKey string `yaml:"priv_key"`
 	} `yaml:"stripe"`
-	Gmail struct {
+	GivingContacts []string `yaml:"giving_contacts"` // typically used on the Giving form
+	Gmail          struct {
 		Account  string   `yaml:"account"`
 		FromName string   `yaml:"from"`
 		Word     string   `yaml:"word"`
@@ -95,7 +110,7 @@ type EnvConfig struct {
 }
 
 type FTPConfig struct {
-	Enabled       bool   `yaml:"enabled"`
+	Enabled       bool   `yaml:"enabled"` // Legacy FTP upload (deprecated - use IDrive.Enabled instead)
 	Host          string `yaml:"host"`
 	Port          string `yaml:"port"`
 	User          string `yaml:"user"`
@@ -110,9 +125,9 @@ func InitConfig(version, commitHash, buildStamp string) {
 
 	// Don't cache config here, since this function is normally only called on init()
 	// Not caching allows us to be able to hot reload config in the future
-	//if Options != nil { // return cached Options if already loaded
+	// if Options != nil { // return cached Options if already loaded
 	//	return  // Options are already loaded
-	//}
+	// }
 
 	AppEnv = "development"
 	if env := strings.TrimSpace(os.Getenv("APP_ENV")); env != "" {
@@ -125,11 +140,11 @@ func InitConfig(version, commitHash, buildStamp string) {
 	GitCommitHash = commitHash
 	BuildTimestamp = buildStamp
 
-	config_data, err := loadConfigFile()
+	configData, err := loadConfigFile()
 	if err != nil {
 		log.Fatal("Error: ", err.Error())
 	}
-	env_cfg := getOptionsForEnvironment(config_data)
+	env_cfg := getOptionsForEnvironment(configData)
 	env_cfg = envOverride(env_cfg) // Override some settings with environment variables
 	Options = env_cfg
 }
@@ -160,20 +175,20 @@ func getOptionsForEnvironment(cfg *ConfigAll) *EnvConfig {
 }
 
 func loadConfigFile() (*ConfigAll, error) {
-	var config_all = new(ConfigAll)
+	var cfgAll = new(ConfigAll)
 
-	file_data, err := ioutil.ReadFile(configFile)
+	fileData, err := os.ReadFile(configFile)
 	if err != nil {
 		log.Fatal("error - Could not load configuration. ", err.Error(), " - config_file: ", configFile,
 			" tip - Are you in the project root?",
-			" tip2 - Did you remember to copy 'cfg/options.yml.sample' to 'cfg/options.yml' ?")
-		return config_all, err
+			" tip2 - Did you remember to copy 'cfg/options-sample.yml' to 'cfg/options.yml' ?")
+		return cfgAll, err
 	}
-	err = yaml.Unmarshal(file_data, config_all)
+	err = yaml.Unmarshal(fileData, cfgAll)
 	if err != nil {
 		log.Fatal("Error unmarshalling yaml configuration file", err.Error(), "config_file", configFile,
 			"tip - Double check that the contents of the config file is proper yaml (http://www.yamllint.com/)")
-		return config_all, err
+		return cfgAll, err
 	}
-	return config_all, err
+	return cfgAll, err
 }

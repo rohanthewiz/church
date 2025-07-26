@@ -1,13 +1,14 @@
 package event
 
 import (
-	"strings"
-	. "github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/church/config"
-	"github.com/rohanthewiz/church/agrid"
 	"encoding/json"
+	"strings"
+
+	"github.com/rohanthewiz/church/agrid"
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
+	. "github.com/rohanthewiz/logger"
 )
 
 const ModuleTypeEventsList = "events_list"
@@ -23,7 +24,7 @@ func NewModuleEventsList(pres module.Presenter) (module.Module, error) {
 
 	// Work out local condition
 	cond := "1 = 1"
-	if !mod.Opts.IsAdmin && !mod.Opts.ShowUnpublished{
+	if !mod.Opts.IsAdmin && !mod.Opts.ShowUnpublished {
 		cond = "published = true"
 	}
 	// merge with any incoming condition
@@ -36,18 +37,19 @@ func NewModuleEventsList(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleEventsList) getData() ([]Presenter, error) {
-	return QueryEvents(m.Opts.Condition, "event_date " + m.Order(), m.Opts.Limit, m.Opts.Offset)
+	return QueryEvents(m.Opts.Condition, "event_date "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
+
 type eventsListRowDef struct {
-	Id string `json:"id,omitempty"`
+	Id        string `json:"id,omitempty"`
 	Published string `json:"published,omitempty"`
-	Slug string `json:"slug,omitempty"`
-	Cats string `json:"cats,omitempty"`
+	Slug      string `json:"slug,omitempty"`
+	Cats      string `json:"cats,omitempty"`
 	UpdatedBy string `json:"updatedBy"`
-	Title string `json:"title"`
+	Title     string `json:"title"`
 	EventDate string `json:"eventDate"`
-	Edit string `json:"edit,omitempty"`
-	Delete string `json:"delete"`
+	Edit      string `json:"edit,omitempty"`
+	Delete    string `json:"delete"`
 }
 
 func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn bool) string {
@@ -55,25 +57,25 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 	eventsDeleteURL := config.AdminPrefix + "/" + m.Opts.ItemsURLPath + "/delete/"
 	newPath := config.AdminPrefix + "/" + m.Opts.ItemsURLPath + "/new"
 
-	if opts, ok := params[m.Opts.Slug]; ok {  // params addressed to this module
+	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to this module
 		m.SetLimitAndOffset(opts)
 	}
 
 	evts, err := m.getData()
 	if err != nil {
-		Log("Error", "Error obtaining data in module", "module_slug",  m.Opts.Slug,
-				"module_type", m.Opts.ModuleType, "error", err.Error())
+		Log("Error", "Error obtaining data in module", "module_slug", m.Opts.Slug,
+			"module_type", m.Opts.ModuleType, "error", err.Error())
 		return ""
 	}
 
 	// Setup AgGrid
 	var columnDefs []agrid.ColumnDef
 	if m.Opts.IsAdmin {
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Id", Field: "id", Width: 105 })
+		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Id", Field: "id", Width: 105})
 	}
 	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Event Date", Field: "eventDate", Width: 190})
 	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Title", Field: "title", CellRenderer: "linkCellRenderer"})
-	//columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Description", Field: "Summary", Width: 200, CellRenderer: "eventsListRenderer"})
+	// columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Description", Field: "Summary", Width: 200, CellRenderer: "eventsListRenderer"})
 	if m.Opts.IsAdmin {
 		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Slug", Field: "slug"})
 		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Categories", Field: "cats"})
@@ -86,15 +88,17 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 	var rowData []eventsListRowDef
 	for _, evt := range evts {
 		published := "draft"
-		if evt.Published { published = "published" }
+		if evt.Published {
+			published = "published"
+		}
 
 		row := eventsListRowDef{}
 		if m.Opts.IsAdmin {
 			row.Id = evt.Id
 		}
 		row.EventDate = evt.EventDate
-		row.Title = evt.Title + "|" +  "/" + m.Opts.ItemsURLPath + "/" + evt.Id //base64.StdEncoding.EncodeToString([]byte(title))
-		//row.Summary = base64.StdEncoding.EncodeToString([]byte(evt.Summary))
+		row.Title = evt.Title + "|" + "/" + m.Opts.ItemsURLPath + "/" + evt.Id // base64.StdEncoding.EncodeToString([]byte(title))
+		// row.Summary = base64.StdEncoding.EncodeToString([]byte(evt.Summary))
 		if m.Opts.IsAdmin {
 			row.Slug = evt.Slug
 			row.Cats = strings.Join(evt.Categories, ", ")
@@ -108,7 +112,9 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 
 	columnDefsAsJson, err := json.Marshal(columnDefs)
 	rowDataAsJson, err := json.Marshal(rowData)
-	if err != nil { LogErr(err, "Error converting Event column defs to JSON") }
+	if err != nil {
+		LogErr(err, "Error converting Event column defs to JSON")
+	}
 	jsConvertColumnDefs := "var eventsListColumnDefs = JSON.parse(`" + string(columnDefsAsJson) + "`);"
 	jsConvertRowData := "var rowData = JSON.parse(`" + string(rowDataAsJson) + "`);"
 	gridOptions := `var eventsListGridOptions = {
@@ -128,7 +134,7 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 	};`
 
 	scriptBody := `new agGrid.Grid(document.querySelector('.events-list-grid'), eventsListGridOptions);`
-	//eventsListRenderer := `function EventsListContentRenderer() {}
+	// eventsListRenderer := `function EventsListContentRenderer() {}
 	//	EventsListContentRenderer.prototype.init = function(params) {
 	//		var content = atob(params.value)
 	//		this.eGui = document.createElement('div');
@@ -138,24 +144,24 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 	//		return this.eGui;
 	//	};`
 
-	e := element.New
-	estr := e("div", "class", "ch-module-wrapper ch-" + m.Opts.ModuleType).R(
-		e("div", "class", "ch-module-heading").R(
-			m.Opts.Title,
-			func() (s string) {
+	b := element.NewBuilder()
+
+	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+		b.DivClass("ch-module-heading").R(
+			b.T(m.Opts.Title),
+			b.Wrap(func() {
 				if m.Opts.IsAdmin {
-					s = e("a", "class", "btn-add", "href", newPath, "title", "Add Events").R("+")
+					b.AClass("btn-add", "href", newPath, "title", "Add Events").T("+")
 				}
-				return
-			}(),
+			}),
 		),
-		e("div", "class", "list-wrapper").R(
-			e("div", "class", "events-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
-			e("script", "type", "text/javascript").R(
-				jsConvertColumnDefs, jsConvertRowData, gridOptions, //eventsListRenderer,
-				`$(document).ready(function() {` + scriptBody + `});`),
+		b.DivClass("list-wrapper").R(
+			b.DivClass("events-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
+			b.Script("type", "text/javascript").T(
+				jsConvertColumnDefs+jsConvertRowData+gridOptions+ // eventsListRenderer,
+					`$(document).ready(function() {`+scriptBody+`});`),
 		),
 	)
 
-	return estr
+	return b.String()
 }
