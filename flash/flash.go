@@ -63,13 +63,12 @@ func (f Flash) SetRWeb(ctx rweb.Context) error {
 		return err
 	}
 	b64d := base64.StdEncoding.EncodeToString(byts)
-	cookie.SetRWeb(ctx, flash_cookie_name, b64d)
-	return nil
+	return ctx.SetCookie(flash_cookie_name, b64d)
 }
 
 // GetRWeb retrieves flash message from RWeb context
 func GetRWeb(ctx rweb.Context) (*Flash, error) {
-	cookieVal, err := cookie.GetAndClearRWeb(ctx, flash_cookie_name)
+	cookieVal, err := ctx.GetCookieAndClear(flash_cookie_name)
 	if err != nil {
 		return nil, err
 	}

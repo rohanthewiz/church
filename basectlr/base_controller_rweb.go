@@ -2,17 +2,13 @@ package basectlr
 
 import (
 	"bytes"
-	"fmt"
 
-	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/config"
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/template"
-	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
-	"github.com/rohanthewiz/serr"
 )
 
 func RenderPageNewRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {

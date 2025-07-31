@@ -1,9 +1,6 @@
 package app
 
 import (
-	"net/http"
-	"time"
-
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/rweb"
@@ -16,9 +13,7 @@ func RedirectRWeb(ctx rweb.Context, url, fl_msg string) error {
 		fl.Info = fl_msg // todo warn and error
 		fl.SetRWeb(ctx)
 	}
-	ctx.Response().Header().Set("Location", url)
-	ctx.Response().WriteHeader(http.StatusSeeOther)
-	return nil
+	return ctx.Redirect(303, url) // 303 See Other
 }
 
 // IsLoggedInRWeb checks if user is logged in based on RWeb context

@@ -37,7 +37,7 @@ func ServeRWeb() {
 	// Create RWeb server
 	s := rweb.NewServer(rweb.ServerOptions{
 		Address: ":" + config.Options.Server.Port,
-		Verbose: config.Options.Debug,
+		Verbose: true, // config.AppEnv == config.Environments.Development,
 		TLS: rweb.TLSCfg{
 			UseTLS:   config.Options.Server.UseTLS && config.AppEnv != "development",
 			KeyFile:  config.Options.Server.KeyFile,
@@ -168,7 +168,7 @@ func ServeRWeb() {
 	// Admin Pages
 	ad.Get("/pages", page_controller.AdminListPagesRWeb)
 	ad.Get("/pages/new", page_controller.NewPageRWeb)
-	ad.Post("/pages", page_controller.UpsertPageRWeb) // create
+	ad.Post("/pages", page_controller.UpsertPageRWeb)       // create
 	ad.Get("/pages/:id", page_controller.AdminShowPageRWeb) // preview
 	ad.Get("/pages/edit/:id", page_controller.EditPageRWeb)
 	ad.Post("/pages/update/:id", page_controller.UpsertPageRWeb) // update
@@ -183,5 +183,7 @@ func ServeRWeb() {
 	ad.Get("/menus/delete/:id", menu_controller.DeleteMenuRWeb)
 
 	// Start the server
-	logger.Fatal(s.Run())
+	if err := s.Run(); err != nil {
+		logger.LogErr(err, "failed to start server")
+	}
 }

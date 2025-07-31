@@ -4,11 +4,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/rohanthewiz/church/app"
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/resource/auth"
-	"github.com/rohanthewiz/church/resource/cookie"
 	"github.com/rohanthewiz/church/resource/session"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
@@ -22,9 +20,7 @@ func RedirectRWeb(ctx rweb.Context, url, fl_msg string) error {
 		fl.Info = fl_msg // todo warn and error
 		fl.SetRWeb(ctx)
 	}
-	ctx.Response().Header().Set("Location", url)
-	ctx.Response().WriteHeader(http.StatusSeeOther)
-	return nil
+	return ctx.Redirect(http.StatusSeeOther, url)
 }
 
 // RWeb Middleware for storing session in context
@@ -76,7 +72,7 @@ func AdminGuardRWeb(ctx rweb.Context) error {
 // EnsureSessionCookieRWeb - RWeb version
 // Get session key from cookie or create new one
 func EnsureSessionCookieRWeb(ctx rweb.Context) string {
-	key, err := cookie.GetRWeb(ctx, session.CookieName)
+	key, err := ctx.GetCookie(session.CookieName)
 	if err == nil && key != "" {
 		logger.Debug("we have an existing session key, returning it: " + key)
 		return key
@@ -84,7 +80,10 @@ func EnsureSessionCookieRWeb(ctx rweb.Context) string {
 
 	// Create new session key
 	key = auth.RandomKey()
-	cookie.SetRWeb(ctx, session.CookieName, key)
+	err = ctx.SetCookie(session.CookieName, key)
+	if err != nil {
+		logger.LogErr(err, "failed to set session cookie")
+	}
 	logger.Debug("Setting new session key in cookie: " + key)
 	return key
 }

@@ -6,6 +6,7 @@
 
 #### 1.1 Dependencies
 - [x] Add `github.com/rohanthewiz/rweb` to go.mod ✅
+- [x] Updated to rweb v0.1.21 with native cookie support ✅
 - [ ] Remove `github.com/labstack/echo/v4` from go.mod (will do after migration)
 - [x] Run `go mod tidy` ✅
 
@@ -13,7 +14,7 @@
 - [x] Create new `context/rweb_helpers.go` with RWeb context helpers ✅
 - [x] Update `context/custom_context.go` to work with RWeb ✅
 - [x] Create helper functions: `GetSession()`, `IsAdmin()`, `GetUser()` ✅
-- [x] Create RWeb cookie helper functions ✅
+- [x] ~~Create RWeb cookie helper functions~~ Now using native RWeb cookie support ✅
 - [x] Update flash messages for RWeb ✅
 
 #### 1.3 Router Migration
@@ -36,34 +37,36 @@
 - [x] Created `app/application_controller_rweb.go` with RedirectRWeb ✅
 - [x] Updated flash message handling for RWeb ✅
 
-### Phase 2: Controllers ⏸️ NOT STARTED
+### Phase 2: Controllers ✅ COMPLETED
 
-#### 2.1 Auth Controller (Priority 1)
-- [ ] `auth_controller/auth_controller.go`
-- [ ] `auth_controller/login.go`
-- [ ] `auth_controller/logout.go`
-- [ ] `auth_controller/middleware.go`
+#### 2.1 Auth Controller (Priority 1) ✅ COMPLETED
+- [x] `auth_controller/auth_controller.go` ✅
+- [x] `auth_controller/login.go` (included in auth_controller.go) ✅
+- [x] `auth_controller/logout.go` (included in auth_controller.go) ✅
+- [x] `auth_controller/middleware.go` (already migrated) ✅
 
-#### 2.2 Page Controller (Priority 2)
-- [ ] `page_controller/page_controller.go`
-- [ ] All page-related handlers
+#### 2.2 Page Controller (Priority 2) ✅ COMPLETED
+- [x] `page_controller/page_controller.go` ✅
+- [x] All page-related handlers ✅
 
-#### 2.3 Article Controller
-- [ ] `article_controller/article_controller.go`
-- [ ] All article handlers
+#### 2.3 Article Controller ✅ COMPLETED
+- [x] `article_controller/article_controller.go` ✅
+- [x] All article handlers ✅
 
-#### 2.4 Sermon Controller
-- [ ] `sermon_controller/sermon_controller.go`
-- [ ] File upload/download handlers
+#### 2.4 Sermon Controller ✅ COMPLETED
+- [x] `sermon_controller/sermon_controller.go` ✅
+- [x] File upload/download handlers ✅
+- [x] API handlers (`resource/sermon/api_rweb.go`) ✅
 
-#### 2.5 Event Controller
-- [ ] `event_controller/event_controller.go`
-- [ ] Calendar endpoints
+#### 2.5 Event Controller ✅ COMPLETED
+- [x] `event_controller/event_controller.go` ✅
+- [x] Calendar endpoints (`resource/calendar/fullcalendar_events_rweb.go`) ✅
 
-#### 2.6 Other Controllers
-- [ ] `menu_controller/menu_controller.go`
-- [ ] `user_controller/user_controller.go`
-- [ ] `payment_controller/payment_controller.go`
+#### 2.6 Other Controllers ✅ COMPLETED
+- [x] `admin_controller/admin_controller.go` (SetupSuperAdmin) ✅
+- [x] `menu_controller/menu_controller.go` ✅
+- [x] `user_controller/user_controller.go` ✅
+- [x] `payment_controller/payment_controller.go` ✅
 
 ### Phase 3: Resource Modules ⏸️ NOT STARTED
 
@@ -102,6 +105,53 @@
    - Created router_rweb.go with all routes migrated
    - Created auth middleware for RWeb
    - Created base controller functions for RWeb
+
+### Session Update: 2025-07-31
+
+4. Updated to use RWeb's native cookie support (v0.1.21)
+   - ✅ Updated `auth_controller/auth_middleware_rweb.go` to use `ctx.GetCookie()` and `ctx.SetCookie()`
+   - ✅ Updated `flash/flash.go` to use `ctx.SetCookie()` and `ctx.GetCookieAndClear()`
+   - ✅ Removed custom cookie implementation `resource/cookie/cookie_rweb.go`
+   - ✅ No longer need the custom cookie package for RWeb handlers
+   - ✅ Fixed import cycles by removing `app` package import from context helpers
+   - ✅ Updated `basectlr/send_file_rweb.go` to use `rweb.File()` and proper header methods
+   - ✅ Cleaned up unused imports across multiple files
+   - ✅ Fixed `router_rweb.go` to use `config.AppEnv` for verbose mode
+
+5. Started Phase 2 - Controllers Migration
+   - ✅ Created `auth_controller/auth_controller_rweb.go`
+     - Migrated LoginHandler, AuthHandler, LogoutHandler, RegisterUser
+   - ✅ Created `auth_controller/auth_helpers_rweb.go`
+     - Migrated StartSession and NewSessionKey helpers
+   - ✅ Created `page_controller/page_controller_rweb.go`
+     - Migrated all page handlers (HomePage, PageHandler, admin pages, etc.)
+     - Updated to use RWeb context methods for params and form values
+     - Fixed session access using context helpers
+   - ✅ Created `admin_controller/admin_controller_rweb.go`
+     - Migrated SetupSuperAdmin, AdminHandler, CreateTestEvents
+   - ✅ Created `article_controller/article_controller_rweb.go`
+     - Migrated all article handlers (New, Show, List, Edit, Upsert, Delete)
+   - ✅ Created `event_controller/event_controller_rweb.go`
+     - Migrated all event handlers
+   - ✅ Added `SetFormReferrerRWeb` to `context/rweb_helpers.go`
+   - ✅ Created `resource/sermon/api_rweb.go` for sermon API
+   - ✅ Created `resource/calendar/fullcalendar_events_rweb.go` for calendar API
+
+6. Completed Phase 2 - All Controllers Migrated
+   - ✅ Created `payment_controller/payment_controller_rweb.go`
+     - Migrated payment form, receipt, and Stripe integration
+     - Added `SetLastDonationURLRWeb` to context helpers
+   - ✅ Created `sermon_controller/sermon_controller_rweb.go`
+     - Migrated all sermon handlers including file upload
+     - Updated file handling to use RWeb's GetFormFile method
+   - ✅ Created `user_controller/user_controller_rweb.go`
+     - Migrated all user management handlers
+   - ✅ Created `menu_controller/menu_controller_rweb.go`
+     - Migrated menu management handlers
+   - ✅ Fixed final compilation issues
+     - Removed duplicate constants
+     - Fixed logger.Fatal usage
+   - ✅ Successfully compiled entire project with RWeb
    
 ### Next Steps
 Phase 2 will involve migrating individual controllers, starting with the auth controller which is the highest priority.

@@ -101,6 +101,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/relistan/rubberneck v1.3.0 h1:8aLmcCgJeveMhJxVFY4++QVr0e2KqhdiL9Ix4JvfX0E=
 github.com/relistan/rubberneck v1.3.0/go.mod h1:Rz7t6qPF++kclj7QHhPNssWP94g4bKTi1ebhnQ4gEDg=
+github.com/rohanthewiz/assert v0.1.2 h1:coi0nUTAuqgpxoa7THQynDnBKUzV9Bid+tNaocUkCYE=
+github.com/rohanthewiz/assert v0.1.2/go.mod h1:Xix0OMMRN0aGkE207Wk5GJk0eWlpcNGph0+kYpuq+vQ=
 github.com/rohanthewiz/element v0.5.4 h1:GuUkF8/y39opotrVYrfrnygCAVVpyF/aPXyKNJKZnd0=
 github.com/rohanthewiz/element v0.5.4/go.mod h1:cA57S9UGRSaWrMmGC1M+8QCQw/y8kgODiBB0KEwIyzo=
 github.com/rohanthewiz/gmail_send v1.0.0 h1:GxgZf6vF/iozP2YhYg3sgSWJCl2lrc/XNnhOpSRpUuY=
@@ -111,8 +113,8 @@ github.com/rohanthewiz/roftp v0.2.0 h1:xujy3kJqenUOMBBVcaiCwK9b8vfQEa/QloXNdOaXu
 github.com/rohanthewiz/roftp v0.2.0/go.mod h1:6ZcuAouzs2a/hNzm/iWKSL3UtUwR13ztNioVhegwCp8=
 github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e h1:wGzjMo9KDLXn1u3rNpJ0FYmtXrGdbS4HJ+EExvT3o9M=
 github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e/go.mod h1:YRm0+bo1OvJNN9RPejz4zeRDE72STqggkg+NBu9B5Fs=
-github.com/rohanthewiz/rweb v0.1.20 h1:rl3BAO1Srp/utepgDKHnwl/ib1EVv85xvPLoXEDVz1M=
-github.com/rohanthewiz/rweb v0.1.20/go.mod h1:SdkvSM89cA18qlEm6oh8o7CpKaOCWgdNBzPeiF6I/As=
+github.com/rohanthewiz/rweb v0.1.21-0.20250731033713-5cf289199189 h1:aeDVBs9vgyctyR0fO0LYsEUfXZAFbCqOuiltmPVwz9c=
+github.com/rohanthewiz/rweb v0.1.21-0.20250731033713-5cf289199189/go.mod h1:SdkvSM89cA18qlEm6oh8o7CpKaOCWgdNBzPeiF6I/As=
 github.com/rohanthewiz/serr v1.0.0-rc.3/go.mod h1:4LFlRtUd/2j5PXgWWE9ibW/fVlJSH1acBDwn2pDcIRc=
 github.com/rohanthewiz/serr v1.2.16 h1:NDV7yhoHVkZMMSKrJzxysZHUcS7vo3QU88D2B7MHGio=
 github.com/rohanthewiz/serr v1.2.16/go.mod h1:WYBghPccoTAUknotbanGZzWnIFREXYI5ULwf5sjznxY=

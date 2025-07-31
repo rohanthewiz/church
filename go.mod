@@ -21,6 +21,7 @@ require (
 	github.com/rohanthewiz/logger v1.2.20
 	github.com/rohanthewiz/roftp v0.2.0
 	github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e
+	github.com/rohanthewiz/rweb v0.1.21-0.20250731033713-5cf289199189
 	github.com/rohanthewiz/serr v1.2.16
 	github.com/stripe/stripe-go v55.14.0+incompatible
 	github.com/vattle/sqlboiler v2.5.0+incompatible
@@ -56,7 +57,6 @@ require (
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.33.1 // indirect
 	github.com/relistan/rubberneck v1.3.0 // indirect
-	github.com/rohanthewiz/rweb v0.1.20 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect
