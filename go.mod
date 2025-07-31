@@ -12,13 +12,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.71.0
 	github.com/h2non/bimg v1.0.19
 	github.com/jlaffaye/ftp v0.0.0-20181011150954-fe787349a520
-	github.com/labstack/echo v0.0.0-20190126223945-739700bf4ef7
+	github.com/labstack/echo v3.3.10+incompatible
 	github.com/lib/pq v1.0.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
 	github.com/rohanthewiz/element v0.5.4
 	github.com/rohanthewiz/gmail_send v1.0.0
-	github.com/rohanthewiz/logger v1.2.16
+	github.com/rohanthewiz/logger v1.2.20
 	github.com/rohanthewiz/roftp v0.2.0
 	github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e
 	github.com/rohanthewiz/serr v1.2.16
@@ -56,6 +56,7 @@ require (
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.33.1 // indirect
 	github.com/relistan/rubberneck v1.3.0 // indirect
+	github.com/rohanthewiz/rweb v0.1.20 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect
