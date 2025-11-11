@@ -1,6 +1,7 @@
 package church
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/rohanthewiz/church/admin"
@@ -107,12 +108,12 @@ func ServeRWeb() {
 	// Sermons
 	ser := s.Group("/sermons", authctlr.UseCustomContextRWeb)
 	ser.Get("", sermon_controller.ListSermonsRWeb)
-	ser.Get("/:id", sermon_controller.ShowSermonRWeb)
+	ser.Get("/:id", sermon_controller.ShowSermonRWeb) // "/:id" -> conflicts with "/:year/:filename" so we will use sermon-audio instead
 
-	// Sermon media files
-	ser.Get("/:year/:filename", func(ctx rweb.Context) error {
-		year := ctx.Request().PathParam("year")
-		filename := ctx.Request().PathParam("filename")
+	s.Get("/sermon-audio/:year/:filename", func(ctx rweb.Context) error {
+		year := ctx.Request().Param("year")
+		filename := ctx.Request().Param("filename")
+		fmt.Println("**->> year:", year, "filename:", filename)
 
 		byts, err := idrive.GetSermon(year, filename)
 		if err != nil {

@@ -97,13 +97,13 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	serPres.Teacher = ctx.Request().FormValue("pastor-teacher")
 	serPres.Categories = strings.Split(ctx.Request().FormValue("categories"), ",")
 	serPres.ScriptureRefs = strings.Split(ctx.Request().FormValue("scripture_refs"), ",")
-	
+
 	// Get username from session
 	sess, err := cctx.GetSessionFromRWeb(ctx)
 	if err == nil && sess != nil {
 		serPres.UpdatedBy = sess.Username
 	}
-	
+
 	if ctx.Request().FormValue("published") == "on" {
 		serPres.Published = true
 	}

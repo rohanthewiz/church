@@ -115,9 +115,13 @@ github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e h1:wGzjMo9KDLX
 github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e/go.mod h1:YRm0+bo1OvJNN9RPejz4zeRDE72STqggkg+NBu9B5Fs=
 github.com/rohanthewiz/rweb v0.1.21-0.20250731033713-5cf289199189 h1:aeDVBs9vgyctyR0fO0LYsEUfXZAFbCqOuiltmPVwz9c=
 github.com/rohanthewiz/rweb v0.1.21-0.20250731033713-5cf289199189/go.mod h1:SdkvSM89cA18qlEm6oh8o7CpKaOCWgdNBzPeiF6I/As=
+github.com/rohanthewiz/rweb v0.1.21-0.20251015003132-f556750e470d h1:M4TUfXM8v9ea6vTX60TqYNPD8aD2384A/qqEb/EGad4=
+github.com/rohanthewiz/rweb v0.1.21-0.20251015003132-f556750e470d/go.mod h1:esRbqdso5FllxreXnmoRNz3XJv4Otr2OIDUX81wRr0c=
 github.com/rohanthewiz/serr v1.0.0-rc.3/go.mod h1:4LFlRtUd/2j5PXgWWE9ibW/fVlJSH1acBDwn2pDcIRc=
 github.com/rohanthewiz/serr v1.2.16 h1:NDV7yhoHVkZMMSKrJzxysZHUcS7vo3QU88D2B7MHGio=
 github.com/rohanthewiz/serr v1.2.16/go.mod h1:WYBghPccoTAUknotbanGZzWnIFREXYI5ULwf5sjznxY=
+github.com/rohanthewiz/serr v1.2.18 h1:SAnzWSM6A9sksbjkubtnCkmkhdfjwfo1bs0F7OgfPy8=
+github.com/rohanthewiz/serr v1.2.18/go.mod h1:WYBghPccoTAUknotbanGZzWnIFREXYI5ULwf5sjznxY=
 github.com/sirupsen/logrus v1.9.3 h1:dueUQJ1C2q9oE3F7wvmSGAaVtTmUizReu6fjN8uqzbQ=
 github.com/sirupsen/logrus v1.9.3/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
