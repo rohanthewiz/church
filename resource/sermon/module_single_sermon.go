@@ -56,73 +56,32 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 		b.T(ser.Teacher + " - " + ser.DateTaught),
 	)
 
-	// WinAmp-style audio player
-	b.DivClass("winamp-player", "style", `
+	// Audio player styled to match page
+	b.DivClass("sermon-audio-player", "style", `
 		margin: 20px 0;
 		width: 100%;
-		max-width: 440px;
-		background: linear-gradient(180deg, #2c3137 0%, #1a1d21 100%);
-		border: 2px solid #000;
-		border-radius: 4px;
-		padding: 8px;
-		box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 8px rgba(0,0,0,0.5);
-		font-family: 'Courier New', monospace;
+		max-width: 500px;
+		background: #ffffff;
+		border: 1px solid #d0d0d0;
+		border-radius: 6px;
+		padding: 15px;
+		box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+		font-family: Arial, sans-serif;
 	`).R(
-		// Display area (title marquee)
-		b.DivClass("winamp-display", "style", `
-			background: #000;
-			color: #00ff00;
-			padding: 8px 12px;
-			margin-bottom: 10px;
-			border: 1px solid #333;
-			border-radius: 2px;
-			font-size: 14px;
-			font-weight: bold;
-			text-shadow: 0 0 8px #00ff00;
-			letter-spacing: 1px;
+		// Title display
+		b.DivClass("audio-title", "style", `
+			color: #333;
+			padding: 10px 12px;
+			margin-bottom: 15px;
+			font-size: 15px;
+			font-weight: 600;
 			overflow: hidden;
 			white-space: nowrap;
-			box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+			text-overflow: ellipsis;
+			background: #f8f9fa;
+			border-left: 4px solid #0066a1;
+			border-radius: 3px;
 		`).T(ser.Title),
-
-		// Visualizer area
-		b.DivClass("winamp-info-bar", "style", `
-			margin-bottom: 10px;
-		`).R(
-			// Mini visualizer (decorative)
-			b.DivClass("winamp-viz", "style", `
-				background: #000;
-				border: 1px solid #333;
-				border-radius: 2px;
-				height: 32px;
-				position: relative;
-				overflow: hidden;
-				box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
-			`).R(
-				b.DivClass("viz-bars", "style", `
-					display: flex;
-					align-items: flex-end;
-					height: 100%;
-					gap: 2px;
-					padding: 4px;
-				`).R(
-					func() any {
-						// Create 12 visualizer bars
-						for i := 0; i < 12; i++ {
-							height := 20 + (i%3)*10
-							b.DivClass("viz-bar", "style", fmt.Sprintf(`
-								flex: 1;
-								background: linear-gradient(to top, #00ff00, #00cc00);
-								height: %d%%;
-								border-radius: 1px;
-								opacity: 0.7;
-							`, height)).R()
-						}
-						return nil
-					}(),
-				),
-			),
-		),
 
 		// HTML5 audio element (hidden)
 		b.Audio("id", "sermon-audio", "style", "display: none;").R(
@@ -130,255 +89,213 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 		),
 
 		// Control buttons and time display
-		b.DivClass("winamp-controls", "style", `
+		b.DivClass("audio-controls", "style", `
 			display: flex;
-			gap: 6px;
-			margin-bottom: 10px;
+			gap: 10px;
+			margin-bottom: 12px;
 			justify-content: space-between;
 			align-items: center;
 		`).R(
 			// Button group (left side)
-			b.DivClass("winamp-btn-group", "style", `
+			b.DivClass("audio-btn-group", "style", `
 				display: flex;
 				gap: 6px;
 			`).R(
 				// Previous button
-				b.Button("class", "winamp-btn", "title", "Previous", "style", `
-					background: linear-gradient(180deg, #4a5158 0%, #2c3137 100%);
-					border: 1px solid #000;
-					border-radius: 3px;
-					color: #fff;
+				b.Button("class", "audio-btn", "title", "Previous", "style", `
+					background: #e9ecef;
+					border: 1px solid #ced4da;
+					border-radius: 4px;
+					color: #495057;
 					cursor: pointer;
 					padding: 8px 12px;
 					font-size: 14px;
-					box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.3);
-				`, "onclick", "return false;").T("⏮"),
+					transition: all 0.2s;
+				`, "onclick", "return false;", "onmouseover", "this.style.background='#dee2e6'", "onmouseout", "this.style.background='#e9ecef'").T("⏮"),
 
 				// Play/Pause button
-				b.Button("class", "winamp-btn", "id", "sermon-play-btn", "title", "Play/Pause", "style", `
-					background: linear-gradient(180deg, #00cc00 0%, #008800 100%);
-					border: 1px solid #000;
-					border-radius: 3px;
+				b.Button("class", "audio-btn", "id", "sermon-play-btn", "title", "Play/Pause", "style", `
+					background: #0066a1;
+					border: 1px solid #005a8d;
+					border-radius: 4px;
 					color: #fff;
 					cursor: pointer;
-					padding: 8px 16px;
+					padding: 10px 18px;
 					font-size: 16px;
 					font-weight: bold;
-					box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 2px 4px rgba(0,0,0,0.3);
-				`, "onclick", "toggleSermonPlayback()").T("▶"),
+					transition: all 0.2s;
+				`, "onclick", "toggleSermonPlayback()", "onmouseover", "this.style.background='#005a8d'", "onmouseout", "this.style.background='#0066a1'").T("▶"),
 
 				// Stop button
-				b.Button("class", "winamp-btn", "id", "sermon-stop-btn", "title", "Stop", "style", `
-					background: linear-gradient(180deg, #cc0000 0%, #880000 100%);
-					border: 1px solid #000;
-					border-radius: 3px;
+				b.Button("class", "audio-btn", "id", "sermon-stop-btn", "title", "Stop", "style", `
+					background: #dc3545;
+					border: 1px solid #c82333;
+					border-radius: 4px;
 					color: #fff;
 					cursor: pointer;
 					padding: 8px 12px;
 					font-size: 14px;
-					box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.3);
-				`, "onclick", "stopSermonPlayback()").T("■"),
+					transition: all 0.2s;
+				`, "onclick", "stopSermonPlayback()", "onmouseover", "this.style.background='#c82333'", "onmouseout", "this.style.background='#dc3545'").T("■"),
 
 				// Next button
-				b.Button("class", "winamp-btn", "title", "Next", "style", `
-					background: linear-gradient(180deg, #4a5158 0%, #2c3137 100%);
-					border: 1px solid #000;
-					border-radius: 3px;
-					color: #fff;
+				b.Button("class", "audio-btn", "title", "Next", "style", `
+					background: #e9ecef;
+					border: 1px solid #ced4da;
+					border-radius: 4px;
+					color: #495057;
 					cursor: pointer;
 					padding: 8px 12px;
 					font-size: 14px;
-					box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.3);
-				`, "onclick", "return false;").T("⏭"),
+					transition: all 0.2s;
+				`, "onclick", "return false;", "onmouseover", "this.style.background='#dee2e6'", "onmouseout", "this.style.background='#e9ecef'").T("⏭"),
 			),
 
-			// Time display (right side)
-			b.DivClass("winamp-time-display", "style", `
+			// Time display (right side) - LED style
+			b.DivClass("audio-time-display", "style", `
 				display: flex;
 				align-items: center;
 				gap: 6px;
-				background: #000;
+				background: #1a1a1a;
 				border: 1px solid #333;
-				border-radius: 2px;
-				padding: 6px 10px;
-				box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+				border-radius: 3px;
+				padding: 6px 12px;
+				box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
 			`).R(
-				// Current time
-				b.SpanClass("winamp-current-time", "id", "sermon-time", "style", `
-					color: #00ffff;
+				// Current time - LED style
+				b.SpanClass("audio-current-time", "id", "sermon-time", "style", `
+					color: #00e5ff;
 					font-size: 15px;
 					font-weight: bold;
-					text-shadow: 0 0 6px #00ffff;
+					text-shadow: 0 0 8px rgba(0,229,255,0.8);
 					letter-spacing: 1px;
-					font-family: 'Courier New', monospace;
+					font-family: 'Courier New', Monaco, monospace;
 				`).T("00:00"),
 
 				// Separator
 				b.SpanClass("time-separator", "style", `
-					color: #666;
+					color: #555;
 					font-size: 12px;
 					padding: 0 2px;
+					font-family: 'Courier New', Monaco, monospace;
 				`).T("/"),
 
-				// Total time
-				b.SpanClass("winamp-total-time", "id", "sermon-total-time", "style", `
-					color: #00ff00;
+				// Total time - LED style
+				b.SpanClass("audio-total-time", "id", "sermon-total-time", "style", `
+					color: #76ff03;
 					font-size: 13px;
 					font-weight: bold;
-					text-shadow: 0 0 6px #00ff00;
+					text-shadow: 0 0 8px rgba(118,255,3,0.8);
 					letter-spacing: 1px;
-					font-family: 'Courier New', monospace;
+					font-family: 'Courier New', Monaco, monospace;
 				`).T("00:00"),
 			),
 		),
 
-		// Time display (right side)
-		b.DivClass("winamp-time-display", "style", `
-				display: flex;
-				align-items: center;
-				gap: 6px;
-				background: #000;
-				border: 1px solid #333;
-				border-radius: 2px;
-				padding: 6px 10px;
-				box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
-			`).R(
-			// Current time
-			b.SpanClass("winamp-current-time", "id", "sermon-time", "style", `
-					color: #00ffff;
-					font-size: 15px;
-					font-weight: bold;
-					text-shadow: 0 0 6px #00ffff;
-					letter-spacing: 1px;
-					font-family: 'Courier New', monospace;
-				`).T("00:00"),
-
-			// Separator
-			b.SpanClass("time-separator", "style", `
-					color: #666;
-					font-size: 12px;
-					padding: 0 2px;
-				`).T("/"),
-
-			// Total time
-			b.SpanClass("winamp-total-time", "id", "sermon-total-time", "style", `
-					color: #00ff00;
-					font-size: 13px;
-					font-weight: bold;
-					text-shadow: 0 0 6px #00ff00;
-					letter-spacing: 1px;
-					font-family: 'Courier New', monospace;
-				`).T("00:00"),
-		),
-
 		// Progress bar with volume control
-		b.DivClass("winamp-progress-area", "style", `
+		b.DivClass("audio-progress-area", "style", `
 			display: flex;
 			gap: 8px;
-			margin-bottom: 10px;
+			margin-bottom: 12px;
 			align-items: center;
 		`).R(
 			// Progress bar
-			b.DivClass("winamp-progress-container", "style", `
-				background: #000;
-				border: 1px solid #333;
-				border-radius: 2px;
-				padding: 4px;
+			b.DivClass("audio-progress-container", "style", `
+				background: #e9ecef;
+				border: 1px solid #ced4da;
+				border-radius: 4px;
+				padding: 3px;
 				cursor: pointer;
-				box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
 				position: relative;
 				flex: 1;
 			`, "onclick", "seekSermonAudio(event)", "onmousemove", "showSermonTimeTooltip(event)", "onmouseleave", "hideSermonTimeTooltip()").R(
-				b.DivClass("winamp-progress-bar", "id", "sermon-progress", "style", `
-					background: linear-gradient(90deg, #00ff00 0%, #00cc00 100%);
+				b.DivClass("audio-progress-bar", "id", "sermon-progress", "style", `
+					background: linear-gradient(90deg, #0066a1 0%, #004d7a 100%);
 					height: 8px;
 					width: 0%;
-					border-radius: 1px;
-					box-shadow: 0 0 8px rgba(0,255,0,0.6);
+					border-radius: 3px;
 					transition: width 0.1s linear;
 				`).R(),
-				// Time tooltip
-				b.DivClass("winamp-time-tooltip", "id", "sermon-time-tooltip", "style", `
+				// Time tooltip - LED style
+				b.DivClass("audio-time-tooltip", "id", "sermon-time-tooltip", "style", `
 					display: none;
 					position: absolute;
 					bottom: 24px;
-					background: #000;
-					color: #00ffff;
+					background: #1a1a1a;
+					color: #00e5ff;
 					padding: 4px 8px;
-					border: 1px solid #00ffff;
-					border-radius: 2px;
+					border: 1px solid #333;
+					border-radius: 3px;
 					font-size: 11px;
 					font-weight: bold;
-					text-shadow: 0 0 6px #00ffff;
+					text-shadow: 0 0 8px rgba(0,229,255,0.8);
 					pointer-events: none;
 					white-space: nowrap;
 					z-index: 1000;
-					box-shadow: 0 2px 8px rgba(0,255,255,0.5);
+					box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+					font-family: 'Courier New', Monaco, monospace;
 				`).T("00:00"),
 			),
 
 			// Volume control container
-			b.DivClass("winamp-volume-container", "style", `
+			b.DivClass("audio-volume-container", "style", `
 				position: relative;
 			`).R(
 				// Volume button
-				b.Button("class", "winamp-volume-btn", "id", "sermon-volume-btn", "title", "Volume", "style", `
-					background: linear-gradient(180deg, #4a5158 0%, #2c3137 100%);
-					border: 1px solid #000;
-					border-radius: 3px;
-					color: #fff;
+				b.Button("class", "audio-volume-btn", "id", "sermon-volume-btn", "title", "Volume", "style", `
+					background: #e9ecef;
+					border: 1px solid #ced4da;
+					border-radius: 4px;
+					color: #495057;
 					cursor: pointer;
-					padding: 6px 10px;
+					padding: 8px 12px;
 					font-size: 16px;
-					box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.3);
-					min-width: 40px;
-				`, "onclick", "toggleSermonVolumePopup()").R(
+					min-width: 44px;
+					transition: all 0.2s;
+				`, "onclick", "toggleSermonVolumePopup()", "onmouseover", "this.style.background='#dee2e6'", "onmouseout", "this.style.background='#e9ecef'").R(
 					b.SpanClass("volume-icon", "id", "sermon-volume-icon").T("🔊"),
 				),
 
 				// Volume popup (vertical slider)
-				b.DivClass("winamp-volume-popup", "id", "sermon-volume-popup", "style", `
+				b.DivClass("audio-volume-popup", "id", "sermon-volume-popup", "style", `
 					display: none;
 					position: absolute;
-					bottom: 45px;
+					bottom: 50px;
 					right: 0;
-					background: linear-gradient(180deg, #2c3137 0%, #1a1d21 100%);
-					border: 2px solid #000;
-					border-radius: 4px;
-					padding: 12px 8px;
-					box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 12px rgba(0,0,0,0.7);
+					background: #ffffff;
+					border: 1px solid #ced4da;
+					border-radius: 6px;
+					padding: 12px 10px;
+					box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 					z-index: 1001;
 				`).R(
 					// Volume percentage display
 					b.DivClass("volume-display", "style", `
 						text-align: center;
-						margin-bottom: 8px;
+						margin-bottom: 10px;
 					`).R(
 						b.SpanClass("volume-value", "id", "sermon-volume-display", "style", `
-							color: #00ff00;
-							font-size: 14px;
+							color: #0066a1;
+							font-size: 16px;
 							font-weight: bold;
-							text-shadow: 0 0 6px #00ff00;
-							font-family: 'Courier New', monospace;
+							font-family: Arial, sans-serif;
 						`).T("80"),
 						b.SpanClass("volume-percent", "style", `
-							color: #00ff00;
-							font-size: 11px;
-							text-shadow: 0 0 6px #00ff00;
-							font-family: 'Courier New', monospace;
+							color: #0066a1;
+							font-size: 12px;
+							font-family: Arial, sans-serif;
 						`).T("%"),
 					),
 
 					// Vertical slider container
 					b.DivClass("vertical-slider-container", "style", `
 						height: 120px;
-						width: 40px;
-						background: #000;
-						border: 1px solid #333;
-						border-radius: 2px;
+						width: 44px;
+						background: #e9ecef;
+						border: 1px solid #ced4da;
+						border-radius: 4px;
 						position: relative;
 						cursor: pointer;
-						box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
 					`, "onclick", "setSermonVolumeFromClick(event)").R(
 						// Volume bar (fills from bottom)
 						b.DivClass("volume-bar", "id", "sermon-volume-bar", "style", `
@@ -387,9 +304,8 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 							left: 0;
 							right: 0;
 							height: 80%;
-							background: linear-gradient(to top, #00ff00, #00cc00);
-							border-radius: 1px;
-							box-shadow: 0 0 8px rgba(0,255,0,0.6);
+							background: linear-gradient(to top, #0066a1 0%, #005a8d 100%);
+							border-radius: 3px;
 							transition: height 0.1s ease;
 						`).R(),
 
@@ -399,12 +315,12 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 							left: 50%;
 							transform: translateX(-50%);
 							bottom: 80%;
-							width: 36px;
-							height: 6px;
-							background: linear-gradient(180deg, #fff 0%, #ccc 100%);
-							border: 1px solid #000;
-							border-radius: 2px;
-							box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+							width: 40px;
+							height: 8px;
+							background: #ffffff;
+							border: 2px solid #0066a1;
+							border-radius: 4px;
+							box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 							cursor: grab;
 							transition: bottom 0.1s ease;
 						`, "onmousedown", "startSermonVolumeDrag(event)").R(),
@@ -414,17 +330,18 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 		),
 
 		// Download link
-		b.DivClass("winamp-download", "style", `
-			margin-top: 10px;
-			padding-top: 8px;
-			border-top: 1px solid #333;
+		b.DivClass("audio-download", "style", `
+			padding-top: 12px;
+			border-top: 1px solid #e9ecef;
 			text-align: center;`).R(
 			b.A("href", ser.AudioLink, "download", "download", "title", "Download sermon",
 				"style", `
-					color: #00ffff;
+					color: #0066a1;
 					text-decoration: none;
-					font-size: 12px;
-					text-shadow: 0 0 4px #00ffff;`).T("💾 DOWNLOAD"),
+					font-size: 13px;
+					font-weight: 500;
+					transition: color 0.2s;`,
+				"onmouseover", "this.style.color='#005a8d'", "onmouseout", "this.style.color='#0066a1'").T("💾 Download Sermon"),
 		),
 	)
 
@@ -536,7 +453,7 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 
 			// Close volume popup when clicking outside
 			document.addEventListener('click', function(event) {
-				const volumeContainer = document.querySelector('.winamp-volume-container');
+				const volumeContainer = document.querySelector('.audio-volume-container');
 				if (volumeContainer && !volumeContainer.contains(event.target)) {
 					volumePopup.style.display = 'none';
 				}
