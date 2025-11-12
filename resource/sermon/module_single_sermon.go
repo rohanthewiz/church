@@ -96,98 +96,242 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 			justify-content: space-between;
 			align-items: center;
 		`).R(
-			// Button group (left side)
-			b.DivClass("audio-btn-group", "style", `
+			// Left side: Button group + Download
+			b.DivClass("audio-controls-left", "style", `
 				display: flex;
-				gap: 6px;
+				gap: 10px;
+				align-items: center;
 			`).R(
-				// Previous button
-				b.Button("class", "audio-btn", "title", "Previous", "style", `
-					background: #e9ecef;
-					border: 1px solid #ced4da;
-					border-radius: 4px;
-					color: #495057;
-					cursor: pointer;
-					padding: 8px 12px;
-					font-size: 14px;
-					transition: all 0.2s;
-				`, "onclick", "return false;", "onmouseover", "this.style.background='#dee2e6'", "onmouseout", "this.style.background='#e9ecef'").T("⏮"),
+				// Button group
+				b.DivClass("audio-btn-group", "style", `
+					display: flex;
+					gap: 6px;
+				`).R(
+					// Previous button (go to start) with tooltip
+					b.DivClass("btn-tooltip-container", "style", `position: relative;`).R(
+						b.Button("class", "audio-btn", "style", `
+							background: #e9ecef;
+							border: 1px solid #ced4da;
+							border-radius: 4px;
+							color: #495057;
+							cursor: pointer;
+							padding: 10px 14px;
+							font-size: 15px;
+							transition: all 0.2s;
+							min-width: 44px;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+						`, "onclick", "goToSermonStart()",
+							"onmouseover", "this.style.background='#dee2e6'; this.nextElementSibling.style.display='block'",
+							"onmouseout", "this.style.background='#e9ecef'; this.nextElementSibling.style.display='none'").T("⏮"),
+						b.DivClass("btn-tooltip", "style", `
+							display: none;
+							position: absolute;
+							bottom: 45px;
+							left: 50%;
+							transform: translateX(-50%);
+							background: #333;
+							color: #fff;
+							padding: 6px 10px;
+							border-radius: 4px;
+							font-size: 12px;
+							white-space: nowrap;
+							z-index: 1000;
+							pointer-events: none;
+						`).T("Go to start"),
+					),
 
-				// Play/Pause button
-				b.Button("class", "audio-btn", "id", "sermon-play-btn", "title", "Play/Pause", "style", `
-					background: #0066a1;
-					border: 1px solid #005a8d;
-					border-radius: 4px;
-					color: #fff;
-					cursor: pointer;
-					padding: 10px 18px;
-					font-size: 16px;
-					font-weight: bold;
-					transition: all 0.2s;
-				`, "onclick", "toggleSermonPlayback()", "onmouseover", "this.style.background='#005a8d'", "onmouseout", "this.style.background='#0066a1'").T("▶"),
+					// Play/Pause button with tooltip
+					b.DivClass("btn-tooltip-container", "style", `position: relative;`).R(
+						b.Button("class", "audio-btn", "id", "sermon-play-btn", "style", `
+							background: #0066a1;
+							border: 1px solid #005a8d;
+							border-radius: 4px;
+							color: #fff;
+							cursor: pointer;
+							padding: 10px 14px;
+							font-size: 15px;
+							font-weight: bold;
+							transition: all 0.2s;
+							min-width: 44px;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+						`, "onclick", "toggleSermonPlayback()",
+							"onmouseover", "this.style.background='#005a8d'; this.nextElementSibling.style.display='block'",
+							"onmouseout", "this.style.background='#0066a1'; this.nextElementSibling.style.display='none'").T("▶"),
+						b.DivClass("btn-tooltip", "style", `
+							display: none;
+							position: absolute;
+							bottom: 45px;
+							left: 50%;
+							transform: translateX(-50%);
+							background: #333;
+							color: #fff;
+							padding: 6px 10px;
+							border-radius: 4px;
+							font-size: 12px;
+							white-space: nowrap;
+							z-index: 1000;
+							pointer-events: none;
+						`).T("Play/Pause"),
+					),
 
-				// Stop button
-				b.Button("class", "audio-btn", "id", "sermon-stop-btn", "title", "Stop", "style", `
-					background: #dc3545;
-					border: 1px solid #c82333;
-					border-radius: 4px;
-					color: #fff;
-					cursor: pointer;
-					padding: 8px 12px;
-					font-size: 14px;
-					transition: all 0.2s;
-				`, "onclick", "stopSermonPlayback()", "onmouseover", "this.style.background='#c82333'", "onmouseout", "this.style.background='#dc3545'").T("■"),
+					// Stop button with tooltip
+					b.DivClass("btn-tooltip-container", "style", `position: relative;`).R(
+						b.Button("class", "audio-btn", "id", "sermon-stop-btn", "style", `
+							background: #dc3545;
+							border: 1px solid #c82333;
+							border-radius: 4px;
+							color: #fff;
+							cursor: pointer;
+							padding: 10px 14px;
+							font-size: 15px;
+							transition: all 0.2s;
+							min-width: 44px;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+						`, "onclick", "stopSermonPlayback()",
+							"onmouseover", "this.style.background='#c82333'; this.nextElementSibling.style.display='block'",
+							"onmouseout", "this.style.background='#dc3545'; this.nextElementSibling.style.display='none'").T("■"),
+						b.DivClass("btn-tooltip", "style", `
+							display: none;
+							position: absolute;
+							bottom: 45px;
+							left: 50%;
+							transform: translateX(-50%);
+							background: #333;
+							color: #fff;
+							padding: 6px 10px;
+							border-radius: 4px;
+							font-size: 12px;
+							white-space: nowrap;
+							z-index: 1000;
+							pointer-events: none;
+						`).T("Stop"),
+					),
 
-				// Next button
-				b.Button("class", "audio-btn", "title", "Next", "style", `
-					background: #e9ecef;
-					border: 1px solid #ced4da;
-					border-radius: 4px;
-					color: #495057;
-					cursor: pointer;
-					padding: 8px 12px;
-					font-size: 14px;
-					transition: all 0.2s;
-				`, "onclick", "return false;", "onmouseover", "this.style.background='#dee2e6'", "onmouseout", "this.style.background='#e9ecef'").T("⏭"),
+					// Next button (go to near end) with tooltip
+					b.DivClass("btn-tooltip-container", "style", `position: relative;`).R(
+						b.Button("class", "audio-btn", "style", `
+							background: #e9ecef;
+							border: 1px solid #ced4da;
+							border-radius: 4px;
+							color: #495057;
+							cursor: pointer;
+							padding: 10px 14px;
+							font-size: 15px;
+							transition: all 0.2s;
+							min-width: 44px;
+							display: flex;
+							align-items: center;
+							justify-content: center;
+						`, "onclick", "goToSermonEnd()",
+							"onmouseover", "this.style.background='#dee2e6'; this.nextElementSibling.style.display='block'",
+							"onmouseout", "this.style.background='#e9ecef'; this.nextElementSibling.style.display='none'").T("⏭"),
+						b.DivClass("btn-tooltip", "style", `
+							display: none;
+							position: absolute;
+							bottom: 45px;
+							left: 50%;
+							transform: translateX(-50%);
+							background: #333;
+							color: #fff;
+							padding: 6px 10px;
+							border-radius: 4px;
+							font-size: 12px;
+							white-space: nowrap;
+							z-index: 1000;
+							pointer-events: none;
+						`).T("Go to end"),
+					),
+				),
+
+				// Download button with tooltip
+				b.DivClass("audio-download-container", "style", `
+					position: relative;
+				`).R(
+					b.A("href", ser.AudioLink, "download", "download", "class", "audio-download-btn",
+						"style", `
+							display: flex;
+							align-items: center;
+							justify-content: center;
+							background: #e9ecef;
+							border: 1px solid #ced4da;
+							border-radius: 4px;
+							color: #495057;
+							cursor: pointer;
+							padding: 10px 14px;
+							font-size: 15px;
+							transition: all 0.2s;
+							text-decoration: none;
+							min-width: 44px;
+						`,
+						"onmouseover", "this.style.background='#dee2e6'; document.getElementById('download-tooltip').style.display='block'",
+						"onmouseout", "this.style.background='#e9ecef'; document.getElementById('download-tooltip').style.display='none'").T("💾"),
+					// Tooltip
+					b.DivClass("download-tooltip", "id", "download-tooltip", "style", `
+						display: none;
+						position: absolute;
+						bottom: 45px;
+						left: 50%;
+						transform: translateX(-50%);
+						background: #333;
+						color: #fff;
+						padding: 6px 10px;
+						border-radius: 4px;
+						font-size: 12px;
+						white-space: nowrap;
+						z-index: 1000;
+						pointer-events: none;
+					`).T("Download"),
+				),
 			),
 
 			// Time display (right side) - LED style
 			b.DivClass("audio-time-display", "style", `
 				display: flex;
 				align-items: center;
-				gap: 6px;
+				gap: 8px;
 				background: #1a1a1a;
 				border: 1px solid #333;
-				border-radius: 3px;
-				padding: 6px 12px;
+				border-radius: 4px;
+				padding: 10px 16px;
 				box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+				height: 44px;
+				box-sizing: border-box;
 			`).R(
 				// Current time - LED style
 				b.SpanClass("audio-current-time", "id", "sermon-time", "style", `
 					color: #00e5ff;
-					font-size: 15px;
+					font-size: 18px;
 					font-weight: bold;
 					text-shadow: 0 0 8px rgba(0,229,255,0.8);
-					letter-spacing: 1px;
+					letter-spacing: 1.5px;
 					font-family: 'Courier New', Monaco, monospace;
+					line-height: 1;
 				`).T("00:00"),
 
 				// Separator
 				b.SpanClass("time-separator", "style", `
 					color: #555;
-					font-size: 12px;
+					font-size: 16px;
 					padding: 0 2px;
 					font-family: 'Courier New', Monaco, monospace;
+					line-height: 1;
 				`).T("/"),
 
 				// Total time - LED style
 				b.SpanClass("audio-total-time", "id", "sermon-total-time", "style", `
-					color: #76ff03;
-					font-size: 13px;
+					color: #ffffff;
+					font-size: 16px;
 					font-weight: bold;
-					text-shadow: 0 0 8px rgba(118,255,3,0.8);
-					letter-spacing: 1px;
+					text-shadow: 0 0 8px rgba(255,255,255,0.6);
+					letter-spacing: 1.5px;
 					font-family: 'Courier New', Monaco, monospace;
+					line-height: 1;
 				`).T("00:00"),
 			),
 		),
@@ -328,21 +472,6 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 				),
 			),
 		),
-
-		// Download link
-		b.DivClass("audio-download", "style", `
-			padding-top: 12px;
-			border-top: 1px solid #e9ecef;
-			text-align: center;`).R(
-			b.A("href", ser.AudioLink, "download", "download", "title", "Download sermon",
-				"style", `
-					color: #0066a1;
-					text-decoration: none;
-					font-size: 13px;
-					font-weight: 500;
-					transition: color 0.2s;`,
-				"onmouseover", "this.style.color='#005a8d'", "onmouseout", "this.style.color='#0066a1'").T("💾 Download Sermon"),
-		),
 	)
 
 	// JavaScript for player controls
@@ -404,12 +533,30 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 				timeDisplay.textContent = '00:00';
 			};
 
+			// Go to start of audio
+			window.goToSermonStart = function() {
+				audio.currentTime = 0;
+			};
+
+			// Go to near end of audio (5 seconds before end to avoid auto-ending)
+			window.goToSermonEnd = function() {
+				if (audio.duration) {
+					audio.currentTime = Math.max(0, audio.duration - 5);
+				}
+			};
+
 			window.seekSermonAudio = function(event) {
 				const container = event.currentTarget;
 				const rect = container.getBoundingClientRect();
 				const x = event.clientX - rect.left;
 				const percentage = x / rect.width;
 				audio.currentTime = percentage * audio.duration;
+
+				// Start playing immediately after seeking
+				if (audio.paused) {
+					audio.play();
+					playBtn.textContent = '⏸';
+				}
 			};
 
 			// Volume control elements
