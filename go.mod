@@ -12,16 +12,17 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.71.0
 	github.com/h2non/bimg v1.0.19
 	github.com/jlaffaye/ftp v0.0.0-20181011150954-fe787349a520
-	github.com/labstack/echo v0.0.0-20190126223945-739700bf4ef7
+	github.com/labstack/echo v3.3.10+incompatible
 	github.com/lib/pq v1.0.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
 	github.com/rohanthewiz/element v0.5.4
 	github.com/rohanthewiz/gmail_send v1.0.0
-	github.com/rohanthewiz/logger v1.2.16
+	github.com/rohanthewiz/logger v1.2.20
 	github.com/rohanthewiz/roftp v0.2.0
 	github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e
-	github.com/rohanthewiz/serr v1.2.16
+	github.com/rohanthewiz/rweb v0.1.21-0.20251015003132-f556750e470d
+	github.com/rohanthewiz/serr v1.2.18
 	github.com/stripe/stripe-go v55.14.0+incompatible
 	github.com/vattle/sqlboiler v2.5.0+incompatible
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb
