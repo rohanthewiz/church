@@ -580,7 +580,7 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 					console.log('Audio load timeout - readyState:', audio.readyState);
 					showAudioError();
 				}
-			}, 5000); // 5 second timeout
+			}, 10000); // wait a few seconds
 
 			// Update progress and time
 			audio.addEventListener('timeupdate', function() {
