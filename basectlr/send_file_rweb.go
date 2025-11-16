@@ -4,45 +4,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"strconv"
 	"strings"
 
+	"github.com/rohanthewiz/church/core/html"
 	"github.com/rohanthewiz/rweb"
 	"github.com/rohanthewiz/serr"
 )
 
 func SendFileRWeb(ctx rweb.Context, filename string, body []byte) error {
 	return rweb.File(ctx, filename, body)
-}
-
-// getAudioContentType determines the MIME type based on file extension
-func getAudioContentType(filename string) string {
-	ext := strings.ToLower(filepath.Ext(filename))
-	switch ext {
-	case ".mp3":
-		return "audio/mpeg"
-	case ".3gp":
-		return "audio/3gpp"
-	case ".3g2":
-		return "audio/3gpp2"
-	case ".m4a":
-		return "audio/mp4"
-	case ".aac":
-		return "audio/aac"
-	case ".ogg":
-		return "audio/ogg"
-	case ".opus":
-		return "audio/opus"
-	case ".wav":
-		return "audio/wav"
-	case ".flac":
-		return "audio/flac"
-	case ".webm":
-		return "audio/webm"
-	default:
-		return "audio/mpeg" // Default fallback
-	}
 }
 
 // parseRange parses HTTP Range header (e.g., "bytes=0-1023")
@@ -92,7 +63,7 @@ func SendAudioFileRWeb(ctx rweb.Context, filename string, body []byte) error {
 	fileSize := int64(len(body))
 
 	// Set Content-Type based on file extension
-	contentType := getAudioContentType(filename)
+	contentType := html.GetAudioContentType(filename)
 	ctx.Response().SetHeader("Content-Type", contentType)
 
 	// Set basic headers
