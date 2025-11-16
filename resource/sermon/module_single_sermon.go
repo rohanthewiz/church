@@ -7,6 +7,7 @@ import (
 	strconv "strconv"
 	"strings"
 
+	"github.com/rohanthewiz/church/core/html"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
@@ -125,11 +126,14 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 			border-left: 4px solid #0066a1;
 			border-radius: 3px;
 		`).T(ser.Title),
+			b.Wrap(func() {
+				audioType := html.GetAudioContentType(ser.AudioLink)
 
-			// HTML5 audio element (hidden)
-			b.Audio("id", "sermon-audio", "style", "display: none;").R(
-				b.Source("src", ser.AudioLink, "type", "audio/mpeg").R(),
-			),
+				// HTML5 audio element (hidden)
+				b.Audio("id", "sermon-audio", "style", "display: none;").R(
+					b.Source("src", ser.AudioLink, "type", audioType).R(),
+				)
+			}),
 
 			// Control buttons and time display
 			b.DivClass("audio-controls", "style", `
