@@ -85,7 +85,7 @@ func EditSermon(c echo.Context) error {
 }
 
 func UpsertSermon(c echo.Context) error {
-	const sermonsURLPrefix = "sermons"
+	const sermonsURLPrefix = "sermon-audio"
 	const cloudUploadDelay = time.Second * 45
 	var fileUploaded bool
 	var localFileSpec string
