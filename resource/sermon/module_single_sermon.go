@@ -523,14 +523,57 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 						),
 					),
 				),
+
+				// Share button (to copy audio URL to clipboard)
+				b.Button("class", "audio-share-btn", "id", "sermon-share-btn", "title", "Share audio link", "style", `
+					background: #e9ecef;
+					border: 1px solid #ced4da;
+					border-radius: 4px;
+					color: #495057;
+					cursor: pointer;
+					padding: 8px 12px;
+					font-size: 16px;
+					min-width: 44px;
+					transition: all 0.2s;
+					margin-left: 8px;
+				`, "onclick", "shareSermonAudio()", "onmouseover", "this.style.background='#dee2e6'", "onmouseout", "this.style.background='#e9ecef'").R(
+					b.SpanClass("share-icon", "id", "sermon-share-icon").T(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; vertical-align: middle;"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92 1.61 0 2.92-1.31 2.92-2.92s-1.31-2.92-2.92-2.92z"/></svg>`),
+				),
 			),
 		)
 
-		// CSS for loading animation
+		// Toast notification for share action
+		b.DivClass("audio-share-toast", "id", "sermon-share-toast", "style", `
+			display: none;
+			position: fixed;
+			top: 20px;
+			right: 20px;
+			background: #28a745;
+			color: white;
+			padding: 12px 20px;
+			border-radius: 6px;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+			z-index: 10000;
+			font-size: 14px;
+			font-weight: 500;
+			animation: slideInRight 0.3s ease-out;
+		`).T("Audio link copied to clipboard!")
+
+		// CSS for loading animation and toast
 		b.Style().T(`
 			@keyframes spin {
 				0% { transform: rotate(0deg); }
 				100% { transform: rotate(360deg); }
+			}
+			@keyframes slideInRight {
+				from {
+					transform: translateX(400px);
+					opacity: 0;
+				}
+				to {
+					transform: translateX(0);
+					opacity: 1;
+				}
 			}
 		`)
 

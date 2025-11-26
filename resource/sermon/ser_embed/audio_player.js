@@ -270,4 +270,65 @@
     window.hideSermonTimeTooltip = function() {
         timeTooltip.style.display = 'none';
     };
+
+    // Share sermon audio (copy URL to clipboard)
+    window.shareSermonAudio = function() {
+        const audioSrc = audio.querySelector('source').src;
+        const toast = document.getElementById('sermon-share-toast');
+
+        // Try using the modern Clipboard API
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(audioSrc).then(function() {
+                showShareToast(toast, 'Audio link copied to clipboard!');
+            }).catch(function(err) {
+                console.error('Failed to copy to clipboard:', err);
+                showShareToast(toast, 'Failed to copy link', true);
+            });
+        } else {
+            // Fallback for older browsers - create a temporary textarea
+            const tempTextarea = document.createElement('textarea');
+            tempTextarea.value = audioSrc;
+            tempTextarea.style.position = 'fixed';
+            tempTextarea.style.left = '-9999px';
+            document.body.appendChild(tempTextarea);
+            tempTextarea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showShareToast(toast, 'Audio link copied to clipboard!');
+                } else {
+                    showShareToast(toast, 'Failed to copy link', true);
+                }
+            } catch (err) {
+                console.error('Failed to copy to clipboard:', err);
+                showShareToast(toast, 'Failed to copy link', true);
+            } finally {
+                document.body.removeChild(tempTextarea);
+            }
+        }
+    };
+
+    // Helper function to show the share toast notification
+    function showShareToast(toast, message, isError) {
+        // Update message if provided
+        if (message) {
+            toast.textContent = message;
+        }
+
+        // Set color based on success/error
+        if (isError) {
+            toast.style.background = '#dc3545'; // Red for error
+        } else {
+            toast.style.background = '#28a745'; // Green for success
+        }
+
+        // Show the toast
+        toast.style.display = 'block';
+
+        // Hide after 3 seconds
+        setTimeout(function() {
+            toast.style.display = 'none';
+        }, 3000);
+    }
 })();
