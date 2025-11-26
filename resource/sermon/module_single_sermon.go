@@ -127,11 +127,16 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 			border-radius: 3px;
 		`).T(ser.Title),
 			b.Wrap(func() {
-				audioType := html.GetAudioContentType(ser.AudioLink)
+				audioTypes := html.GetAudioContentType(ser.AudioLink)
 
-				// HTML5 audio element (hidden)
+				// HTML5 audio element (hidden) with multiple source types for compatibility
 				b.Audio("id", "sermon-audio", "style", "display: none;").R(
-					b.Source("src", ser.AudioLink, "type", audioType).R(),
+					func() (x any) {
+						for _, audioType := range audioTypes {
+							b.Source("src", ser.AudioLink, "type", audioType).R()
+						}
+						return
+					}(),
 				)
 			}),
 
