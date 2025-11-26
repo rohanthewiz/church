@@ -64,7 +64,7 @@ func SendAudioFileRWeb(ctx rweb.Context, filename string, body []byte) error {
 
 	// Set Content-Type based on file extension (use the first/preferred type)
 	contentTypes := html.GetAudioContentType(filename)
-	ctx.Response().SetHeader("Content-Type", contentTypes[0]) // above will always return an array
+	ctx.Response().SetHeader("Content-Type", contentTypes[0]) // above will always return a non-empty array
 
 	// Set basic headers
 	ctx.Response().SetHeader("Content-Disposition", "inline; filename="+url.QueryEscape(filename))
