@@ -26,7 +26,9 @@ func NewMenuRWeb(ctx rweb.Context) error {
 		return err
 	}
 	buf := new(bytes.Buffer)
-	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{}, app.IsLoggedInRWeb(ctx))
+	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
+		"_global": {"user_agent": ctx.UserAgent()},
+	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
 
@@ -48,7 +50,9 @@ func AdminListMenusRWeb(ctx rweb.Context) error {
 	}
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
-		pg.MainModuleSlug(): {"offset": ctx.Request().QueryParam("offset"), "limit": ctx.Request().QueryParam("limit")}}, app.IsLoggedInRWeb(ctx))
+		pg.MainModuleSlug(): {"offset": ctx.Request().QueryParam("offset"), "limit": ctx.Request().QueryParam("limit")},
+		"_global":           {"user_agent": ctx.UserAgent()},
+	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
 
@@ -59,8 +63,10 @@ func EditMenuRWeb(ctx rweb.Context) error {
 		return err
 	}
 	buf := new(bytes.Buffer)
-	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{pg.MainModuleSlug(): {"id": ctx.Request().PathParam("id")}},
-		app.IsLoggedInRWeb(ctx))
+	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
+		pg.MainModuleSlug(): {"id": ctx.Request().PathParam("id")},
+		"_global":           {"user_agent": ctx.UserAgent()},
+	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
 
@@ -107,7 +113,7 @@ func UpsertMenuRWeb(ctx rweb.Context) error {
 	if err == nil && sess != nil {
 		mnu.UpdatedBy = sess.Username
 	}
-	
+
 	fmt.Printf("*|* menu: %#v\n", mnu)
 
 	err = menu.UpsertMenu(mnu)

@@ -31,7 +31,9 @@ func NewSermonRWeb(ctx rweb.Context) error {
 		return err
 	}
 	buf := new(bytes.Buffer)
-	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{}, app.IsLoggedInRWeb(ctx))
+	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
+		"_global": {"user_agent": ctx.UserAgent()},
+	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
 

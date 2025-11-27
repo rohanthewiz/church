@@ -23,7 +23,9 @@ func NewArticleRWeb(ctx rweb.Context) error {
 		return err
 	}
 	buf := new(bytes.Buffer)
-	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{}, app.IsLoggedInRWeb(ctx))
+	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
+		"_global": {"user_agent": ctx.UserAgent()},
+	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
 
@@ -90,13 +92,13 @@ func UpsertArticleRWeb(ctx rweb.Context) error {
 	}
 
 	artPres.Categories = strings.Split(ctx.Request().FormValue("categories"), ",")
-	
+
 	// Get username from session
 	sess, err := cctx.GetSessionFromRWeb(ctx)
 	if err == nil && sess != nil {
 		artPres.UpdatedBy = sess.Username
 	}
-	
+
 	if ctx.Request().FormValue("published") == "on" {
 		artPres.Published = true
 	}
