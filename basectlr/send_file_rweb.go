@@ -55,15 +55,18 @@ func parseRange(rangeHeader string, fileSize int64) (start, end int64, err error
 }
 
 // SendAudioFileRWeb streams audio files with support for:
-// - Content-Type detection based on file extension
+// - Content-Type detection based on file extension and user agent
 // - HTTP Range requests for seek capability (206 Partial Content)
 // - CORS headers for cross-origin access
 // - Proper caching headers
 func SendAudioFileRWeb(ctx rweb.Context, filename string, body []byte) error {
 	fileSize := int64(len(body))
 
-	// Set Content-Type based on file extension (use the first/preferred type)
-	contentTypes := html.GetAudioContentType(filename)
+	// Get user agent for platform-specific MIME type optimization
+	userAgent := ctx.UserAgent()
+
+	// Set Content-Type based on file extension and user agent (use the first/preferred type)
+	contentTypes := html.GetAudioContentType(filename, userAgent)
 	ctx.Response().SetHeader("Content-Type", contentTypes[0]) // above will always return a non-empty array
 
 	// Set basic headers

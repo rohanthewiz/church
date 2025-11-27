@@ -21,8 +21,8 @@ require (
 	github.com/rohanthewiz/logger v1.2.20
 	github.com/rohanthewiz/roftp v0.2.0
 	github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e
-	github.com/rohanthewiz/rweb v0.1.21-0.20251015003132-f556750e470d
-	github.com/rohanthewiz/serr v1.2.18
+	github.com/rohanthewiz/rweb v0.1.21-0.20251126232937-647d2fc62424
+	github.com/rohanthewiz/serr v1.2.20
 	github.com/stripe/stripe-go v55.14.0+incompatible
 	github.com/vattle/sqlboiler v2.5.0+incompatible
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb

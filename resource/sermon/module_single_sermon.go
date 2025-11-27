@@ -48,6 +48,15 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
+
+	// Extract user agent from global params (if available)
+	userAgent := ""
+	if globalParams, ok := params["_global"]; ok {
+		if ua, exists := globalParams["user_agent"]; exists {
+			userAgent = ua
+		}
+	}
+
 	ser, err := m.getData()
 	if err != nil {
 		LogErr(err, "Error in module render")
@@ -127,7 +136,7 @@ func (m *ModuleSingleSermon) Render(params map[string]map[string]string, loggedI
 			border-radius: 3px;
 		`).T(ser.Title),
 			b.Wrap(func() {
-				audioTypes := html.GetAudioContentType(ser.AudioLink)
+				audioTypes := html.GetAudioContentType(ser.AudioLink, userAgent)
 
 				// HTML5 audio element (hidden) with multiple source types for compatibility
 				b.Audio("id", "sermon-audio", "style", "display: none;").R(

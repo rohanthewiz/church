@@ -22,7 +22,9 @@ func RenderPageNewRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 		}
 	}()
 	buf := new(bytes.Buffer)
-	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{}, IsLoggedInRWeb(ctx))
+	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
+		"_global": {"user_agent": ctx.UserAgent()},
+	}, IsLoggedInRWeb(ctx))
 	out = buf.Bytes()
 	return
 }
@@ -39,8 +41,10 @@ func RenderPageListRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 	}()
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx),
-		map[string]map[string]string{pg.MainModuleSlug(): {
-			"offset": ctx.Request().QueryParam("offset"), "limit": ctx.Request().QueryParam("limit")},
+		map[string]map[string]string{
+			pg.MainModuleSlug(): {
+				"offset": ctx.Request().QueryParam("offset"), "limit": ctx.Request().QueryParam("limit")},
+			"_global": {"user_agent": ctx.UserAgent()},
 		}, IsLoggedInRWeb(ctx),
 	)
 	out = buf.Bytes()
@@ -64,7 +68,9 @@ func RenderPageSingleRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
-		pg.MainModuleSlug(): {"id": ctx.Request().PathParam("id"), "loggedIn": loggedIn}}, IsLoggedInRWeb(ctx))
+		pg.MainModuleSlug(): {"id": ctx.Request().PathParam("id"), "loggedIn": loggedIn},
+		"_global":           {"user_agent": ctx.UserAgent()},
+	}, IsLoggedInRWeb(ctx))
 	out = buf.Bytes()
 	return
 }
