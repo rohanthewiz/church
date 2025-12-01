@@ -76,7 +76,7 @@ func EditSermonRWeb(ctx rweb.Context) error {
 }
 
 func UpsertSermonRWeb(ctx rweb.Context) error {
-	const sermonsURLPrefix = "sermons"
+	const sermonsURLPrefix = "sermon-audio"
 	const cloudUploadDelay = time.Second * 45
 	var fileUploaded bool
 	var localFileSpec string
