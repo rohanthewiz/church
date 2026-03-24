@@ -18,16 +18,24 @@ import (
 	"github.com/rohanthewiz/serr"
 )
 
+// HomePageRWeb serves the home page. It first attempts to load the page with
+// slug "home" from the database. If that fails (e.g. no home page has been
+// created yet), it falls back to a hardwired home page so the site remains
+// functional even without DB-seeded content.
 func HomePageRWeb(ctx rweb.Context) error {
-	return app.RedirectRWeb(ctx, "/pages/home", "")
-	// pg, err := page.Home()
-	// if err != nil {
-	//	return err
-	// }
-	// buf := new(bytes.Buffer)
-	// // Main module can receive an id param (probably should be an array of ids)
-	// template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{pg.MainModuleSlug(): {"id": ctx.Request().PathParam("id")}})
-	// return ctx.WriteHTML(buf.String())
+	pg, err := page.PageFromSlug("home")
+	if err != nil {
+		logger.Log("Info", "Home page not found in DB, using hardwired fallback", "err", err.Error())
+		pg, err = page.Home()
+		if err != nil {
+			return serr.Wrap(err, "failed to load hardwired home page")
+		}
+	}
+	buf := new(bytes.Buffer)
+	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
+		pg.MainModuleSlug(): {"id": ctx.Request().PathParam("id")},
+	}, app.IsLoggedInRWeb(ctx))
+	return ctx.WriteHTML(buf.String())
 }
 
 // Non-Admin dynamic pages (the majority of the pages)

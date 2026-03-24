@@ -100,6 +100,10 @@ type EnvConfig struct {
 		PubKey  string `yaml:"pub_key"`
 		PrivKey string `yaml:"priv_key"`
 	} `yaml:"stripe"`
+	Bootstrap struct {
+		AdminUser string `yaml:"admin_user"` // Superadmin username for auto-bootstrap
+		AdminPass string `yaml:"admin_pass"` // Superadmin password for auto-bootstrap
+	} `yaml:"bootstrap"`
 	GivingContacts []string `yaml:"giving_contacts"` // typically used on the Giving form
 	Gmail          struct {
 		Account  string   `yaml:"account"`

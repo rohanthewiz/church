@@ -1,11 +1,11 @@
 package db
 
 import (
-	"fmt"
 	"database/sql"
+	"errors"
+	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/rohanthewiz/serr"
-	"errors"
 )
 
 // Cache DB handle and options
@@ -13,6 +13,7 @@ var dbHandle *sql.DB
 var dbOpts *DBOpts
 
 var DBTypes = dbTypes{"postgres", "mysql"}
+
 type dbTypes struct {
 	Postgres, MySQL string
 }
@@ -30,7 +31,7 @@ func InitDB(opts DBOpts) error {
 	dbOpts = &opts
 	err := openDB()
 	if err != nil {
-		serr.Wrap(err, "Error initializing database")
+		return serr.Wrap(err, "Error initializing database")
 	}
 	return nil
 }
@@ -44,7 +45,7 @@ func CloseDB() {
 // Get a valid DB handle
 func Db() (*sql.DB, error) {
 	if dbHandle != nil {
-		if dbHandle.Ping() == nil {  // pings without error
+		if dbHandle.Ping() == nil { // pings without error
 			return dbHandle, nil
 		}
 	}

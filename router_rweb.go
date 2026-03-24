@@ -31,6 +31,7 @@ import (
 
 func ServeRWeb() {
 	admin.AuthBootstrap()
+	admin.Bootstrap() // Seed DB with essential resources (menus, home page, etc.)
 	page.RegisterModules()
 
 	idrive.InitClient()
@@ -50,8 +51,10 @@ func ServeRWeb() {
 	s.StaticFiles("/assets/", "dist", 1)
 	s.StaticFiles("/media/", "sermons", 1) // TODO - path_from_proj_root(config.Options.IDrive.LocalSermonsDir)
 
-	// Home page
-	s.Get("/", page_controller.HomePageRWeb)
+	// Home page — wrapped in a group with the auth middleware so session/login
+	// state is available for rendering admin menus when the user is logged in.
+	home := s.Group("", authctlr.UseCustomContextRWeb)
+	home.Get("/", page_controller.HomePageRWeb)
 
 	// Debug routes
 	s.Get("/debug/set", func(ctx rweb.Context) error {

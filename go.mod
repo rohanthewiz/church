@@ -13,7 +13,7 @@ require (
 	github.com/h2non/bimg v1.0.19
 	github.com/jlaffaye/ftp v0.0.0-20181011150954-fe787349a520
 	github.com/labstack/echo v3.3.10+incompatible
-	github.com/lib/pq v1.0.0
+	github.com/lib/pq v1.12.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
 	github.com/rohanthewiz/element v0.5.4

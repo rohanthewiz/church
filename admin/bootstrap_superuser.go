@@ -11,16 +11,19 @@ import (
 )
 
 var SuperToken string
+
 const tokenFile = "token.txt"
 
 func AuthBootstrap() {
 	// If no superadmins exists then we are likely starting the app for the first time
 	exists, err := user.SuperAdminsExist()
-	if err != nil { logger.Log("Fatal", "Error querying for superadmin") }
+	if err != nil {
+		logger.LogErr(err, "Error querying for superadmin")
+	}
 	if !exists {
 		SuperToken = auth.RandomKey()
 		ioutil.WriteFile("token.txt", []byte(SuperToken), os.ModePerm)
-		logger.Log("info", "superadmin token created in <project root>/" + tokenFile)
+		logger.Log("info", "superadmin token created in <project root>/"+tokenFile)
 	}
 }
 

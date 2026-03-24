@@ -19,5 +19,12 @@ func envOverride(envCfg *EnvConfig) *EnvConfig {
 	if pgWord := strings.TrimSpace(os.Getenv("PG_WORD")); len(pgWord) > 0 {
 		envCfg.PG.Word = pgWord
 	}
+	// Bootstrap superadmin credentials — allows automated first-run setup
+	if adminUser := strings.TrimSpace(os.Getenv("BOOTSTRAP_ADMIN_USER")); len(adminUser) > 0 {
+		envCfg.Bootstrap.AdminUser = adminUser
+	}
+	if adminPass := strings.TrimSpace(os.Getenv("BOOTSTRAP_ADMIN_PASS")); len(adminPass) > 0 {
+		envCfg.Bootstrap.AdminPass = adminPass
+	}
 	return envCfg
 }
