@@ -42,32 +42,40 @@ func (m *ModuleSingleArticle) Render(params map[string]map[string]string, logged
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us (there may be none)
 		m.SetId(opts)
 	}
+
 	art, err := m.getData()
 	if err != nil {
 		LogErr(err, "Error in module single article render")
 		return ""
 	}
+
 	klass := "ch-module-wrapper ch-" + m.Opts.ModuleType
 	if m.Opts.CustomClass != "" {
 		klass += " " + m.Opts.CustomClass
 	}
+
 	b := element.NewBuilder()
+
 	b.DivClass(klass).R(
-		b.H3Class("article-title").T(art.Title),
-		b.P().T(art.Summary),
-		b.P().T(art.Body),
-		b.Wrap(func() {
-			// if len(art.Categories) > 0 {
-			//	str = e("div", "class", "categories").R(strings.Join(art.Categories, ", "))
-			// }
-			if loggedIn && len(m.Opts.ItemIds) > 0 {
-				b.AClass("edit-link", "href", m.GetEditURL()+
-					strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
-					b.ImgClass("edit-icon", "title", "Edit Article", "src", "/assets/images/edit_article.svg").R(),
-				)
-			}
-			return
-		}),
+		b.DivClass("ch-module-heading ch-clickable-heading", "onclick", "window.location = '#'").T(art.Title),
+		b.DivClass("ch-module-body").R(
+			// b.H3Class("article-title").T(art.Title),
+			b.P().T(art.Summary),
+			b.P().T(art.Body),
+
+			b.Wrap(func() {
+				// if len(art.Categories) > 0 {
+				//	str = e("div", "class", "categories").R(strings.Join(art.Categories, ", "))
+				// }
+				if loggedIn && len(m.Opts.ItemIds) > 0 {
+					b.AClass("edit-link", "href", m.GetEditURL()+
+						strconv.FormatInt(m.Opts.ItemIds[0], 10)).R(
+						b.ImgClass("edit-icon", "title", "Edit Article", "src", "/assets/images/edit_article.svg").R(),
+					)
+				}
+				return
+			}),
+		),
 	)
 	return b.String()
 }
