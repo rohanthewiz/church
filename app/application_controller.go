@@ -6,9 +6,9 @@ import (
 
 	"github.com/labstack/echo"
 	"github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/core/kvstore"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/resource/auth"
-	"github.com/rohanthewiz/roredis"
 	"github.com/rohanthewiz/serr"
 )
 
@@ -28,16 +28,16 @@ func Redirect(c echo.Context, url, fl_msg string) {
 func GenerateFormToken() (token string, err error) {
 	tokenLifetime := 3600 * time.Second
 	token = auth.RandomKey()
-	err = roredis.Set(token, "true", tokenLifetime)
+	err = kvstore.Set(token, "true", tokenLifetime)
 	if err != nil {
 		return token, serr.Wrap(err)
 	}
 	return
 }
 
-// VerifyFormToken checks that the token is present and valid in Redis
+// VerifyFormToken checks that the token is present and valid in the kvstore
 func VerifyFormToken(token string) bool {
-	str, err := roredis.Get(token)
+	str, err := kvstore.Get(token)
 	if err != nil {
 		return false
 	}

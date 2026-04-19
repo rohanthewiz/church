@@ -20,7 +20,6 @@ require (
 	github.com/rohanthewiz/gmail_send v1.0.0
 	github.com/rohanthewiz/logger v1.2.20
 	github.com/rohanthewiz/roftp v0.2.0
-	github.com/rohanthewiz/roredis v0.0.0-20180930023327-1f6380dfc68e
 	github.com/rohanthewiz/rweb v0.1.21-0.20251126232937-647d2fc62424
 	github.com/rohanthewiz/serr v1.2.20
 	github.com/stripe/stripe-go v55.14.0+incompatible
@@ -47,7 +46,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.2 // indirect
 	github.com/aws/smithy-go v1.22.1 // indirect
-	github.com/go-redis/redis v0.0.0-20180920103551-69445c6e87e0 // indirect
 	github.com/johntdyer/slack-go v0.0.0-20230314151037-c5bf334f9b6e // indirect
 	github.com/johntdyer/slackrus v0.0.0-20230315191314-80bc92dee4fc // indirect
 	github.com/labstack/gommon v0.2.7 // indirect

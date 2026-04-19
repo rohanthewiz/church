@@ -4,14 +4,18 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/rohanthewiz/church/core/kvstore"
 	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/roredis"
 	"github.com/rohanthewiz/serr"
 )
 
 const CookieName = "church_session"
 const ttlSeconds = 1800
-const KeyNotExists = "Key does not exist"
+
+// KeyNotExists is re-exported from the store so existing middleware callers
+// (auth_controller) that detect missing-session errors via strings.Contains
+// keep working without changing imports.
+const KeyNotExists = kvstore.KeyNotExists
 
 // Store attributes about the user's session. We will serialize the session under the session key.
 // We will have one session per user
@@ -49,7 +53,7 @@ func (sess Session) Save(key string) (err error) {
 	if err != nil {
 		return serr.Wrap(err, "Error marshaling session"+errorStage)
 	}
-	err = roredis.Set(key, strSession, ttlSeconds*time.Second)
+	err = kvstore.Set(key, strSession, ttlSeconds*time.Second)
 	if err != nil {
 		return serr.Wrap(err, "Error saving to session store")
 	}
@@ -62,7 +66,7 @@ func (sess Session) Extend() (err error) {
 }
 
 func GetSession(key string) (sess Session, err error) {
-	str, err := roredis.Get(key)
+	str, err := kvstore.Get(key)
 	if err != nil {
 		return sess, serr.Wrap(err, "Error obtaining session", "key", key)
 	}
@@ -78,7 +82,7 @@ func GetSession(key string) (sess Session, err error) {
 }
 
 func DeleteSession(key string) error {
-	return roredis.Del(key)
+	return kvstore.Del(key)
 }
 
 // Given a session cookie name, delete it's session from the store
