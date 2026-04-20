@@ -163,7 +163,34 @@ vips -v
 
 ## App Setup
 
-### Migrations
+### Database Setup (DuckDB — preferred)
+
+DuckDB is the default backend going forward. It is embedded (no external
+service), file-backed, and requires no migrations step.
+
+1. Point the app config at a DuckDB file:
+   ```yaml
+   # cfg/options.yml (relevant fields)
+   db_type: duckdb
+   duckdb_path: ./data/church.duckdb
+   ```
+   An empty `duckdb_path` selects an in-memory database — useful for
+   tests and throwaway runs only; data is lost on shutdown.
+2. Start the app. On first open, `db/schema_duckdb.sql` is replayed
+   against the file to create tables, indexes, and sequences. The file
+   is embedded in the binary, so nothing external is required.
+3. Re-runs are idempotent — every DDL statement uses `IF NOT EXISTS`.
+
+To migrate data from an existing Postgres deployment, see
+`scripts/pg_to_duckdb.sql`. Edit the Postgres connection string in the
+ATTACH line, then:
+```bash
+duckdb ./data/church.duckdb < scripts/pg_to_duckdb.sql
+```
+The script copies all seven active tables and advances each sequence
+past the legacy `MAX(id)` so new inserts continue without collision.
+
+### Migrations (legacy — Postgres only)
 - As the 'posgres' user, create a user with CREATEDB permissions
  `psql -h localhost -p 5432 -d postgres -U postgres -c "create user myuser with password 'secret' CREATEDB"`
 - Create the database `postgres=# CREATE DATABASE "church_development" WITH OWNER "myuser";`

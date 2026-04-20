@@ -67,8 +67,8 @@ func presenterFromModel(m *model.Article) (pres Presenter) {
 	pres.Title = m.Title
 	pres.Slug = m.Slug
 
-	// Copy out of pq.StringArray into a plain []string so downstream code
-	// (templates, JSON marshal in the grid renderer) never sees the driver type.
+	// Copy out of StringSlice into a plain []string so downstream code
+	// (templates, JSON marshal in the grid renderer) never sees the DB type.
 	cats := make([]string, 0, len(m.Categories))
 	for _, cat := range m.Categories {
 		cats = append(cats, cat)

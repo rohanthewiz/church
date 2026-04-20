@@ -41,7 +41,7 @@ func presenterFromId(id int64) (pres Presenter, err error) {
 }
 
 // presenterFromModel flattens the DB struct (with sql.Null* wrappers and
-// pq.StringArray slices) into plain strings and []string for the view layer.
+// StringSlice values) into plain strings and []string for the view layer.
 // Empty category / scripture-ref slices become [""] so the editor form
 // always shows at least one input row.
 func presenterFromModel(ser *model.Sermon) (pres Presenter) {

@@ -12,51 +12,51 @@ Phase 1a pattern.
 
 ---
 
-## 1. Precondition: finish Phase 1
+## 1. Precondition: finish Phase 1 — **done**
 
-All tables migrated off SQLBoiler, every DAO writes SQL with `?` placeholders
-and routes through `db.Rebind(db.CurrentDialect(), q)`. The `models/`
-package and the `vattle/sqlboiler`, `nullbio/null.v6`, `nullbio/inflect`,
-`pkg/errors` deps are removed.
+All tables migrated off SQLBoiler; every DAO writes SQL with `?`
+placeholders and routes through `db.Rebind(db.CurrentDialect(), q)`. The
+generated `models/` package and the `vattle/sqlboiler`, `nullbio/null.v6`,
+`nullbio/inflect`, `pkg/errors` deps are gone. Landed in commit
+`041d1dc`.
 
 Status checklist:
 
 - [x] 1a — Article
-- [ ] 1b — Events
-- [ ] 1c — Users
-- [ ] 1d — Menu defs
-- [ ] 1e — Sermons
-- [ ] 1f — Pages (JSONB — extra care on scan helper)
-- [ ] 1g — Charges
-- [ ] 1h — Images
-- [ ] 1i — Delete `models/`, drop sqlboiler/nullbio/pkg-errors from `go.mod`,
-      delete `sqlboiler.toml` and `sqlboiler.toml.sample`.
+- [x] 1b — Events
+- [x] 1c — Users
+- [x] 1d — Menu defs
+- [x] 1e — Sermons
+- [x] 1f — Pages (JSONB)
+- [x] 1g — Charges
+- [x] 1h — Images — **no-op**: the legacy `images` table has no DAO or
+      reader in the codebase. Inline image handling lives in
+      `resource/chimage` and operates on article HTML, not a DB table.
+      The migration file `20170419004747_CreateImagesTable.sql` remains
+      only as history; nothing reads it.
+- [x] 1i — `models/` deleted; sqlboiler/nullbio/pkg-errors removed from
+      `go.mod`; `sqlboiler.toml` files gone.
 
 ---
 
-## 2. Driver choice
+## 2. Driver choice — **`github.com/duckdb/duckdb-go/v2` pinned**
 
-Use the **official DuckDB project bindings** — sourced from
-`https://github.com/duckdb/duckdb` (the DuckDB team ships the Go bindings
-out of their main repository / adjacent official repos under the
-`duckdb` org). Avoid community forks such as `marcboeker/go-duckdb` so we
-track upstream releases directly.
+Using the official DuckDB project bindings at
+`github.com/duckdb/duckdb-go/v2` (v2.10502.0). These register a
+`database/sql` driver named `duckdb`, so `sql.Open("duckdb", path)`
+slots into `db/connect.go` with no interface changes.
 
-Requirements this imposes:
+Notes:
 
-- **cgo**. Build hosts need a C toolchain and the DuckDB C library
-  headers/lib available for the target platform. Not a blocker for a
-  single-server deployment but flagged for CI images.
-- **Version pinning**. Pin the Go binding to the DuckDB library version
-  it was built against in `go.mod`; mismatched C lib and bindings cause
-  silent ABI breakage.
-- **`database/sql` compatibility**. Official bindings register a
-  `database/sql` driver named `duckdb`, so `sql.Open("duckdb", path)`
-  slots into the existing `db/connect.go` with no interface changes.
-
-If building cgo becomes painful (cross-compile on CI), fallback options
-in order of preference: run a DuckDB HTTP/ADBC front-end in-process,
-then community forks. None required for current plan.
+- **Pre-built platform libs.** The v2 bindings pull their DuckDB C
+  library from sibling modules
+  (`github.com/duckdb/duckdb-go-bindings/lib/<os>-<arch>`), so a working
+  build does not require a system-installed DuckDB or a separate cgo
+  toolchain step beyond what Go already uses. Pulled platforms: darwin
+  amd64/arm64, linux amd64/arm64, windows amd64.
+- **Version pinning.** Keep the binding version in `go.mod`. The paired
+  C library is resolved transitively, so a single `go get` bump moves
+  both ends together — no manual ABI alignment.
 
 ---
 
@@ -88,29 +88,31 @@ DuckDB indexes are ART-based and mainly accelerate point lookups and
 uniqueness checks — secondary indexes for analytical scans are generally
 unnecessary (columnar storage handles that).
 
-### 3.4 Bootstrap approach
+### 3.4 Bootstrap approach — **done**
 
-The write-once-read-many profile means migration history is low value.
-Proposed: collapse `db/migrate/*.sql` into a single
-`db/schema_duckdb.sql` file that the app executes if the target DB file
-doesn't exist. Migrations-as-history is simpler to retire than to port.
+Landed: `db/schema_duckdb.sql` is the single consolidated schema. The
+file is embedded into the binary (`//go:embed` in `db/connect.go`) and
+replayed on every DuckDB open. Every object uses `IF NOT EXISTS`, so
+the replay is idempotent — existing databases are untouched and any
+future additions pick up on the next start.
 
-If we later need migrations against DuckDB, revisit whether
-`goose` can target `duckdb` via its custom-dialect hook, or adopt a
-simpler home-grown migration runner.
+If we later need true migrations against DuckDB, revisit whether `goose`
+can target `duckdb` via its custom-dialect hook, or adopt a simpler
+home-grown runner.
 
 ---
 
 ## 4. Code-level changes
 
-### 4.1 `db/connect.go`
+### 4.1 `db/connect.go` — **done**
 
-- Add a `DuckDBPath` field to `DBOpts` (file path; empty string → in-memory).
-- Branch on `opts.DBType`:
-  - `postgres`: unchanged DSN construction.
-  - `duckdb`: `sql.Open("duckdb", opts.DuckDBPath)`.
-- Import the DuckDB driver with a blank import alongside `_ "github.com/lib/pq"`.
-- Keep `Db()` signature unchanged so nothing downstream moves.
+- Added `DuckDBPath` to `DBOpts` (empty string → in-memory).
+- `openDB` switches on `DBType`: Postgres keeps the legacy DSN string;
+  DuckDB calls `sql.Open("duckdb", opts.DuckDBPath)` and then replays
+  the embedded schema.
+- Blank imports for both `_ "github.com/duckdb/duckdb-go/v2"` and
+  `_ "github.com/lib/pq"` live in `connect.go`. `Db()` signature
+  unchanged.
 
 ### 4.2 `db/dialect.go`
 
@@ -118,41 +120,26 @@ Already in place. `CurrentDialect()` already returns `DialectDuckDB` when
 `DBOpts.DBType == "duckdb"`. `Rebind` passes through for DuckDB. No changes
 needed beyond flipping config.
 
-### 4.3 DAO scan helpers
+### 4.3 DAO scan helpers — **done**
 
-The only driver-specific surface in the DAOs is **array scanning**.
-`pq.StringArray` implements `sql.Scanner` by parsing Postgres's text array
-format; it will **not** correctly scan DuckDB's `VARCHAR[]`.
+The only driver-specific surface in the DAOs is array scanning:
+`pq.StringArray` speaks the Postgres `text[]` wire format and cannot
+round-trip DuckDB's `VARCHAR[]`.
 
-Preferred approach — **typed wrapper in `model/types.go`**:
+Landed in `model/types.go`: `StringSlice []string` implements
+`sql.Scanner` and `driver.Valuer`.
 
-```go
-// model/types.go (sketch — finalize during Phase 2)
-type StringSlice []string
+- `Scan` accepts `[]any` / `[]string` (DuckDB list shape) and falls
+  through to `pq.StringArray.Scan` for `[]byte` / `string` (Postgres
+  text-array format).
+- `Value` dispatches on `db.CurrentDialect()`: DuckDB receives a bare
+  `[]string` (go-duckdb's `NamedValueChecker` binds it as `VARCHAR[]`);
+  Postgres receives the `{a,b,...}` literal via `pq.StringArray.Value`.
 
-func (s *StringSlice) Scan(src any) error {
-    switch v := src.(type) {
-    case []any:           // DuckDB drives lists as []any
-        out := make([]string, len(v))
-        for i, x := range v { out[i], _ = x.(string) }
-        *s = out
-        return nil
-    case string, []byte:  // Postgres text[] format
-        return (*pq.StringArray)(s).Scan(src)
-    }
-    return fmt.Errorf("unsupported array source %T", src)
-}
-
-func (s StringSlice) Value() (driver.Value, error) {
-    // Insert path: dispatch on db.CurrentDialect() — DuckDB accepts []any,
-    // Postgres wants the text array format pq.StringArray emits.
-}
-```
-
-Every `Article.Categories`, `Page.AvailablePositions`, etc., switches to
-`StringSlice`. The DAO files themselves don't change; the type swap lives
-in `model/*.go` struct definitions. Rejected alternative: build-tagged
-dual DAO files — too much duplication.
+Struct fields swapped: `Article.Categories`, `Event.Categories`,
+`Sermon.ScriptureRefs`, `Sermon.Categories`, `Page.AvailablePositions`.
+The DAO files themselves are unchanged — the type swap is contained to
+`model/*.go`.
 
 ### 4.4 JSON (`pages.data`)
 
@@ -258,22 +245,27 @@ After cut-over:
 
 ## 9. Deliverables
 
-- `db/schema_duckdb.sql` — full schema for fresh install.
-- `db/connect.go` — DuckDB DSN branch.
-- `model/types.go` — `StringSlice` scanner/valuer.
-- `go.mod` — official DuckDB bindings added, `lib/pq` eventually removed
-  (keep through the rollback window).
-- `scripts/pg_to_duckdb.sql` — the data-copy script above, parameterized.
-- Updated `README.md` section on local dev (DuckDB file path instead of
-  Postgres DSN).
+Landed:
+
+- [x] `db/schema_duckdb.sql` — full schema for fresh install (embedded
+      into the binary, replayed on every open).
+- [x] `db/connect.go` — DuckDB DSN branch + bootstrap.
+- [x] `model/types.go` — `StringSlice` Scanner/Valuer.
+- [x] `go.mod` — `github.com/duckdb/duckdb-go/v2` added; `lib/pq`
+      retained through the rollback window.
+- [x] `scripts/pg_to_duckdb.sql` — data-copy script.
+- [x] `README.md` — DuckDB dev setup section appended.
 
 ---
 
 ## 10. Open items
 
-- Confirm DuckDB version target and matching binding version; pin both.
-- Decide whether to keep `goose` for DuckDB or retire it entirely.
-- Whether to keep the Postgres code path as a supported alternate (dual
-  dialect already works via `db.Rebind`; cost is maintaining two scan
-  paths for arrays). Default recommendation: **drop Postgres entirely
-  once cut-over is stable** — fewer moving parts.
+- Retire `goose` and `db/migrate/` once a DuckDB file has been proven in
+  production for long enough to make a Postgres rollback unnecessary.
+- Drop Postgres entirely after the rollback window: remove `lib/pq`
+  blank import, the Postgres branch in `openDB`, and the dialect branch
+  in `StringSlice.Value`. `db.Rebind` can stay since its fast path for
+  DuckDB is a no-op.
+- Live validation of array round-trip under DuckDB — unit coverage for
+  `StringSlice.Scan`/`Value` against the real go-duckdb driver would
+  catch go-duckdb version bumps that change list decoding shape.

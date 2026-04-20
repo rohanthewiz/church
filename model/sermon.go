@@ -3,8 +3,6 @@ package model
 import (
 	"database/sql"
 	"time"
-
-	"github.com/lib/pq"
 )
 
 // Sermon mirrors the `sermons` table.
@@ -27,8 +25,8 @@ type Sermon struct {
 	DateTaught    time.Time
 	PlaceTaught   sql.NullString
 	Teacher       string
-	ScriptureRefs pq.StringArray
-	Categories    pq.StringArray
+	ScriptureRefs StringSlice
+	Categories    StringSlice
 }
 
 const sermonColumns = `id, created_at, updated_at, updated_by, title, slug, published, summary, body, audio_link, date_taught, place_taught, teacher, scripture_refs, categories`

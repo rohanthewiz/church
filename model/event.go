@@ -3,8 +3,6 @@ package model
 import (
 	"database/sql"
 	"time"
-
-	"github.com/lib/pq"
 )
 
 // Event mirrors the `events` table. EventDate is stored as a non-null
@@ -27,7 +25,7 @@ type Event struct {
 	ContactPhone  sql.NullString
 	ContactEmail  sql.NullString
 	ContactURL    sql.NullString
-	Categories    pq.StringArray
+	Categories    StringSlice
 }
 
 const eventColumns = `id, created_at, updated_at, updated_by, published, title, slug, ` +

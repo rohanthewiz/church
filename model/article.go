@@ -1,17 +1,16 @@
 // Package model holds the hand-written data types and DAOs that replace
 // the SQLBoiler-generated `models/` package. Goals:
 //   - Thin wrappers over database/sql — no reflection, no query builder DSL.
-//   - Stdlib-first types (sql.NullString/Time) plus pq.StringArray for text[],
-//     json.RawMessage for jsonb. Types are driver-neutral so the eventual
-//     DuckDB swap is contained to the scan helpers, not the struct shapes.
+//   - Stdlib-first types (sql.NullString/Time) plus the local StringSlice
+//     wrapper (model/types.go) for text[] / VARCHAR[] and json.RawMessage
+//     for jsonb / JSON. Types are driver-neutral — the dialect branch lives
+//     inside StringSlice's Scanner/Valuer, not in the struct shapes.
 //   - All SQL written with `?` placeholders and rebound by db.Rebind at call
-//     time — same source for Postgres today and DuckDB tomorrow.
+//     time — same source for Postgres and DuckDB.
 package model
 
 import (
 	"database/sql"
-
-	"github.com/lib/pq"
 )
 
 // Article mirrors the `articles` table. Field names stay CamelCase matching
@@ -26,7 +25,7 @@ type Article struct {
 	Summary    string
 	Body       sql.NullString
 	Published  bool
-	Categories pq.StringArray
+	Categories StringSlice
 }
 
 // scannable lets the same scan helper consume *sql.Row and *sql.Rows.
