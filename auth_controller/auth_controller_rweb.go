@@ -14,7 +14,6 @@ import (
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
-	"gopkg.in/nullbio/null.v6"
 )
 
 // GET /login - Login Form
@@ -83,7 +82,7 @@ func RegisterUserRWeb(ctx rweb.Context) error {
 		logger.LogErr(err, "Invalid role supplied")
 		return app.RedirectRWeb(ctx, "/admin/users", "Invalid role supplied")
 	}
-	err = user.SaveUser(ctx.Request().QueryParam("username"), null.NewString(pass_hash, true), null.NewString(salt, true), role_int)
+	err = user.SaveUser(ctx.Request().QueryParam("username"), pass_hash, salt, role_int)
 	if err != nil {
 		logger.LogErr(err, "Unable to SaveUser")
 		return app.RedirectRWeb(ctx, "/admin/users", "Unable to register user")

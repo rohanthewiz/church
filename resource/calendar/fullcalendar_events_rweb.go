@@ -3,26 +3,22 @@ package calendar
 import (
 	"strconv"
 
-	"github.com/rohanthewiz/church/db"
-	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/model"
 	tu "github.com/rohanthewiz/church/util/timeutil"
 	"github.com/rohanthewiz/rweb"
 	"github.com/rohanthewiz/serr"
-	"github.com/vattle/sqlboiler/queries/qm"
 )
 
 // Return events between the given dates as FullCalendar events
 func GetFullCalendarEventsRWeb(ctx rweb.Context) error {
-	var startDate, endDate string
-	startDate = ctx.Request().QueryParam("start")
-	endDate = ctx.Request().QueryParam("end")
+	startDate := ctx.Request().QueryParam("start")
+	endDate := ctx.Request().QueryParam("end")
 	var fEvents []FullcalendarEvent
-	dbH, err := db.Db()
-	if err != nil {
-		return err
-	}
+
+	// Trust boundary same as the echo handler: start/end are interpolated
+	// into the SQL condition, so they must remain admin-controlled input.
 	condition := "event_date >= '" + startDate + "' AND event_date <= '" + endDate + "'"
-	evts, err := models.Events(dbH, qm.Where(condition), qm.OrderBy("event_date ASC"), qm.Limit(100)).All()
+	evts, err := model.QueryEvents(condition, "event_date ASC", 100, 0)
 	if err != nil {
 		return serr.Wrap(err, "Error obtaining events")
 	}

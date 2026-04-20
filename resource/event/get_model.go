@@ -1,67 +1,77 @@
 package event
 
 import (
-	"github.com/rohanthewiz/church/models"
-	. "github.com/rohanthewiz/logger"
-	"gopkg.in/nullbio/null.v6"
-	"strings"
-	"time"
+	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/model"
+	. "github.com/rohanthewiz/logger"
 )
 
-// Fixup Received data for Presenter
-func modelFromPresenter(pres Presenter) (*models.Event, bool, error) {
-	var create_op bool  // inits to false
-	model := findModelByIdOrCreate(pres.Id)
-	if model.ID < 1 {
+// modelFromPresenter builds the DB-shaped struct from the web Presenter,
+// and reports whether this should be an INSERT (create_op=true) or UPDATE.
+func modelFromPresenter(pres Presenter) (*model.Event, bool, error) {
+	var create_op bool
+	m := findModelByIdOrCreate(pres.Id)
+	if m.ID < 1 {
 		create_op = true
 	}
 
 	if title := strings.TrimSpace(pres.Title); title != "" {
-		model.Title = title
+		m.Title = title
 	} else {
 		msg := "Presenter title is a required field when creating events"
 		Log("Error", msg)
-		return model, create_op, errors.New(msg)
+		return m, create_op, errors.New(msg)
 	}
-	// Todo - do this for other resources
-	if create_op {  // Allow slug update only on create to maintain external references
-		pres.CreateSlug() // could check ahead for uniqueness in Javascript, but good randomness should get us by
-		model.Slug = pres.Slug  // we update slug only on create - slug has unique constraint
+
+	// Slug is write-once: only set on create, to preserve external references.
+	if create_op {
+		pres.CreateSlug()
+		m.Slug = pres.Slug
 	}
-	zone, _ := time.Now().Zone()  // server timezone should be good enough? I hope!
+
+	// Compose a zoned timestamp string from the separate date + time form
+	// fields, then parse via the incoming-format layout. We rely on the
+	// server's zone abbreviation here — acceptable because the admin is
+	// assumed to be in the same zone as the deployment.
+	zone, _ := time.Now().Zone()
 	datetimez := pres.EventDate + " " + pres.EventTime + " " + zone
-	fmt.Println("[Debug] datetimez:", datetimez)  // debug
+	fmt.Println("[Debug] datetimez:", datetimez) // debug
 	dte, err := time.Parse(config.IncomingDateTimeFormat, datetimez)
 	if err != nil {
 		Log("Error", "Error parsing event date", "error", err.Error())
-		return model, create_op, err
+		return m, create_op, err
 	}
-	model.EventDate = dte
-	model.EventTime = strings.TrimSpace(pres.EventTime) // todo - could eliminate this db attrib
-	model.Published = pres.Published
-	model.Summary = null.NewString(strings.TrimSpace(pres.Summary), true)
-	model.Body = null.NewString(strings.TrimSpace(pres.Body), true)
-	model.EventLocation = null.NewString(strings.TrimSpace(pres.Location), true)
-	model.ContactPerson = null.NewString(strings.TrimSpace(pres.ContactPerson), true)
-	model.ContactPhone = null.NewString(strings.TrimSpace(pres.ContactPhone), true)
-	model.ContactEmail = null.NewString(strings.TrimSpace(pres.ContactEmail), true)
-	model.ContactURL = null.NewString(strings.TrimSpace(pres.ContactURL), true)
-	model.UpdatedBy = strings.TrimSpace(pres.UpdatedBy)
+	m.EventDate = dte
+	m.EventTime = strings.TrimSpace(pres.EventTime) // todo - could eliminate this db attrib
+	m.Published = pres.Published
+	m.Summary = sql.NullString{String: strings.TrimSpace(pres.Summary), Valid: true}
+	m.Body = sql.NullString{String: strings.TrimSpace(pres.Body), Valid: true}
+	m.EventLocation = sql.NullString{String: strings.TrimSpace(pres.Location), Valid: true}
+	m.ContactPerson = sql.NullString{String: strings.TrimSpace(pres.ContactPerson), Valid: true}
+	m.ContactPhone = sql.NullString{String: strings.TrimSpace(pres.ContactPhone), Valid: true}
+	m.ContactEmail = sql.NullString{String: strings.TrimSpace(pres.ContactEmail), Valid: true}
+	m.ContactURL = sql.NullString{String: strings.TrimSpace(pres.ContactURL), Valid: true}
+	m.UpdatedBy = strings.TrimSpace(pres.UpdatedBy)
+
 	if len(pres.Categories) > 0 {
-		// Do not add categories individually, build a slice of strings, then set categories equal to that
-		// Otherwise the db field becomes a non-volatile accumulation of categories
+		// Rebuild the slice rather than appending — same reason as article:
+		// the db column value round-trips through the struct so additive
+		// updates would accumulate old categories.
 		categories := []string{}
 		for _, cat := range pres.Categories {
 			if trimmed := strings.TrimSpace(cat); trimmed != "" {
 				categories = append(categories, trimmed)
 			}
 		}
-		model.Categories = categories
+		m.Categories = categories
 	} else {
-		model.Categories = []string{"general"}
+		m.Categories = []string{"general"}
 	}
-	return model, create_op, err
+	return m, create_op, nil
 }

@@ -3,86 +3,60 @@ package event
 import (
 	"strconv"
 
-	"github.com/rohanthewiz/church/db"
-	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/model"
 	"github.com/rohanthewiz/church/util/stringops"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
-	. "github.com/vattle/sqlboiler/queries/qm"
 )
 
+// UpComingEvents fetches the next batch of events ordered by most recent
+// date first (legacy behavior — DESC not ASC, preserved to avoid silently
+// changing admin dashboards that depend on the ordering).
 func UpComingEvents() ([]Presenter, error) {
-	efs := []Presenter{}
-	db, err := db.Db()
-	if err != nil {
-		return efs, err
-	}
-	events, err := models.Events(db, OrderBy("event_date DESC"), Limit(8)).All()
-	if err != nil {
-		Log("Error", "Error obtaining upcoming events", "err", err.Error())
-		return efs, err
-	}
-	for _, evt := range events {
-		efs = append(efs, presenterFromModel(evt))
-	}
-	return efs, err
+	return QueryEvents("", "event_date DESC", 8, 0)
 }
 
-// Condition is the condition expression without leading/trailing WHERE and AND
+// QueryEvents keeps the legacy signature (condition/order are trusted SQL
+// fragments built from internal module config, not user input). Under the
+// hood it delegates to the hand-written DAO.
 func QueryEvents(condition, order string, limit int64, offset int64) ([]Presenter, error) {
-	// fmt.Println("condition:", condition, " order:", order, " limit:", limit, " offset:", offset)
-	var pres []Presenter
-
-	db, err := db.Db()
+	pres := []Presenter{}
+	events, err := model.QueryEvents(condition, order, limit, offset)
 	if err != nil {
-		return pres, err
-	}
-	events, err := models.Events(db, Where(condition), OrderBy(order), Limit(int(limit)), Offset(int(offset))).All()
-	if err != nil {
-		LogErr(serr.Wrap(err, "Error obtaining events"))
-		return pres, err
+		return pres, serr.Wrap(err, "Error obtaining events")
 	}
 	for _, evt := range events {
 		pres = append(pres, presenterFromModel(evt))
 	}
-	return pres, err
+	return pres, nil
 }
 
-// Given a Presenter, update or insert
+// UpsertEvent decides create vs update from pres.Id via modelFromPresenter.
+// On create we synthesise a unique slug here — the old behavior did it on
+// the model struct in place, but doing it here keeps the DAO agnostic of
+// any business rules about slug generation.
 func (p Presenter) UpsertEvent() error {
-	db, err := db.Db()
-	if err != nil {
-		return err
-	}
 	evt, create, err := modelFromPresenter(p)
 	if err != nil {
 		return serr.Wrap(err)
 	}
 	if create {
-		evt.Slug = stringops.SlugWithRandomString(evt.Title) // create the unique id for the module
-		err = evt.Insert(db)
-		if err != nil {
+		evt.Slug = stringops.SlugWithRandomString(evt.Title)
+		if err := model.InsertEvent(evt); err != nil {
 			return serr.Wrap(err, "Error inserting event into DB")
-		} else {
-			Log("Info", "Successfully created event")
 		}
+		Log("Info", "Successfully created event")
 	} else {
-		err = evt.Update(db)
-		if err != nil {
-			err = serr.Wrap(err, "Error updating event in DB")
-		} else {
-			Log("Info", "Successfully updated event")
+		if err := model.UpdateEvent(evt); err != nil {
+			return serr.Wrap(err, "Error updating event in DB")
 		}
+		Log("Info", "Successfully updated event")
 	}
-	return err
+	return nil
 }
 
 func DeleteEventById(id string) error {
 	const when = "When deleting event by id"
-	dbH, err := db.Db()
-	if err != nil {
-		return err
-	}
 	if id == "" {
 		return serr.New("Id to delete is empty string", "when", when)
 	}
@@ -90,71 +64,34 @@ func DeleteEventById(id string) error {
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Event id to integer", "Id", id, "when", when)
 	}
-	err = models.Events(dbH, Where("id=?", intId)).DeleteAll()
-	if err != nil {
+	if err := model.DeleteEvent(intId); err != nil {
 		return serr.Wrap(err, "Error when deleting event by id", "id", id, "when", when)
 	}
 	return nil
 }
 
-func findEventById(id int64) (*models.Event, error) {
-	db, err := db.Db()
+func findEventById(id int64) (*model.Event, error) {
+	evt, err := model.EventByID(id)
 	if err != nil {
-		Log("Error", "Error in EventById()", "error", err.Error())
-		return nil, err
+		return nil, serr.Wrap(err, "Error retrieving event by id")
 	}
-	evt, err := models.Events(db, Where("id = ?", id)).One()
-	if err != nil {
-		return nil, err
-	}
-	return evt, err
+	return evt, nil
 }
 
-// Returns the models.Presenter with id `id` or a new models.Presenter
-func findModelByIdOrCreate(id string) *models.Event {
-	var evt *models.Event
-	if id != "" {
-		intId, err := strconv.ParseInt(id, 10, 64)
-		if err != nil {
-			Log("Error", "Unable to convert Presenter id to integer", "Id", id, "error", err.Error())
-			return new(models.Event)
-		}
-		evt, err = findEventById(intId)
-		if err != nil {
-			return new(models.Event)
-		}
-	} else {
-		evt = new(models.Event)
+// findModelByIdOrCreate: same fallback-on-error semantics as the article
+// path — callers treat a blank model as "prepare a new row".
+func findModelByIdOrCreate(id string) *model.Event {
+	if id == "" {
+		return &model.Event{}
+	}
+	intId, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		Log("Error", "Unable to convert Presenter id to integer", "Id", id, "error", err.Error())
+		return &model.Event{}
+	}
+	evt, err := findEventById(intId)
+	if err != nil || evt == nil {
+		return &model.Event{}
 	}
 	return evt
 }
-
-// func FirstEvent() (Presenter, error) {
-//	efs := Presenter{}
-//	db, err := db.Db()
-//	if err != nil {
-//		return efs, err
-//	}
-//	ev, err := models.Events(db).One()
-//	if err != nil {
-//		return efs, err
-//	}
-//	return presenterFromModel(ev), err
-// }
-
-// func PresenterById(param_id string) (Presenter, error) {
-//	efs := Presenter{}
-//	id, err := strconv.ParseInt(strings.TrimSpace(param_id), 10, 64)
-//	if err != nil {
-//		Log("Error", "Could not convert param_id to int", "when", "obtaining event by id", "error", err.Error())
-//		return efs, err
-//	}
-//	evt, err := findEventById(id)
-//	if err != nil {
-//		Log("Error", "Unable to obtain event with id: " + param_id, "error", err.Error())
-//		return efs, err
-//	}
-//	return presenterFromModel(evt), err
-// }
-
-// Private

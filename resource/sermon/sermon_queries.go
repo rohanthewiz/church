@@ -1,46 +1,39 @@
 package sermon
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/rohanthewiz/church/db"
-	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/model"
 	"github.com/rohanthewiz/church/util/timeutil"
-	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
-	. "github.com/vattle/sqlboiler/queries/qm"
 )
 
+// Upsert inserts or updates a sermon row derived from the presenter, and
+// returns the slug of the persisted row. Slug is write-once on create (see
+// modelFromPresenter), so on update we just echo back whatever is already
+// stored.
 func (p Presenter) Upsert() (slug string, err error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return slug, err
-	}
 	ser, create, err := modelFromPresenter(p)
 	if err != nil {
-		LogErr(err, "Error in sermon from presenter")
+		logger.LogErr(err, "Error in sermon model from presenter")
 		return slug, err
 	}
-	fmt.Printf("In Upsert: sermon model (from presenter) %#v\n", ser)
 	if create {
-		err = ser.Insert(dbH)
-		if err != nil {
-			LogErr(err, "Error inserting sermon into DB")
+		if err = model.InsertSermon(ser); err != nil {
+			logger.LogErr(err, "Error inserting sermon into DB")
 			return slug, err
-		} else {
-			Log("Info", "Successfully created sermon")
 		}
+		logger.Log("Info", "Successfully created sermon")
 	} else {
-		err = ser.Update(dbH)
-		if err != nil {
-			LogErr(err, "Error updating sermon in DB")
-		} else {
-			Log("Info", "Successfully updated sermon")
+		if err = model.UpdateSermon(ser); err != nil {
+			logger.LogErr(err, "Error updating sermon in DB")
+			return slug, err
 		}
+		logger.Log("Info", "Successfully updated sermon")
 	}
-	return ser.Slug.String, err
+	return ser.Slug.String, nil
 }
 
 func (p Presenter) GetYear() (year string) {
@@ -51,81 +44,51 @@ func (p Presenter) GetYear() (year string) {
 	return
 }
 
-// Returns a sermon model for id `id` or a new sermon model
-func findByIdOrCreate(id string) (model *models.Sermon) {
-	if id != "" {
-		intId, err := strconv.ParseInt(id, 10, 64)
-		if err != nil {
-			LogErr(err, "Unable to convert Sermon id to integer", "Id", id)
-			return new(models.Sermon)
-		}
-		model, err = findSermonById(intId)
-		if err != nil {
-			return new(models.Sermon)
-		}
+// findByIdOrCreate returns a sermon model for `id` or a zero-valued model
+// if the id is missing/invalid. Matching the silent-fallback contract used
+// by the other resources — the caller inspects m.ID < 1 to decide create vs
+// update.
+func findByIdOrCreate(id string) *model.Sermon {
+	if id == "" {
+		return &model.Sermon{}
 	}
-	if model == nil {
-		model = new(models.Sermon)
+	intId, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		logger.LogErr(err, "Unable to convert Sermon id to integer", "Id", id)
+		return &model.Sermon{}
 	}
-	return
+	m, err := findSermonById(intId)
+	if err != nil || m == nil {
+		return &model.Sermon{}
+	}
+	return m
 }
 
 func DeleteSermonById(id string) error {
 	const when = "When deleting sermon by id"
-	dbH, err := db.Db()
-	if err != nil {
-		return err
-	}
 	if id == "" {
 		return serr.New("Id to delete is empty string", "when", when)
 	}
-
 	intId, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Sermon id to integer", "Id", id, "when", when)
 	}
-	err = models.Sermons(dbH, Where("id=?", intId)).DeleteAll()
-	if err != nil {
+	if err := model.DeleteSermon(intId); err != nil {
 		return serr.Wrap(err, "Error when deleting sermon by id", "id", id, "when", when)
 	}
 	return nil
 }
 
-// Returns a sermon model for id `id` or error
-func findSermonById(id int64) (*models.Sermon, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, err
-	}
-	ser, err := models.Sermons(dbH, Where("id = ?", id)).One()
-	if err != nil {
-		return nil, serr.Wrap(err, "Error retrieving sermon by id", "id", fmt.Sprintf("%d", id))
-	}
-	return ser, err
+func findSermonById(id int64) (*model.Sermon, error) {
+	return model.SermonByID(id)
 }
 
-// Returns a sermon model slug or error
-func findSermonBySlug(slug string) (*models.Sermon, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, serr.Wrap(err, "Error obtaining DB handle")
-	}
-	art, err := models.Sermons(dbH, Where("slug = ?", slug)).One()
-	if err != nil {
-		return nil, serr.Wrap(err, "Error retrieving sermon by slug", "slug", slug)
-	}
-	return art, err
+func findSermonBySlug(slug string) (*model.Sermon, error) {
+	return model.SermonBySlug(slug)
 }
 
 func QuerySermons(condition, order string, limit, offset int64) (presenters []Presenter, err error) {
-	// Log("Debug", "Sermon query", "condition:", condition, " order:", order,
-	//	" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
-	dbH, err := db.Db()
-	if err != nil {
-		return
-	}
-	sermons, err := models.Sermons(dbH, Where(condition), OrderBy(order), Limit(int(limit)),
-		Offset(int(offset))).All()
+	sermons, err := model.QuerySermons(condition, order, limit, offset)
 	if err != nil {
 		return nil, serr.Wrap(err, "Error querying sermons")
 	}
@@ -136,7 +99,5 @@ func QuerySermons(condition, order string, limit, offset int64) (presenters []Pr
 }
 
 func RecentSermons(limit int64) (presenters []Presenter, err error) {
-	condition := "1 = 1"
-	order := "created_at DESC"
-	return QuerySermons(condition, order, limit, 0)
+	return QuerySermons("1 = 1", "created_at DESC", limit, 0)
 }

@@ -4,45 +4,35 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/rohanthewiz/church/db"
-	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/model"
 	"github.com/rohanthewiz/church/util/timeutil"
 	"github.com/rohanthewiz/rweb"
 	"github.com/rohanthewiz/serr"
-	"github.com/vattle/sqlboiler/queries/qm"
 )
 
+// APISermonsRWeb is the rweb-flavored mirror of APISermons. Kept in lockstep
+// with the echo handler — any change to the response shape must be made in
+// both.
 func APISermonsRWeb(ctx rweb.Context) error {
-	// TODO - Query params
 	limit := ctx.Request().QueryParam("limit")
-	//endDate = ctx.Request().QueryParam("end")
-
-	lmt, err := strconv.Atoi(limit)
+	lmt, err := strconv.ParseInt(limit, 10, 64)
 	if err != nil {
 		lmt = 50
-		//return serr.Wrap(err)
 	}
 
-	var sermons []SermonsResp
-
-	dbH, err := db.Db()
-	if err != nil {
-		return serr.Wrap(err)
-	}
-	condition := "1 = 1"
-	sms, err := models.Sermons(dbH, qm.Where(condition), qm.OrderBy("date_taught DESC"), qm.Limit(lmt)).All()
+	sms, err := model.QuerySermons("1 = 1", "date_taught DESC", lmt, 0)
 	if err != nil {
 		return serr.Wrap(err, "Error obtaining sermons")
 	}
 
+	sermons := make([]SermonsResp, 0, len(sms))
 	for _, ser := range sms {
-		s := SermonsResp{
+		sermons = append(sermons, SermonsResp{
 			Title:         ser.Title,
 			DateTaught:    ser.DateTaught.Format(timeutil.ISO8601DateTime),
-			ScriptureRefs: strings.Join(ser.ScriptureRefs, ","),
+			ScriptureRefs: strings.Join([]string(ser.ScriptureRefs), ","),
 			AudioLink:     ser.AudioLink.String,
-		}
-		sermons = append(sermons, s)
+		})
 	}
 
 	return ctx.WriteJSON(&sermons)

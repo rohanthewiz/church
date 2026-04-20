@@ -4,69 +4,53 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/rohanthewiz/church/db"
-	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/model"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
-	. "github.com/vattle/sqlboiler/queries/qm"
 )
 
+// QueryArticles keeps its legacy signature so module code (carousel,
+// easy_tabs, blog, list, recent) doesn't need to change. Under the hood
+// it now calls the hand-written DAO instead of the SQLBoiler models pkg.
 func QueryArticles(condition, order string, limit, offset int64) (presenters []Presenter, err error) {
-	// Log("Debug", "Article query", "condition:", condition, " order:", order,
-	//	" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
-	db, err := db.Db()
-	if err != nil {
-		return
-	}
-	articles, err := models.Articles(db, Where(condition), OrderBy(order), Limit(int(limit)), Offset(int(offset))).All()
+	arts, err := model.QueryArticles(condition, order, limit, offset)
 	if err != nil {
 		return nil, serr.Wrap(err, "Error querying articles")
 	}
-	for _, art := range articles {
-		presenters = append(presenters, presenterFromModel(art))
+	for _, a := range arts {
+		presenters = append(presenters, presenterFromModel(a))
 	}
 	return
 }
 
 func RecentArticles(limit int64) (presenters []Presenter, err error) {
-	condition := "1 = 1"
-	order := "created_at DESC"
-	return QueryArticles(condition, order, limit, 0)
+	return QueryArticles("1 = 1", "created_at DESC", limit, 0)
 }
 
+// UpsertArticle decides create vs update from the presenter's Id field,
+// same semantics as before. The create/update split lives in modelFromPresenter
+// which returns a boolean so we don't have to re-check here.
 func (p Presenter) UpsertArticle() error {
-	db, err := db.Db()
-	if err != nil {
-		return err
-	}
 	art, create, err := modelFromPresenter(p)
 	if err != nil {
 		return serr.Wrap(err, "Error in article from presenter")
 	}
 	if create {
-		err = art.Insert(db)
-		if err != nil {
+		if err := model.InsertArticle(art); err != nil {
 			return serr.Wrap(err, "Error inserting new article into DB")
-		} else {
-			Log("Info", "Successfully created article")
 		}
+		Log("Info", "Successfully created article")
 	} else {
-		err = art.Update(db)
-		if err != nil {
+		if err := model.UpdateArticle(art); err != nil {
 			return serr.Wrap(err, "Error updating article in DB")
-		} else {
-			Log("Info", "Successfully updated article")
 		}
+		Log("Info", "Successfully updated article")
 	}
-	return err
+	return nil
 }
 
 func DeleteArticleById(id string) error {
 	const when = "When deleting article by id"
-	dbH, err := db.Db()
-	if err != nil {
-		return err
-	}
 	if id == "" {
 		return serr.New("Id to delete is empty string")
 	}
@@ -74,53 +58,44 @@ func DeleteArticleById(id string) error {
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Article id to integer", "Id", id, "when", when)
 	}
-	err = models.Articles(dbH, Where("id=?", intId)).DeleteAll()
-	if err != nil {
+	if err := model.DeleteArticle(intId); err != nil {
 		return serr.Wrap(err, "Error when deleting article by id", "id", id, "when", when)
 	}
 	return nil
 }
 
-// Returns an article model for id `id` or a new article model
-func findModelByIdOrCreate(id string) (art *models.Article) {
-	if id != "" {
-		intId, err := strconv.ParseInt(id, 10, 64)
-		if err != nil {
-			LogErr(err, "Unable to convert Article id to integer", "Id", id)
-			return new(models.Article)
-		}
-		art, err = findArticleById(intId)
-		if err != nil {
-			return new(models.Article)
-		}
+// findModelByIdOrCreate returns the existing article for id, or a blank
+// one ready for INSERT when id is empty / invalid. Silent-fallback behavior
+// is intentional: it matches the prior path where any lookup error produced
+// a fresh model.Article and let the upsert proceed as a create.
+func findModelByIdOrCreate(id string) *model.Article {
+	if id == "" {
+		return &model.Article{}
 	}
-	if art == nil {
-		art = new(models.Article)
+	intId, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		LogErr(err, "Unable to convert Article id to integer", "Id", id)
+		return &model.Article{}
 	}
-	return
+	art, err := findArticleById(intId)
+	if err != nil || art == nil {
+		return &model.Article{}
+	}
+	return art
 }
 
-// Returns an article for id `id` or error
-func findArticleById(id int64) (*models.Article, error) {
-	dbH, err := db.Db()
+func findArticleById(id int64) (*model.Article, error) {
+	art, err := model.ArticleByID(id)
 	if err != nil {
-		return nil, serr.Wrap(err)
+		return nil, serr.Wrap(err, "Error retrieving article by id", "id", fmt.Sprintf("%d", id))
 	}
-	art, err := models.Articles(dbH, Where("id = ?", id)).One()
-	if err != nil {
-		return nil, serr.Wrap(err, "Error retreiving article by id", "id", fmt.Sprintf("%d", id))
-	}
-	return art, err
+	return art, nil
 }
 
-func findArticleBySlug(slug string) (*models.Article, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, serr.Wrap(err, "Error obtaining DB handle")
-	}
-	art, err := models.Articles(dbH, Where("slug = ?", slug)).One()
+func findArticleBySlug(slug string) (*model.Article, error) {
+	art, err := model.ArticleBySlug(slug)
 	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving article by slug", "slug", slug)
 	}
-	return art, err
+	return art, nil
 }

@@ -1,65 +1,68 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/models"
-	"github.com/rohanthewiz/serr"
 	"strconv"
-	. "github.com/rohanthewiz/logger"
 	"strings"
+
+	"github.com/rohanthewiz/church/model"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/util/stringops"
+	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
-// Store Page definition
+// Presenter is the view-layer shape of a page — flattened strings for the
+// form/view code and a []module.Presenter decoded from the stored JSONB.
 type Presenter struct {
-	Id           string
-	CreatedAt    string
-	UpdatedAt    string
-	UpdatedBy    string
-	Title string
-	Slug string  // slug is the unique identifier to the page instance
-	Published    bool
-	IsHome	bool
-	IsAdmin bool
+	Id                 string
+	CreatedAt          string
+	UpdatedAt          string
+	UpdatedBy          string
+	Title              string
+	Slug               string // slug is the unique identifier to the page instance
+	Published          bool
+	IsHome             bool
+	IsAdmin            bool
 	AvailablePositions []string
-	Modules []module.Presenter
+	Modules            []module.Presenter
 }
 
-
-func (p * Presenter) CreateSlug() {
-	if p.Title == "" { println("Title should be set before Slug"); return }
+func (p *Presenter) CreateSlug() {
+	if p.Title == "" {
+		logger.Log("Warn", "Title should be set before Slug")
+		return
+	}
 	p.Slug = stringops.SlugWithRandomString(p.Title)
 }
 
-
-// Given an id, get the model and build a presenter from the model
+// PresenterById builds a presenter from a page row looked up by integer id.
 func PresenterById(paramId string) (presenter Presenter, err error) {
 	id, err := strconv.ParseInt(strings.TrimSpace(paramId), 10, 64)
 	if err != nil {
 		return presenter, serr.Wrap(err, "Could not convert paramId to int", "when", "building page Presenter")
 	}
-	model, err := findPageById(id)
+	m, err := findPageById(id)
 	if err != nil {
-		return presenter, serr.Wrap(err, "Unable to obtain sermon", "id", paramId)
+		return presenter, serr.Wrap(err, "Unable to obtain page", "id", paramId)
 	}
-	return presenterFromModel(model)
+	return presenterFromModel(m)
 }
 
-// Returns a model for id `id` or a new model
-func findPageByIdOrCreate(id string) (pg *models.Page) {
-	if id != "" {
-		intId, err := strconv.ParseInt(id, 10, 64)
-		if err != nil {
-			LogErr(err, "Unable to convert Page id to integer", "Id", id)
-			return new(models.Page)
-		}
-		pg, err = findPageById(intId)
-		if err != nil {
-			return new(models.Page)
-		}
+// findPageByIdOrCreate: silent-fallback contract (same as other resources)
+// returns a zero-valued model when the id is empty/invalid/missing — the
+// caller uses m.ID < 1 to decide create vs update.
+func findPageByIdOrCreate(id string) *model.Page {
+	if id == "" {
+		return &model.Page{}
 	}
-	if pg == nil {
-		pg = new(models.Page)
+	intId, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		logger.LogErr(err, "Unable to convert Page id to integer", "Id", id)
+		return &model.Page{}
 	}
-	return
+	m, err := findPageById(intId)
+	if err != nil || m == nil {
+		return &model.Page{}
+	}
+	return m
 }

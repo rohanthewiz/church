@@ -6,8 +6,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/config"
-	theDB "github.com/rohanthewiz/church/db"
-	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/model"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/content"
@@ -16,8 +15,6 @@ import (
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
-	"github.com/vattle/sqlboiler/queries/qm"
-	"gopkg.in/nullbio/null.v6"
 )
 
 // bootstrapMenuItem mirrors menu.MenuItemDef for JSON serialization.
@@ -51,7 +48,7 @@ func bootstrapSuperAdmin() bool {
 		return false
 	}
 
-	// Try config first, then fall back to env vars
+	// Try config first, then fall back to env vars.
 	adminUser := strings.TrimSpace(config.Options.Bootstrap.AdminUser)
 	adminPass := strings.TrimSpace(config.Options.Bootstrap.AdminPass)
 
@@ -83,8 +80,6 @@ func bootstrapSuperAdmin() bool {
 // footer-menu) with exact slugs so the navigation system can find them.
 // Inserts directly at the model level to bypass random slug generation.
 func bootstrapMenus() {
-	// Define all menus to bootstrap. Each entry specifies the exact slug,
-	// display title, admin visibility, and menu items.
 	menus := []struct {
 		slug    string
 		title   string
@@ -119,22 +114,16 @@ func bootstrapMenus() {
 		{
 			slug:  "footer-menu",
 			title: "Footer Menu",
-			// Login/Logout is appended dynamically by buildMenu(),
-			// so we only need static items here.
+			// Login/Logout is appended dynamically by buildMenu(), so we only
+			// seed static entries here.
 			items: []bootstrapMenuItem{
 				{Label: "Home", Url: "/"},
 			},
 		},
 	}
 
-	dbH, err := theDB.Db()
-	if err != nil {
-		logger.LogErr(err, "Bootstrap: cannot get DB handle for menus")
-		return
-	}
-
 	for _, m := range menus {
-		exists, err := models.MenuDefs(dbH, qm.Where("slug = ?", m.slug)).Exists()
+		exists, err := model.ExistsMenuDefBySlug(m.slug)
 		if err != nil {
 			logger.LogErr(serr.Wrap(err), "Bootstrap: error checking menu existence", "slug", m.slug)
 			continue
@@ -149,17 +138,16 @@ func bootstrapMenus() {
 			continue
 		}
 
-		model := &models.MenuDef{
+		md := &model.MenuDef{
 			Title:     m.title,
 			Slug:      m.slug,
 			Published: true,
 			IsAdmin:   m.isAdmin,
 			UpdatedBy: "bootstrap",
-			Items:     null.NewJSON(itemsJSON, true),
+			Items:     itemsJSON,
 		}
 
-		err = model.Insert(dbH)
-		if err != nil {
+		if err := model.InsertMenuDef(md); err != nil {
 			logger.LogErr(serr.Wrap(err), "Bootstrap: error inserting menu", "slug", m.slug)
 			continue
 		}
@@ -171,13 +159,7 @@ func bootstrapMenus() {
 // modules for recent sermons, upcoming events, and a blog articles section.
 // Inserts directly at the model level to set the exact slug.
 func bootstrapHomePage() {
-	dbH, err := theDB.Db()
-	if err != nil {
-		logger.LogErr(err, "Bootstrap: cannot get DB handle for home page")
-		return
-	}
-
-	exists, err := models.Pages(dbH, qm.Where("slug = ?", "home")).Exists()
+	exists, err := model.ExistsPageBySlug("home")
 	if err != nil {
 		logger.LogErr(serr.Wrap(err), "Bootstrap: error checking home page existence")
 		return
@@ -223,18 +205,17 @@ func bootstrapHomePage() {
 		return
 	}
 
-	model := &models.Page{
+	pg := &model.Page{
 		Title:              "Home",
 		Slug:               "home",
 		Published:          true,
 		IsHome:             true,
 		UpdatedBy:          "bootstrap",
 		AvailablePositions: []string{"left", "center"},
-		Data:               null.NewJSON(modulesJSON, true),
+		Data:               modulesJSON,
 	}
 
-	err = model.Insert(dbH)
-	if err != nil {
+	if err := model.InsertPage(pg); err != nil {
 		logger.LogErr(serr.Wrap(err), "Bootstrap: error inserting home page")
 		return
 	}
@@ -244,13 +225,7 @@ func bootstrapHomePage() {
 // bootstrapWelcomeArticle creates an initial article so the home page has
 // content to display. Only runs if no articles exist in the database.
 func bootstrapWelcomeArticle() {
-	dbH, err := theDB.Db()
-	if err != nil {
-		logger.LogErr(err, "Bootstrap: cannot get DB handle for welcome article")
-		return
-	}
-
-	exists, err := models.Articles(dbH).Exists()
+	exists, err := model.AnyArticleExists()
 	if err != nil {
 		logger.LogErr(serr.Wrap(err), "Bootstrap: error checking for existing articles")
 		return
@@ -273,8 +248,7 @@ func bootstrapWelcomeArticle() {
 		},
 	}
 
-	err = pres.UpsertArticle()
-	if err != nil {
+	if err := pres.UpsertArticle(); err != nil {
 		logger.LogErr(serr.Wrap(err), "Bootstrap: error creating welcome article")
 		return
 	}

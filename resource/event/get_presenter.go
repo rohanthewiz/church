@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/rohanthewiz/church/config"
-	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/model"
 	"github.com/rohanthewiz/church/resource/content"
 	. "github.com/rohanthewiz/logger"
 )
@@ -29,8 +29,11 @@ type PresenterParams struct {
 	DateTimeFormat   string
 }
 
-// Fix up Presenter for Web
-func presenterFromModel(evt *models.Event, params ...PresenterParams) Presenter {
+// presenterFromModel adapts the DB-shaped struct to the web Presenter.
+// Date/time display formats can be overridden by the first params entry
+// to let specific views (e.g. calendar vs single-event page) control the
+// rendered strings without duplicating the rest of the conversion.
+func presenterFromModel(evt *model.Event, params ...PresenterParams) Presenter {
 	timeDisplayFormat := config.DisplayTimeFormat
 	dateDisplayLongFormat := config.DisplayDateFormatLong
 	dateTimeDisplayFormat := config.DisplayDateTimeFormat
@@ -54,11 +57,10 @@ func presenterFromModel(evt *models.Event, params ...PresenterParams) Presenter 
 		pres.UpdatedAt = evt.UpdatedAt.Time.Format(dateTimeDisplayFormat)
 	}
 
-	// Generic Content
 	pres.Title = evt.Title
 	pres.Slug = evt.Slug
 
-	cats := []string{}
+	cats := make([]string, 0, len(evt.Categories))
 	for _, cat := range evt.Categories {
 		cats = append(cats, cat)
 	}
@@ -69,7 +71,9 @@ func presenterFromModel(evt *models.Event, params ...PresenterParams) Presenter 
 	pres.Published = evt.Published
 	pres.UpdatedBy = evt.UpdatedBy
 
-	// Presenter specific content
+	// Guard against sentinel/zero-value event dates that pre-date our
+	// earliest real data — those would otherwise render as "0001-01-01"
+	// or local-zone conversions of zero timestamps.
 	earliest_date, err := time.Parse("2006-01-02", "2010-01-01")
 	if err == nil && evt.EventDate.After(earliest_date) {
 		loc, err := time.LoadLocation("Local")
@@ -77,9 +81,7 @@ func presenterFromModel(evt *models.Event, params ...PresenterParams) Presenter 
 			Log("Error", "Failed to load location 'Local'")
 		} else {
 			localEventDate := evt.EventDate.In(loc)
-			// fmt.Println("[Debug] localEventDate.Format(config.IncomingDateTimeFormat):",
-			//		localEventDate.Format(config.IncomingDateTimeFormat))                     // debug
-			pres.EventDate = localEventDate.Format(config.PresenterDateFormat)                // Admin form requires this format //
+			pres.EventDate = localEventDate.Format(config.PresenterDateFormat)                // Admin form requires this format
 			pres.EventTime = localEventDate.Format(timeDisplayFormat)                         // Admin form requires this format
 			pres.EventDateDisplayLong = localEventDate.Format(dateDisplayLongFormat)          // For non-admin
 			pres.EventDateDisplayShort = localEventDate.Format(config.DisplayShortDateFormat) // For non-admin

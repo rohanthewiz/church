@@ -1,17 +1,16 @@
 package admin_controller
 
 import (
+	"database/sql"
 	"errors"
 	"time"
 
 	"github.com/rohanthewiz/church/admin"
 	cctx "github.com/rohanthewiz/church/context"
-	"github.com/rohanthewiz/church/db"
-	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/model"
 	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
-	"gopkg.in/nullbio/null.v6"
 )
 
 func AdminHandlerRWeb(ctx rweb.Context) error {
@@ -19,24 +18,20 @@ func AdminHandlerRWeb(ctx rweb.Context) error {
 }
 
 func CreateTestEventsRWeb(ctx rweb.Context) error {
-	d, err := db.Db()
-	if err != nil {
-		return err
-	}
-	
 	// Get username from session
 	username := ""
 	sess, err := cctx.GetSessionFromRWeb(ctx)
 	if err == nil && sess != nil {
 		username = sess.Username
 	}
-	
+
 	dte, err := time.Parse("01/02/2006 -07", "06/15/2017 -05")
 	if err != nil {
 		return errors.New("Error parsing provided event values")
 	}
-	evt := &models.Event{
-		Title:      "Picnic", Summary: null.NewString("It's gonna be great!", true),
+	evt := &model.Event{
+		Title:      "Picnic",
+		Summary:    sql.NullString{String: "It's gonna be great!", Valid: true},
 		Slug:       stringops.SlugWithRandomString("Picnic"),
 		EventDate:  dte,
 		EventTime:  "14:30pm",
@@ -44,7 +39,7 @@ func CreateTestEventsRWeb(ctx rweb.Context) error {
 		UpdatedBy:  username,
 		Published:  true,
 	}
-	if err := evt.Insert(d); err != nil {
+	if err := model.InsertEvent(evt); err != nil {
 		return err
 	}
 
@@ -52,8 +47,9 @@ func CreateTestEventsRWeb(ctx rweb.Context) error {
 	if err != nil {
 		return errors.New("Error parsing provided event values")
 	}
-	evt = &models.Event{
-		Title:      "Retreat", Summary: null.NewString("Get refreshed!", true),
+	evt = &model.Event{
+		Title:      "Retreat",
+		Summary:    sql.NullString{String: "Get refreshed!", Valid: true},
 		Slug:       stringops.SlugWithRandomString("Retreat"),
 		EventDate:  dte,
 		EventTime:  "10:00AM",
@@ -61,7 +57,7 @@ func CreateTestEventsRWeb(ctx rweb.Context) error {
 		UpdatedBy:  username,
 		Published:  true,
 	}
-	if err := evt.Insert(d); err != nil {
+	if err := model.InsertEvent(evt); err != nil {
 		return err
 	}
 	return ctx.WriteString("Events created")

@@ -4,16 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/rohanthewiz/church/config"
-	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/model"
 	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
-	"gopkg.in/nullbio/null.v6"
-	"strings"
 )
 
-// This is a interim struct that sits closer to the database
+// MenuDef is an interim struct that sits between the form layer and the
+// database row. MenuItemDef slices round-trip through the DB as JSONB —
+// the conversion happens in menuDefFromModel / modelFromMenuDef below.
 type MenuDef struct {
 	Id        string
 	CreatedAt string
@@ -26,7 +28,9 @@ type MenuDef struct {
 	Items     []MenuItemDef
 }
 
-// This will exist only as part of the Menu Presenter/Definition
+// MenuItemDef is the shape of each element inside the Items JSONB blob.
+// These tags determine the on-disk JSON field names; renaming them would
+// silently invalidate existing rows, so they are kept stable.
 type MenuItemDef struct {
 	Label       string `json:"label"`
 	Url         string `json:"url"`
@@ -42,7 +46,7 @@ func (m *MenuDef) CreateSlug() {
 }
 
 func menuDefFromSlug(slug string) (pres MenuDef, err error) {
-	model, err := findModelBySlug(slug)
+	m, err := findModelBySlug(slug)
 	if err != nil {
 		// Fall back to hardwired menu definitions so the site is usable
 		// before any menus have been created in the database.
@@ -52,7 +56,7 @@ func menuDefFromSlug(slug string) (pres MenuDef, err error) {
 		}
 		return pres, serr.Wrap(err, "Error finding menuDef by slug")
 	}
-	pres, err = menuDefFromModel(model)
+	pres, err = menuDefFromModel(m)
 	if err != nil {
 		return pres, serr.Wrap(err, "Error in menuDef from model")
 	}
@@ -110,54 +114,61 @@ func hardwiredMenuDef(slug string) (MenuDef, bool) {
 	}
 }
 
-func menuDefFromModel(model *models.MenuDef) (pres MenuDef, err error) {
-	pres.Id = fmt.Sprintf("%d", model.ID)
-	if model.CreatedAt.Valid {
-		pres.CreatedAt = model.CreatedAt.Time.Format(config.DisplayDateTimeFormat)
+func menuDefFromModel(m *model.MenuDef) (pres MenuDef, err error) {
+	pres.Id = fmt.Sprintf("%d", m.ID)
+	if m.CreatedAt.Valid {
+		pres.CreatedAt = m.CreatedAt.Time.Format(config.DisplayDateTimeFormat)
 	}
-	if model.UpdatedAt.Valid {
-		pres.UpdatedAt = model.UpdatedAt.Time.Format(config.DisplayDateTimeFormat)
+	if m.UpdatedAt.Valid {
+		pres.UpdatedAt = m.UpdatedAt.Time.Format(config.DisplayDateTimeFormat)
 	}
-	pres.UpdatedBy = model.UpdatedBy
-	pres.Published = model.Published
-	pres.IsAdmin = model.IsAdmin
-	pres.Title = model.Title
-	pres.Slug = model.Slug
+	pres.UpdatedBy = m.UpdatedBy
+	pres.Published = m.Published
+	pres.IsAdmin = m.IsAdmin
+	pres.Title = m.Title
+	pres.Slug = m.Slug
 
-	menuItemDefs := []MenuItemDef{}
-	model.Items.Unmarshal(&menuItemDefs)
-	pres.Items = menuItemDefs
-
+	// Items is jsonb; nil when NULL. An empty/NULL column becomes an empty
+	// slice so downstream rendering code can range without a nil guard.
+	if len(m.Items) > 0 {
+		if err = json.Unmarshal(m.Items, &pres.Items); err != nil {
+			return pres, serr.Wrap(err, "Error unmarshalling menu items")
+		}
+	}
+	if pres.Items == nil {
+		pres.Items = []MenuItemDef{}
+	}
 	return
 }
 
-func modelFromMenuDef(pres MenuDef) (model *models.MenuDef, create_op bool, err error) {
-	model = findModelByIdOrCreate(pres.Id)
-	if model.ID < 1 {
+func modelFromMenuDef(pres MenuDef) (m *model.MenuDef, create_op bool, err error) {
+	m = findModelByIdOrCreate(pres.Id)
+	if m.ID < 1 {
 		create_op = true
 	}
 
 	if updatedBy := strings.TrimSpace(pres.UpdatedBy); updatedBy != "" {
-		model.UpdatedBy = updatedBy
+		m.UpdatedBy = updatedBy
 	}
 
 	if title := strings.TrimSpace(pres.Title); title != "" {
-		model.Title = title
+		m.Title = title
 	} else {
-		er := serr.Wrap(errors.New("Menu title should not be blank"))
-		return nil, create_op, er
+		return nil, create_op, serr.Wrap(errors.New("Menu title should not be blank"))
 	}
-	if create_op { // Allow slug update only on create to maintain external references
-		pres.CreateSlug()      // slug has to be unique only on the page
-		model.Slug = pres.Slug // todo: optimize
+
+	// Slug is write-once on create to preserve external references.
+	if create_op {
+		pres.CreateSlug()
+		m.Slug = pres.Slug
 	}
-	model.Published = pres.Published
-	model.IsAdmin = pres.IsAdmin
+	m.Published = pres.Published
+	m.IsAdmin = pres.IsAdmin
+
 	itemsAsJsonBytes, err := json.Marshal(pres.Items)
 	if err != nil {
 		return nil, create_op, serr.Wrap(err, "Error marshalling menuDef items")
 	}
-	model.Items = null.NewJSON(itemsAsJsonBytes, true)
-
+	m.Items = itemsAsJsonBytes
 	return
 }

@@ -1,39 +1,39 @@
 package article
 
 import (
-	"github.com/rohanthewiz/church/resource/content"
-	"strings"
-	"github.com/rohanthewiz/serr"
-	"github.com/rohanthewiz/church/models"
-	"fmt"
-	"github.com/rohanthewiz/church/config"
-	"gopkg.in/nullbio/null.v6"
+	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/model"
+	"github.com/rohanthewiz/church/resource/content"
 	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 type Presenter struct {
 	content.Content
-	Page string  // slug of the page it should appear on
+	Page     string // slug of the page it should appear on
 	Position int
 }
 
-
 func presenterFromSlug(slug string) (pres Presenter, err error) {
-	model, err := findArticleBySlug(slug)
+	m, err := findArticleBySlug(slug)
 	if err != nil {
 		return pres, serr.Wrap(err, "Error finding article by slug")
 	}
-	pres = presenterFromModel(model)
+	pres = presenterFromModel(m)
 	return
 }
 
 func presenterFromId(id int64) (pres Presenter, err error) {
-	model, err := findArticleById(id)
+	m, err := findArticleById(id)
 	if err != nil {
 		return pres, serr.Wrap(err, "Unable to obtain article", "when", "finding Article by Id")
 	}
-	return presenterFromModel(model), nil
+	return presenterFromModel(m), nil
 }
 
 func PresentersFromIds(ids []int64) (presenters []Presenter, err error) {
@@ -53,63 +53,74 @@ func PresentersFromIds(ids []int64) (presenters []Presenter, err error) {
 	return
 }
 
-func presenterFromModel(model *models.Article) (pres Presenter) {
-	if model.CreatedAt.Valid {
-		pres.CreatedAt = model.CreatedAt.Time.Format(config.DisplayDateTimeFormat)
+// presenterFromModel converts the DB-shaped struct into the view-shaped
+// Presenter. Any nullable/array unwrapping belongs here so the rest of the
+// article package sees plain Go types.
+func presenterFromModel(m *model.Article) (pres Presenter) {
+	if m.CreatedAt.Valid {
+		pres.CreatedAt = m.CreatedAt.Time.Format(config.DisplayDateTimeFormat)
 	}
-	if model.UpdatedAt.Valid {
-		pres.UpdatedAt = model.UpdatedAt.Time.Format(config.DisplayDateTimeFormat)
+	if m.UpdatedAt.Valid {
+		pres.UpdatedAt = m.UpdatedAt.Time.Format(config.DisplayDateTimeFormat)
 	}
 
-	// Generic Content
-	pres.Title = model.Title
-	pres.Slug = model.Slug
+	pres.Title = m.Title
+	pres.Slug = m.Slug
 
-	cats := []string{}
-	for _, cat := range model.Categories {
+	// Copy out of pq.StringArray into a plain []string so downstream code
+	// (templates, JSON marshal in the grid renderer) never sees the driver type.
+	cats := make([]string, 0, len(m.Categories))
+	for _, cat := range m.Categories {
 		cats = append(cats, cat)
 	}
 	pres.Categories = cats
-	pres.Id = fmt.Sprintf("%d", model.ID)
-	pres.Summary = model.Summary
-	pres.Body = model.Body.String
-	pres.Published = model.Published
-	pres.UpdatedBy = model.UpdatedBy
+
+	pres.Id = fmt.Sprintf("%d", m.ID)
+	pres.Summary = m.Summary
+	pres.Body = m.Body.String
+	pres.Published = m.Published
+	pres.UpdatedBy = m.UpdatedBy
 	return
 }
 
-func modelFromPresenter(pres Presenter) (model *models.Article, create_op bool, err error) {
-	model = findModelByIdOrCreate(pres.Id)
-	if model.ID < 1 {
+// modelFromPresenter builds (or updates in place) the row we'll send to the
+// DB. Returns create_op=true when the presenter has no id yet, so the caller
+// can pick INSERT vs UPDATE without re-parsing the id.
+func modelFromPresenter(pres Presenter) (m *model.Article, create_op bool, err error) {
+	m = findModelByIdOrCreate(pres.Id)
+	if m.ID < 1 {
 		create_op = true
 	}
 
 	if title := strings.TrimSpace(pres.Title); title != "" {
-		model.Title = title
-		if create_op {  // Allow slug update only on create to maintain external references
+		m.Title = title
+		// Slugs are only generated on create to preserve any external
+		// references/bookmarks built against the original slug.
+		if create_op {
 			pres.CreateSlug() // could check ahead for uniqueness in Javascript
-			model.Slug = pres.Slug  // pass in slug only on create - slug has unique constraint
+			m.Slug = pres.Slug
 		}
 	} else {
-		msg := "Article title is a required field when creating articles"
-		return model, create_op, serr.Wrap(errors.New(msg))
+		return m, create_op, serr.New("Article title is a required field when creating articles")
 	}
-	model.Published = pres.Published
-	model.Summary = strings.TrimSpace(pres.Summary)
-	model.Body = null.NewString(strings.TrimSpace(pres.Body), true)
-	model.UpdatedBy = strings.TrimSpace(pres.UpdatedBy)
+	m.Published = pres.Published
+	m.Summary = strings.TrimSpace(pres.Summary)
+	m.Body = sql.NullString{String: strings.TrimSpace(pres.Body), Valid: true}
+	m.UpdatedBy = strings.TrimSpace(pres.UpdatedBy)
+
 	if len(pres.Categories) > 0 {
-		// Do not add categories individually, build a slice of strings, then set categories equal to that
-		// Otherwise the db field becomes a non-volatile accumulation of categories
-		categories := []string{}
+		// Rebuild the slice rather than appending to the existing column value
+		// — otherwise an update would accumulate the previous categories
+		// (the db column is non-volatile across the scan/update round-trip).
+		categories := make([]string, 0, len(pres.Categories))
 		for _, cat := range pres.Categories {
 			if trimmed := strings.TrimSpace(cat); trimmed != "" {
 				categories = append(categories, trimmed)
 			}
 		}
-		model.Categories = categories
+		m.Categories = categories
 	} else {
-		model.Categories = []string{""}
+		m.Categories = []string{""}
 	}
 	return
 }

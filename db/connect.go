@@ -12,10 +12,10 @@ import (
 var dbHandle *sql.DB
 var dbOpts *DBOpts
 
-var DBTypes = dbTypes{"postgres", "mysql"}
+var DBTypes = dbTypes{"postgres", "mysql", "duckdb"}
 
 type dbTypes struct {
-	Postgres, MySQL string
+	Postgres, MySQL, DuckDB string
 }
 
 type DBOpts struct {

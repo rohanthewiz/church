@@ -1,63 +1,51 @@
 package user
 
 import (
+	"database/sql"
 	"strings"
-	"gopkg.in/nullbio/null.v6"
+
+	"github.com/rohanthewiz/church/model"
 	. "github.com/rohanthewiz/logger"
-	. "github.com/vattle/sqlboiler/queries/qm"
-	"github.com/rohanthewiz/church/models"
-	"github.com/rohanthewiz/church/db"
 )
 
-func AllUsers() (models.UserSlice, error) {
-	db, err := db.Db()
-	if err != nil {
-		return models.UserSlice{}, err
-	}
-	return models.Users(db).All()
+// AllUsers returns every row in the users table. Read-only and used from
+// admin-only code paths, so the lack of pagination is intentional.
+func AllUsers() ([]*model.User, error) {
+	return model.AllUsers()
 }
 
-func SaveUser(username string, phash, salt null.String, role int) error {
-	var err error
-	u := &models.User{
-		Username: username,
-		EncryptedPassword: phash,
-		EncryptedSalt: salt,
-		Role: role,
-		Enabled: true,
-		EmailAddress: "superadmin@thisSite.com",
-		FirstName: "Super",
+// SaveUser creates a user with only the minimal fields a bootstrap /
+// registration path supplies. Password hash + salt are taken as plain
+// strings now — the old null.String type in the signature served no
+// purpose because callers always passed Valid=true.
+func SaveUser(username, passHash, salt string, role int) error {
+	u := &model.User{
+		Username:          username,
+		EncryptedPassword: sql.NullString{String: passHash, Valid: true},
+		EncryptedSalt:     sql.NullString{String: salt, Valid: true},
+		Role:              role,
+		Enabled:           true,
+		EmailAddress:      "superadmin@thisSite.com",
+		FirstName:         "Super",
 	}
-	db, err := db.Db()
-	if err != nil {
-		return err
-	}
-	err = u.Insert(db)
-	if err != nil {
+	if err := model.InsertUser(u); err != nil {
 		LogErr(err, "Failed to insert user into db")
 		return err
 	}
-	Log("Info", "User Added", "Username", username, "Password hash", phash.String, "Salt", salt.String)
-	return err
+	Log("Info", "User Added", "Username", username, "Password hash", passHash, "Salt", salt)
+	return nil
 }
 
-// Return user's stored credentials
+// UserCreds returns the stored password hash + salt for the named user,
+// but only if the user is enabled. Disabled accounts look identical to
+// "no such user" to the caller — intentional, so login paths can't
+// fingerprint enabled vs disabled state.
 func UserCreds(username string) (string, string, error) {
-	db, err := db.Db()
-	if err != nil {
-		return "", "", err
-	}
-	user, err := models.Users(db,
-		Select("encrypted_password", "encrypted_salt"),
-	Where("username = ? and enabled = ?", username, true)).One()
-	if err != nil {
-		return "", "", err
-	}
-	return user.EncryptedPassword.String, user.EncryptedSalt.String, err
+	return model.UserCredsByUsername(username)
 }
 
-func FullName(usr *models.User) string {
-	out := strings.TrimSpace(strings.TrimSpace(usr.FirstName))
+func FullName(usr *model.User) string {
+	out := strings.TrimSpace(usr.FirstName)
 	if usr.LastName.Valid {
 		out += " " + strings.TrimSpace(usr.LastName.String)
 	}
@@ -65,10 +53,5 @@ func FullName(usr *models.User) string {
 }
 
 func SuperAdminsExist() (bool, error) {
-	db, err := db.Db()
-	if err != nil {
-		Log("Error", "Error obtaining db handle", "when", "opening db")
-		return false, err
-	}
-	return models.Users(db, Where("role = ?", Roles.SuperAdmin)).Exists()
+	return model.ExistsUserWithRole(Roles.SuperAdmin)
 }

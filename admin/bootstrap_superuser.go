@@ -2,12 +2,12 @@ package admin
 
 import (
 	"errors"
+	"io/ioutil"
+	"os"
+
 	"github.com/rohanthewiz/church/resource/auth"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/logger"
-	"gopkg.in/nullbio/null.v6"
-	"io/ioutil"
-	"os"
 )
 
 var SuperToken string
@@ -30,7 +30,7 @@ func AuthBootstrap() {
 func CreateSuperUser(username, password string) (err error) {
 	salt := auth.GenSalt("j$&@randomness!!$$$")
 	pass_hash := auth.PasswordHash(password, salt)
-	err = user.SaveUser(username, null.NewString(pass_hash, true), null.NewString(salt, true), user.Roles.SuperAdmin)
+	err = user.SaveUser(username, pass_hash, salt, user.Roles.SuperAdmin)
 	if err != nil {
 		return errors.New("Error saving super user")
 	}

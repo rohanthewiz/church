@@ -12,7 +12,6 @@ import (
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/church/template"
 	. "github.com/rohanthewiz/logger"
-	"gopkg.in/nullbio/null.v6"
 	"net/http"
 	"strconv"
 )
@@ -88,7 +87,7 @@ func RegisterUser(c echo.Context) error {
 		app.Redirect(c, "/admin/users", "Invalid role supplied")
 		return nil
 	}
-	err = user.SaveUser(c.QueryParam("username"), null.NewString(pass_hash, true), null.NewString(salt, true), role_int)
+	err = user.SaveUser(c.QueryParam("username"), pass_hash, salt, role_int)
 	if err != nil {
 		LogErr(err, "Unable to SaveUser")
 		app.Redirect(c, "/admin/users", "Unable to register user")
