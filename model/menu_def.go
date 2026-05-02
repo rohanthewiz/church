@@ -19,7 +19,12 @@ type MenuDef struct {
 	Items     []byte // jsonb — nil when NULL
 }
 
-const menuDefColumns = `id, created_at, updated_at, updated_by, title, slug, published, is_admin, items`
+// items is selected as VARCHAR so the row scans cleanly into []byte
+// under both backends. DuckDB's JSON reader returns []any when the
+// stored value is a JSON array (it parses on the way out); casting
+// to VARCHAR forces the textual representation, which is what the Go
+// model carries. Postgres jsonb→text round-trips without loss.
+const menuDefColumns = `id, created_at, updated_at, updated_by, title, slug, published, is_admin, CAST(items AS VARCHAR) AS items`
 
 func scanMenuDef(s scannable) (*MenuDef, error) {
 	m := &MenuDef{}

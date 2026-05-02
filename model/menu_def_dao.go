@@ -103,7 +103,7 @@ func InsertMenuDef(m *MenuDef) error {
 		RETURNING id, created_at, updated_at`
 
 	row := dbH.QueryRow(db.Rebind(db.CurrentDialect(), q),
-		m.UpdatedBy, m.Title, m.Slug, m.Published, m.IsAdmin, m.Items,
+		m.UpdatedBy, m.Title, m.Slug, m.Published, m.IsAdmin, jsonArg(m.Items),
 	)
 	if err := row.Scan(&m.ID, &m.CreatedAt, &m.UpdatedAt); err != nil {
 		return serr.Wrap(err, "Error inserting menu def")
@@ -129,7 +129,7 @@ func UpdateMenuDef(m *MenuDef) error {
 		RETURNING updated_at`
 
 	row := dbH.QueryRow(db.Rebind(db.CurrentDialect(), q),
-		m.UpdatedBy, m.Title, m.Slug, m.Published, m.IsAdmin, m.Items, m.ID,
+		m.UpdatedBy, m.Title, m.Slug, m.Published, m.IsAdmin, jsonArg(m.Items), m.ID,
 	)
 	if err := row.Scan(&m.UpdatedAt); err != nil {
 		return serr.Wrap(err, "Error updating menu def", "id", fmt.Sprintf("%d", m.ID))

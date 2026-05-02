@@ -29,9 +29,11 @@ type User struct {
 	Prefs             []byte // jsonb — nil when NULL
 }
 
+// prefs is cast to VARCHAR on read — see menuDefColumns for rationale.
 const userColumns = `id, created_at, updated_at, updated_by, enabled, role, ` +
 	`username, email_address, first_name, last_name, summary, ` +
-	`encrypted_password, encrypted_salt, password_reset_at, confirmed_at, prefs`
+	`encrypted_password, encrypted_salt, password_reset_at, confirmed_at, ` +
+	`CAST(prefs AS VARCHAR) AS prefs`
 
 func scanUser(s scannable) (*User, error) {
 	u := &User{}

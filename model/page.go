@@ -23,7 +23,8 @@ type Page struct {
 	Data               []byte // jsonb / JSON — nil when NULL
 }
 
-const pageColumns = `id, created_at, updated_at, updated_by, title, slug, published, is_home, is_admin, available_positions, data`
+// data is cast to VARCHAR on read — see menuDefColumns for rationale.
+const pageColumns = `id, created_at, updated_at, updated_by, title, slug, published, is_home, is_admin, available_positions, CAST(data AS VARCHAR) AS data`
 
 func scanPage(s scannable) (*Page, error) {
 	p := &Page{}

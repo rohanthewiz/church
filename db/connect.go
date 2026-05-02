@@ -49,6 +49,7 @@ var duckdbSchema string
 
 func InitDB(opts DBOpts) error {
 	dbOpts = &opts
+
 	err := openDB()
 	if err != nil {
 		return serr.Wrap(err, "Error initializing database")
@@ -118,12 +119,16 @@ func openDB() error {
 // Why split manually instead of passing the whole string to Exec?
 //   - database/sql.Exec on go-duckdb runs exactly one statement per call;
 //     multi-statement strings get only the first statement executed.
-//   - A simple split on ';' is safe here because the schema file contains
-//     no string literals with embedded semicolons and no stored-proc bodies.
-//     Line comments (`-- ...`) are parsed by DuckDB itself, so they can
-//     ride along with the following statement without issue.
+//   - We split on ';' to feed one statement at a time. To keep that split
+//     safe we first strip `-- ...` line comments, because a `;` *inside*
+//     a comment (e.g. "DuckDB has no SERIAL; we emit one sequence per
+//     table.") would otherwise create a chunk that is comment-only and
+//     trips DuckDB's "empty query" error.
+//   - The schema file contains no string literals with embedded
+//     semicolons and no stored-proc bodies, so once line comments are
+//     gone a plain ';' split is sufficient.
 func bootstrapDuckDB(db_ *sql.DB) error {
-	for _, raw := range strings.Split(duckdbSchema, ";") {
+	for raw := range strings.SplitSeq(stripLineComments(duckdbSchema), ";") {
 		stmt := strings.TrimSpace(raw)
 		if stmt == "" {
 			continue
@@ -133,4 +138,21 @@ func bootstrapDuckDB(db_ *sql.DB) error {
 		}
 	}
 	return nil
+}
+
+// stripLineComments removes `-- ...` to end-of-line on each line of src.
+// We intentionally do NOT try to be clever about `--` appearing inside a
+// string literal — the schema file has none, and adding quote tracking
+// here would buy us nothing while complicating the code.
+func stripLineComments(src string) string {
+	var out strings.Builder
+	out.Grow(len(src))
+	for line := range strings.SplitSeq(src, "\n") {
+		if idx := strings.Index(line, "--"); idx >= 0 {
+			line = line[:idx]
+		}
+		out.WriteString(line)
+		out.WriteByte('\n')
+	}
+	return out.String()
 }

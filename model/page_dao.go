@@ -104,7 +104,7 @@ func InsertPage(p *Page) error {
 		RETURNING id, created_at, updated_at`
 
 	row := dbH.QueryRow(db.Rebind(db.CurrentDialect(), q),
-		p.UpdatedBy, p.Title, p.Slug, p.Published, p.IsHome, p.IsAdmin, p.AvailablePositions, p.Data,
+		p.UpdatedBy, p.Title, p.Slug, p.Published, p.IsHome, p.IsAdmin, p.AvailablePositions, jsonArg(p.Data),
 	)
 	if err := row.Scan(&p.ID, &p.CreatedAt, &p.UpdatedAt); err != nil {
 		return serr.Wrap(err, "Error inserting page")
@@ -132,7 +132,7 @@ func UpdatePage(p *Page) error {
 		RETURNING updated_at`
 
 	row := dbH.QueryRow(db.Rebind(db.CurrentDialect(), q),
-		p.UpdatedBy, p.Title, p.Slug, p.Published, p.IsHome, p.IsAdmin, p.AvailablePositions, p.Data, p.ID,
+		p.UpdatedBy, p.Title, p.Slug, p.Published, p.IsHome, p.IsAdmin, p.AvailablePositions, jsonArg(p.Data), p.ID,
 	)
 	if err := row.Scan(&p.UpdatedAt); err != nil {
 		return serr.Wrap(err, "Error updating page", "id", fmt.Sprintf("%d", p.ID))

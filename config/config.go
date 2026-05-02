@@ -66,11 +66,12 @@ type EnvConfig struct {
 		// SlackAPICfg logger.SlackAPICfg `yaml:"slack_api_cfg"`
 	} `yaml:"log"`
 	PG struct {
-		Host     string `yaml:"host"`
-		Port     string `yaml:"port"`
-		User     string `yaml:"user"`
-		Word     string `yaml:"word"`
-		Database string `yaml:"database"`
+		Host       string `yaml:"host"`
+		Port       string `yaml:"port"`
+		User       string `yaml:"user"`
+		Word       string `yaml:"word"`
+		Database   string `yaml:"database"`
+		DuckDBPath string `yaml:"duckdb_path"`
 	} `yaml:"pg"`
 	PG2 struct {
 		Host     string `yaml:"host"`

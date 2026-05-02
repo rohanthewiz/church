@@ -107,3 +107,18 @@ func (s StringSlice) Value() (driver.Value, error) {
 	}
 	return pq.StringArray(s).Value()
 }
+
+// jsonArg normalises a []byte payload destined for a JSON/JSONB column.
+// Why: the DuckDB driver serialises a nil/empty []byte as the literal
+// "" and DuckDB's JSON column rejects "" as malformed JSON. Returning an
+// untyped nil makes database/sql send a real SQL NULL instead. Postgres
+// jsonb behaves the same way ("" is not valid JSON), so this guard is
+// also the right shape under lib/pq — for nil input both drivers already
+// produce NULL; the only material difference is that an *empty* []byte
+// also collapses to NULL rather than erroring out.
+func jsonArg(p []byte) any {
+	if len(p) == 0 {
+		return nil
+	}
+	return p
+}

@@ -129,7 +129,7 @@ func InsertUser(u *User) error {
 	row := dbH.QueryRow(db.Rebind(db.CurrentDialect(), q),
 		u.UpdatedBy, u.Enabled, u.Role,
 		u.Username, u.EmailAddress, u.FirstName, u.LastName, u.Summary,
-		u.EncryptedPassword, u.EncryptedSalt, u.PasswordResetAt, u.ConfirmedAt, u.Prefs,
+		u.EncryptedPassword, u.EncryptedSalt, u.PasswordResetAt, u.ConfirmedAt, jsonArg(u.Prefs),
 	)
 	if err := row.Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt); err != nil {
 		return serr.Wrap(err, "Error inserting user")
@@ -166,7 +166,7 @@ func UpdateUser(u *User) error {
 	row := dbH.QueryRow(db.Rebind(db.CurrentDialect(), q),
 		u.UpdatedBy, u.Enabled, u.Role,
 		u.EmailAddress, u.FirstName, u.LastName, u.Summary,
-		u.EncryptedPassword, u.EncryptedSalt, u.PasswordResetAt, u.ConfirmedAt, u.Prefs,
+		u.EncryptedPassword, u.EncryptedSalt, u.PasswordResetAt, u.ConfirmedAt, jsonArg(u.Prefs),
 		u.ID,
 	)
 	if err := row.Scan(&u.UpdatedAt); err != nil {
