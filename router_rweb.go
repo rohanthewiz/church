@@ -84,6 +84,12 @@ func ServeRWeb() {
 	// Super admin setup
 	s.Get("/super", admin_controller.SetupSuperAdminRWeb) // (API) Establish first SuperAdmin
 
+	// One-shot legacy Postgres → DuckDB cut-over. Gated by the same
+	// SuperToken as /super; refuses to run a second time once the
+	// migration_state marker row is present. See
+	// admin_controller.MigratePgToDuckDBRWeb for the full contract.
+	s.Get("/super/pg-to-duckdb", admin_controller.MigratePgToDuckDBRWeb)
+
 	// API routes
 	s.Get("/api/v1/sermons", sermon.APISermonsRWeb)
 	s.Get("/calendar", calendar.GetFullCalendarEventsRWeb)

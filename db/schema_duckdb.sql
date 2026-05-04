@@ -21,6 +21,17 @@
 -- omitted: the current codebase has no DAO or reader for it. Image
 -- handling lives in resource/chimage and operates on article HTML.
 
+-- migration_state -------------------------------------------------------
+-- Tracks one-shot migrations that must never run twice (e.g. the legacy
+-- Postgres → DuckDB cut-over). A row here is the durable proof a given
+-- migration has already completed; the cut-over endpoint refuses to run
+-- if its marker row is present. To force a re-run during development,
+-- DELETE the row manually.
+CREATE TABLE IF NOT EXISTS migration_state (
+  name          VARCHAR PRIMARY KEY,
+  completed_at  TIMESTAMPTZ NOT NULL
+);
+
 -- articles --------------------------------------------------------------
 CREATE SEQUENCE IF NOT EXISTS articles_id_seq START 1;
 CREATE TABLE IF NOT EXISTS articles (

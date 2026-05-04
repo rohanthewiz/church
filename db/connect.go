@@ -115,36 +115,53 @@ func openDB() error {
 	return nil
 }
 
-// bootstrapDuckDB executes schema_duckdb.sql statement-by-statement.
-// Why split manually instead of passing the whole string to Exec?
-//   - database/sql.Exec on go-duckdb runs exactly one statement per call;
-//     multi-statement strings get only the first statement executed.
-//   - We split on ';' to feed one statement at a time. To keep that split
-//     safe we first strip `-- ...` line comments, because a `;` *inside*
-//     a comment (e.g. "DuckDB has no SERIAL; we emit one sequence per
-//     table.") would otherwise create a chunk that is comment-only and
-//     trips DuckDB's "empty query" error.
-//   - The schema file contains no string literals with embedded
-//     semicolons and no stored-proc bodies, so once line comments are
-//     gone a plain ';' split is sufficient.
+// bootstrapDuckDB replays the embedded schema on every DuckDB open.
+// The heavy lifting (split / strip / exec) lives in ExecScript so other
+// callers — notably the one-shot Postgres→DuckDB migration endpoint —
+// can reuse the exact same execution semantics.
 func bootstrapDuckDB(db_ *sql.DB) error {
-	for raw := range strings.SplitSeq(stripLineComments(duckdbSchema), ";") {
+	if err := ExecScript(db_, duckdbSchema); err != nil {
+		return serr.Wrap(err, "Failed bootstrapping DuckDB schema")
+	}
+	return nil
+}
+
+// ExecScript runs a multi-statement SQL string against db_ one statement
+// at a time. Why split manually instead of handing the whole string to
+// Exec?
+//   - database/sql.Exec on go-duckdb runs exactly one statement per
+//     call; multi-statement strings silently execute only the first.
+//   - We split on ';' to feed one statement at a time. To keep that
+//     split safe we first strip `-- ...` line comments, because a `;`
+//     *inside* a comment (e.g. "DuckDB has no SERIAL; we emit one
+//     sequence per table.") would otherwise create a chunk that is
+//     comment-only and trips DuckDB's "empty query" error.
+//   - Our scripts contain no string literals with embedded semicolons
+//     and no stored-proc bodies, so once line comments are gone a plain
+//     ';' split is sufficient.
+//
+// The function is fail-fast: the first failing statement aborts the
+// run and is wrapped into the returned error so the caller can see
+// exactly which statement broke.
+func ExecScript(db_ *sql.DB, src string) error {
+	for raw := range strings.SplitSeq(StripLineComments(src), ";") {
 		stmt := strings.TrimSpace(raw)
 		if stmt == "" {
 			continue
 		}
 		if _, err := db_.Exec(stmt); err != nil {
-			return serr.Wrap(err, "Failed executing DuckDB schema statement", "stmt", stmt)
+			return serr.Wrap(err, "Failed executing SQL statement", "stmt", stmt)
 		}
 	}
 	return nil
 }
 
-// stripLineComments removes `-- ...` to end-of-line on each line of src.
+// StripLineComments removes `-- ...` to end-of-line on each line of src.
 // We intentionally do NOT try to be clever about `--` appearing inside a
-// string literal — the schema file has none, and adding quote tracking
-// here would buy us nothing while complicating the code.
-func stripLineComments(src string) string {
+// string literal — none of our scripts contain such literals, and
+// adding quote tracking would buy us nothing while complicating the
+// code.
+func StripLineComments(src string) string {
 	var out strings.Builder
 	out.Grow(len(src))
 	for line := range strings.SplitSeq(src, "\n") {
