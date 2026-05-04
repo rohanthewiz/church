@@ -60,7 +60,7 @@ func (m *ModuleArticlesBlog) Render(params map[string]map[string]string, loggedI
 		b.DivClass("ch-module-body").R(
 			b.Wrap(func() {
 				if len(articles) < 1 {
-					b.P().T("No Articles")
+					b.P().T("No articles found")
 				} else {
 					b.DivClass("title").T(m.Opts.Title)
 					for _, art := range articles {

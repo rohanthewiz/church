@@ -67,6 +67,11 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 			"module_type", m.Opts.ModuleType, "error", err.Error())
 		return ""
 	}
+	// Short-circuit on empty result so the user sees a clear message instead
+	// of an empty AgGrid frame.
+	if len(evts) == 0 {
+		return renderEmptyEventsList(m, newPath)
+	}
 
 	// Setup AgGrid
 	var columnDefs []agrid.ColumnDef
@@ -163,5 +168,24 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 		),
 	)
 
+	return b.String()
+}
+
+// renderEmptyEventsList renders the standard "no items" view for the events
+// list module. Heading layout matches the populated view so the admin "+"
+// affordance stays in place.
+func renderEmptyEventsList(m *ModuleEventsList, newPath string) string {
+	b := element.NewBuilder()
+	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+		b.DivClass("ch-module-heading").R(
+			b.T(m.Opts.Title),
+			b.Wrap(func() {
+				if m.Opts.IsAdmin {
+					b.AClass("btn-add", "href", newPath, "title", "Add Events").T("+")
+				}
+			}),
+		),
+		b.DivClass("ch-module-empty").T("No events found"),
+	)
 	return b.String()
 }

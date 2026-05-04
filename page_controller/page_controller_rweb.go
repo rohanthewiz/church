@@ -2,6 +2,7 @@ package page_controller
 
 import (
 	"bytes"
+	"database/sql"
 	"errors"
 	"fmt"
 	"strings"
@@ -17,6 +18,18 @@ import (
 	"github.com/rohanthewiz/rweb"
 	"github.com/rohanthewiz/serr"
 )
+
+// hardwiredListPages maps page slugs that the bootstrap menus link to (e.g.
+// /pages/sermons) to the corresponding hardwired list-page presenter. We use
+// this as a fallback in PageHandlerRWeb when the DB has no row for that slug —
+// menu links point at /pages/<slug> but only the "home" page is seeded by the
+// bootstrap routine, so without a fallback the user sees a "sql: no rows in
+// result set" error rather than the expected list view.
+var hardwiredListPages = map[string]func() (*page.Page, error){
+	"sermons":  page.SermonsList,
+	"articles": page.ArticlesList,
+	"events":   page.EventsList,
+}
 
 // HomePageRWeb serves the home page. It first attempts to load the page with
 // slug "home" from the database. If that fails (e.g. no home page has been
@@ -38,13 +51,46 @@ func HomePageRWeb(ctx rweb.Context) error {
 	return ctx.WriteHTML(buf.String())
 }
 
-// Non-Admin dynamic pages (the majority of the pages)
+// Non-Admin dynamic pages (the majority of the pages).
+// On a "no rows" lookup we don't surface the SQL error — menus link to
+// /pages/sermons, /pages/articles, /pages/events but those rows aren't seeded
+// by bootstrap, so we fall back to the hardwired list-page presenter for the
+// slug. An empty result set inside the page (e.g. zero sermons) is then a
+// natural "no items" render rather than a server error.
 func PageHandlerRWeb(ctx rweb.Context) error {
-	pg, err := page.PageFromSlug(strings.ToLower(ctx.Request().PathParam("slug")))
+	slug := strings.ToLower(ctx.Request().PathParam("slug"))
+	pg, err := page.PageFromSlug(slug)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			if fallback, ok := hardwiredListPages[slug]; ok {
+				logger.Log("Info", "Page slug not found in DB, using hardwired fallback", "slug", slug)
+				pg, err = fallback()
+				if err != nil {
+					return serr.Wrap(err, "failed to load hardwired fallback page", "slug", slug)
+				}
+				return ctx.WriteHTML(string(base.RenderPageSingleRWeb(pg, ctx)))
+			}
+			// No fallback registered for this slug — render a friendly not-found
+			// page rather than a 500-style error message.
+			logger.Log("Info", "Page not found", "slug", slug)
+			return ctx.WriteHTML(notFoundPageHTML(slug))
+		}
 		return serr.Wrap(err)
 	}
 	return ctx.WriteHTML(string(base.RenderPageSingleRWeb(pg, ctx)))
+}
+
+// notFoundPageHTML produces a minimal "not found" page for unknown slugs.
+// Kept inline to avoid pulling in the full template stack for a degenerate
+// case — a real 404 with the standard chrome would require a Page presenter
+// and is outside the scope of this fix.
+func notFoundPageHTML(slug string) string {
+	return `<!doctype html><html><head><title>Page not found</title></head>` +
+		`<body style="font-family:sans-serif;padding:2rem;">` +
+		`<h1>Page not found</h1>` +
+		`<p>No page exists for slug: <code>` + slug + `</code></p>` +
+		`<p><a href="/">Return home</a></p>` +
+		`</body></html>`
 }
 
 // Admin Pages

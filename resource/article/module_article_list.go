@@ -63,6 +63,11 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 		logger.LogErr(err, "Error obtaining data in module", "module_slug", m.Opts.Slug, "module_type", m.Opts.ModuleType)
 		return ""
 	}
+	// Short-circuit on empty result so the user sees a clear message instead
+	// of an empty AgGrid frame.
+	if len(articles) == 0 {
+		return renderEmptyArticlesList(m)
+	}
 
 	var columnDefs []agrid.ColumnDef
 	if m.Opts.IsAdmin {
@@ -159,5 +164,24 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 		),
 	)
 
+	return b.String()
+}
+
+// renderEmptyArticlesList renders the standard "no items" view for the
+// articles list module. Heading layout matches the populated view so the
+// admin "+" affordance stays in place.
+func renderEmptyArticlesList(m *ModuleArticlesList) string {
+	b := element.NewBuilder()
+	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+		b.DivClass("ch-module-heading").R(
+			b.T(m.Opts.Title),
+			b.Wrap(func() {
+				if m.Opts.IsAdmin {
+					b.A("class", "btn-add", "href", m.GetNewURL(), "title", "Add Article").T("+")
+				}
+			}),
+		),
+		b.DivClass("ch-module-empty").T("No articles found"),
+	)
 	return b.String()
 }

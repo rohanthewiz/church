@@ -69,11 +69,14 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 			"module_type", m.Opts.ModuleType)
 		return ""
 	}
+	// Short-circuit on empty result so the user sees a clear message instead
+	// of an empty AgGrid frame. The "+" admin link is preserved so an admin
+	// can add the first item from this same view.
 	if len(sermons) == 0 {
-		logger.Log("Warn", "No sermons found")
-	} else {
-		logger.Log("Info", strconv.Itoa(len(sermons))+" sermon(s) found")
+		logger.Log("Info", "No sermons found")
+		return renderEmptySermonsList(m, newPath)
 	}
+	logger.Log("Info", strconv.Itoa(len(sermons))+" sermon(s) found")
 
 	// Setup AgGrid
 	var columnDefs []agrid.ColumnDef
@@ -171,5 +174,24 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 		),
 	)
 
+	return b.String()
+}
+
+// renderEmptySermonsList renders the standard "no items" view for the sermons
+// list module. Mirrors the heading + add-button layout of the populated view
+// so the page chrome is unchanged.
+func renderEmptySermonsList(m *ModuleSermonsList, newPath string) string {
+	b := element.NewBuilder()
+	b.DivClass("ch-module-wrapper ch-"+m.Opts.ModuleType).R(
+		b.DivClass("ch-module-heading").R(
+			b.T(m.Opts.Title),
+			b.Wrap(func() {
+				if m.Opts.IsAdmin {
+					b.A("class", "btn-add", "href", newPath, "title", "Add Sermon").T("+")
+				}
+			}),
+		),
+		b.DivClass("ch-module-empty").T("No sermons found"),
+	)
 	return b.String()
 }
