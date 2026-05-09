@@ -17,7 +17,19 @@ func GetFullCalendarEventsRWeb(ctx rweb.Context) error {
 
 	// Trust boundary same as the echo handler: start/end are interpolated
 	// into the SQL condition, so they must remain admin-controlled input.
-	condition := "event_date >= '" + startDate + "' AND event_date <= '" + endDate + "'"
+	// DuckDB (unlike Postgres) rejects empty-string timestamp literals, so
+	// only include each bound when the caller actually supplied it. A bare
+	// hit on /calendar with no params now returns up to `limit` events
+	// rather than failing with a Conversion Error.
+	var condition string
+	switch {
+	case startDate != "" && endDate != "":
+		condition = "event_date >= '" + startDate + "' AND event_date <= '" + endDate + "'"
+	case startDate != "":
+		condition = "event_date >= '" + startDate + "'"
+	case endDate != "":
+		condition = "event_date <= '" + endDate + "'"
+	}
 	evts, err := model.QueryEvents(condition, "event_date ASC", 100, 0)
 	if err != nil {
 		return serr.Wrap(err, "Error obtaining events")

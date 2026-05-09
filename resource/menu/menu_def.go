@@ -77,7 +77,7 @@ func hardwiredMenuDef(slug string) (MenuDef, bool) {
 				{Label: "Articles", Url: "/pages/articles"},
 				{Label: "Sermons", Url: "/pages/sermons"},
 				{Label: "Events", Url: "/pages/events"},
-				{Label: "Calendar", Url: "/calendar"},
+				{Label: "Calendar", Url: "/pages/calendar"},
 				// Admin dropdown — only shown when logged in because
 				// the submenu has IsAdmin: true (see buildMenu filtering).
 				{Label: "Admin", SubMenuSlug: "admin-submenu"},
@@ -93,6 +93,7 @@ func hardwiredMenuDef(slug string) (MenuDef, bool) {
 				{Label: "Dashboard", Url: "/admin/home"},
 				{Label: "Users", Url: "/admin/users"},
 				{Label: "Articles", Url: "/admin/articles"},
+				{Label: "Events", Url: "/admin/events"},
 				{Label: "Pages", Url: "/admin/pages"},
 				{Label: "Menus", Url: "/admin/menus"},
 				{Label: "Logout", Url: "/admin/logout"},

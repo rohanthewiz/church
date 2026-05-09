@@ -29,6 +29,7 @@ var hardwiredListPages = map[string]func() (*page.Page, error){
 	"sermons":  page.SermonsList,
 	"articles": page.ArticlesList,
 	"events":   page.EventsList,
+	"calendar": page.CalendarPage,
 }
 
 // HomePageRWeb serves the home page. It first attempts to load the page with
