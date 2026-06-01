@@ -1,6 +1,6 @@
 module github.com/rohanthewiz/church
 
-go 1.24.0
+go 1.25.0
 
 require (
 	github.com/PuerkitoBio/goquery v1.4.1
@@ -14,12 +14,12 @@ require (
 	github.com/labstack/echo v3.3.10+incompatible
 	github.com/lib/pq v1.12.0
 	github.com/pierrec/xxHash v0.1.1
-	github.com/rohanthewiz/element v0.5.4
+	github.com/rohanthewiz/element v0.5.6
 	github.com/rohanthewiz/gmail_send v1.0.0
-	github.com/rohanthewiz/logger v1.2.20
+	github.com/rohanthewiz/logger v1.3.0
 	github.com/rohanthewiz/roftp v0.2.0
-	github.com/rohanthewiz/rweb v0.1.21-0.20251126232937-647d2fc62424
-	github.com/rohanthewiz/serr v1.2.20
+	github.com/rohanthewiz/rweb v0.1.27-0.20260518022701-1ae001bfbd87
+	github.com/rohanthewiz/serr v1.3.0
 	github.com/stripe/stripe-go v55.14.0+incompatible
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb
 	golang.org/x/crypto v0.47.0
@@ -64,7 +64,7 @@ require (
 	github.com/onsi/gomega v1.33.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/relistan/rubberneck v1.3.0 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect
 	github.com/zeebo/xxh3 v1.1.0 // indirect
@@ -72,7 +72,7 @@ require (
 	golang.org/x/mod v0.32.0 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
-	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260116145544-c6413dc483f5 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/tools v0.41.0 // indirect
