@@ -156,30 +156,40 @@ func PutFileToS3(bucketPrefix string, fileSpec string) (err error) {
 	return
 }
 
-// ObjectExists reports whether an object with the given key is present in the
-// configured bucket on IDrive e2. It is used as a safety check before evicting a
-// locally-cached sermon: we never delete a local copy unless the cloud copy is
-// confirmed to exist.
+// BucketName returns the configured bucket name (mainly for display/diagnostics,
+// e.g. showing the full IDrive e2 path of an object). Empty if not yet configured.
+func BucketName() string {
+	if s3Cfg == nil {
+		return ""
+	}
+	return s3Cfg.Bucket
+}
+
+// ObjectInfo returns whether an object with the given key is present in the
+// configured bucket on IDrive e2 and, when present, its size in bytes. The key is
+// matched exactly and case-sensitively (S3 object keys are case-sensitive), so a
+// local file whose name differs only in case will register as absent.
 //
-// Return contract is deliberately conservative for the caller:
-//   - (false, nil) means a definitive "not found" (404 / NoSuchKey / NotFound).
-//   - (true, nil)  means the object is present.
-//   - (false, err) means we could NOT determine existence (network, auth, etc.).
-//     Callers must treat this as "unknown" and keep the local copy.
-func ObjectExists(key string) (exists bool, err error) {
+// The return contract is deliberately conservative for callers that gate
+// destructive actions on it:
+//   - (true, size, nil)  the object is present (size may be 0 for an empty object).
+//   - (false, 0, nil)    a definitive "not found" (404 / NoSuchKey / NotFound).
+//   - (false, 0, err)    existence could NOT be determined (network, auth, etc.);
+//     callers must treat this as "unknown" and must NOT delete any local copy.
+func ObjectInfo(key string) (exists bool, size int64, err error) {
 	if s3Client == nil {
 		_ = initS3Client()
 	}
 	if s3Client == nil {
-		return false, serr.New("Could not initialize S3 client")
+		return false, 0, serr.New("Could not initialize S3 client")
 	}
 
-	_, err = s3Client.HeadObject(context.TODO(), &s3.HeadObjectInput{
+	out, err := s3Client.HeadObject(context.TODO(), &s3.HeadObjectInput{
 		Bucket: aws.String(s3Cfg.Bucket),
 		Key:    aws.String(key),
 	})
 	if err == nil {
-		return true, nil
+		return true, aws.ToInt64(out.ContentLength), nil
 	}
 
 	// Distinguish a genuine "object is absent" from a transient/operational error.
@@ -188,19 +198,28 @@ func ObjectExists(key string) (exists bool, err error) {
 	// API error carrying a NotFound/NoSuchKey/404 code, so we check both.
 	var notFound *types.NotFound
 	if errors.As(err, &notFound) {
-		return false, nil
+		return false, 0, nil
 	}
 
 	var apiErr smithy.APIError
 	if errors.As(err, &apiErr) {
 		switch apiErr.ErrorCode() {
 		case "NotFound", "NoSuchKey", "404":
-			return false, nil
+			return false, 0, nil
 		}
 	}
 
 	// Anything else is "unknown" — bubble it up so the caller stays safe.
-	return false, serr.Wrap(err, "Error checking object existence in S3", "key", key)
+	return false, 0, serr.Wrap(err, "Error checking object existence in S3", "key", key)
+}
+
+// ObjectExists reports whether an object with the given key is present in the
+// configured bucket on IDrive e2. It is a thin wrapper over ObjectInfo for callers
+// that do not care about size; the same conservative error contract applies
+// (a (false, err) result means "unknown" — keep the local copy).
+func ObjectExists(key string) (exists bool, err error) {
+	exists, _, err = ObjectInfo(key)
+	return exists, err
 }
 
 func GetFileFromS3(key string) (fileBytes []byte, err error) {

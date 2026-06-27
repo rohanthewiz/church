@@ -164,6 +164,9 @@ func ServeRWeb() {
 	ad.Get("/sermons/edit/:id", sermon_controller.EditSermonRWeb)
 	ad.Post("/sermons/update/:id", sermon_controller.UpsertSermonRWeb) // update
 	ad.Get("/sermons/delete/:id", sermon_controller.DeleteSermonRWeb)
+	// Local sermon-cache cleanup tool (lists copies safe to delete, batch-deletes them)
+	ad.Get("/sermons/cleanup", sermon_controller.AdminSermonCleanupRWeb)
+	ad.Post("/sermons/cleanup", sermon_controller.AdminSermonCleanupRunRWeb)
 
 	// Admin Events
 	ad.Get("/events", event_controller.AdminListEventsRWeb)

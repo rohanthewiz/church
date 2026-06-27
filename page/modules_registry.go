@@ -5,6 +5,7 @@ import (
 	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/resource/payment"
 	"github.com/rohanthewiz/church/resource/sermon"
+	"github.com/rohanthewiz/church/resource/sermoncleanup"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/menu"
 	"github.com/rohanthewiz/church/resource/user"
@@ -66,6 +67,9 @@ func RegisterModules() {
 	moduleContentBy[sermon.ModuleTypeRecentSermons] = content.ModuleContentByPagination
 	addToRegistry(sermon.ModuleTypeSingleSermon, "sermon", sermon.NewModuleSingleSermon)
 	moduleContentBy[sermon.ModuleTypeSingleSermon] = content.ModuleContentBySingleId
+	// Admin-only utility module; hardwired into its admin page, never placed on
+	// dynamic pages (excluded from availableModuleTypes below).
+	addToRegistry(sermoncleanup.ModuleTypeSermonCleanup, "sermon", sermoncleanup.NewModuleSermonCleanup)
 
 	singularToPlural["page"] = "pages"
 	addToRegistry(ModuleTypeLoginForm, "", NewModuleLoginForm)
@@ -108,7 +112,8 @@ func availableModuleTypes() (types []string) {
 		if strings.Contains(lwrModType, "form") ||
 			strings.Contains(lwrModType, "user") ||
 			strings.Contains(lwrModType, "page") ||
-			strings.Contains(lwrModType, "menu") {
+			strings.Contains(lwrModType, "menu") ||
+			strings.Contains(lwrModType, "cleanup") {
 			continue
 		}
 		types = append(types, k)

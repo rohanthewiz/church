@@ -1,8 +1,9 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/sermon"
+	"github.com/rohanthewiz/church/resource/sermoncleanup"
 	"github.com/rohanthewiz/church/util/stringops"
 )
 
@@ -73,6 +74,29 @@ func AdminSermonsList() (*Page, error) {
 	}
 	pgdef.Modules = []module.Presenter{modPres}
 	return  pageFromPresenter(pgdef), nil
+}
+
+// AdminSermonCleanup builds the admin page that lists locally-cached sermons
+// eligible for deletion (a verified copy exists on IDrive e2) and lets the admin
+// batch-delete the local copies.
+func AdminSermonCleanup() (*Page, error) {
+	const title = "Sermon Cleanup - Admin"
+	pgdef := Presenter{
+		Title:   title,
+		Slug:    stringops.Slugify(title),
+		IsAdmin: true,
+	}
+	modPres := module.Presenter{
+		Opts: module.Opts{
+			ModuleType:   sermoncleanup.ModuleTypeSermonCleanup,
+			IsAdmin:      true,
+			Title:        "Sermon Cleanup",
+			Published:    true,
+			IsMainModule: true,
+		},
+	}
+	pgdef.Modules = []module.Presenter{modPres}
+	return pageFromPresenter(pgdef), nil
 }
 
 func SermonForm() (*Page, error) {
