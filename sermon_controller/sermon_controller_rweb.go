@@ -216,7 +216,7 @@ func AdminSermonCleanupRWeb(ctx rweb.Context) error {
 	// so it is meaningless (and unsafe) when IDrive is disabled. Flash a notice and
 	// bounce back to the sermons list instead of rendering an empty/broken page.
 	if !config.Options.IDrive.Enabled {
-		return app.RedirectRWeb(ctx, "/admin/sermons",
+		return app.RedirectRWebWarn(ctx, "/admin/sermons",
 			"IDrive e2 is not enabled — sermon cleanup is unavailable.")
 	}
 
@@ -235,7 +235,7 @@ func AdminSermonCleanupRunRWeb(ctx rweb.Context) error {
 	// Guard against a stale/forged POST while IDrive is disabled — never delete a
 	// local copy when we cannot verify a cloud copy.
 	if !config.Options.IDrive.Enabled {
-		return app.RedirectRWeb(ctx, "/admin/sermons",
+		return app.RedirectRWebWarn(ctx, "/admin/sermons",
 			"IDrive e2 is not enabled — sermon cleanup is unavailable.")
 	}
 
