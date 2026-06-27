@@ -95,6 +95,9 @@ type EnvConfig struct {
 		AccessKey       string `yaml:"access_key"`
 		SecretKey       string `yaml:"secret_key"`
 		LocalSermonsDir string `yaml:"local_sermons_dir"`
+		// AutoCleanup gates the background LRU eviction loop. Off unless explicitly
+		// set true. The admin Sermon Cleanup tool is unaffected by this flag.
+		AutoCleanup bool `yaml:"auto_cleanup"`
 		// Local sermon cache eviction tuning. Both are Go duration strings
 		// (e.g. "1h", "4h", "30m"). Empty/invalid values fall back to defaults
 		// in core/idrive (1h scan interval, 4h idle TTL).
