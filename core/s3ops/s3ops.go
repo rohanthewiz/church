@@ -3,6 +3,7 @@ package s3ops
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -13,6 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/aws/smithy-go"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 )
@@ -151,6 +154,53 @@ func PutFileToS3(bucketPrefix string, fileSpec string) (err error) {
 	log.Printf("Successfully uploaded file %q to S3 Bucket %q, key: %q\n",
 		fileSpec, s3Cfg.Bucket, filepath.Join(bucketPrefix, filename))
 	return
+}
+
+// ObjectExists reports whether an object with the given key is present in the
+// configured bucket on IDrive e2. It is used as a safety check before evicting a
+// locally-cached sermon: we never delete a local copy unless the cloud copy is
+// confirmed to exist.
+//
+// Return contract is deliberately conservative for the caller:
+//   - (false, nil) means a definitive "not found" (404 / NoSuchKey / NotFound).
+//   - (true, nil)  means the object is present.
+//   - (false, err) means we could NOT determine existence (network, auth, etc.).
+//     Callers must treat this as "unknown" and keep the local copy.
+func ObjectExists(key string) (exists bool, err error) {
+	if s3Client == nil {
+		_ = initS3Client()
+	}
+	if s3Client == nil {
+		return false, serr.New("Could not initialize S3 client")
+	}
+
+	_, err = s3Client.HeadObject(context.TODO(), &s3.HeadObjectInput{
+		Bucket: aws.String(s3Cfg.Bucket),
+		Key:    aws.String(key),
+	})
+	if err == nil {
+		return true, nil
+	}
+
+	// Distinguish a genuine "object is absent" from a transient/operational error.
+	// HeadObject surfaces a missing object as types.NotFound, but some
+	// S3-compatible providers (IDrive e2 included) may instead return a generic
+	// API error carrying a NotFound/NoSuchKey/404 code, so we check both.
+	var notFound *types.NotFound
+	if errors.As(err, &notFound) {
+		return false, nil
+	}
+
+	var apiErr smithy.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.ErrorCode() {
+		case "NotFound", "NoSuchKey", "404":
+			return false, nil
+		}
+	}
+
+	// Anything else is "unknown" — bubble it up so the caller stays safe.
+	return false, serr.Wrap(err, "Error checking object existence in S3", "key", key)
 }
 
 func GetFileFromS3(key string) (fileBytes []byte, err error) {

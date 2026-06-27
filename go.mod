@@ -10,6 +10,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.28.6
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.47
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.71.0
+	github.com/aws/smithy-go v1.22.1
 	github.com/h2non/bimg v1.0.19
 	github.com/jlaffaye/ftp v0.0.0-20181011150954-fe787349a520
 	github.com/labstack/echo v3.3.10+incompatible
@@ -46,7 +47,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.24.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.2 // indirect
-	github.com/aws/smithy-go v1.22.1 // indirect
 	github.com/go-redis/redis v0.0.0-20180920103551-69445c6e87e0 // indirect
 	github.com/johntdyer/slack-go v0.0.0-20230314151037-c5bf334f9b6e // indirect
 	github.com/johntdyer/slackrus v0.0.0-20230315191314-80bc92dee4fc // indirect

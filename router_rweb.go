@@ -35,6 +35,13 @@ func ServeRWeb() {
 
 	idrive.InitClient()
 
+	// Background LRU eviction of locally-cached sermons downloaded from IDrive e2.
+	// Scans hourly and deletes copies idle > 4h, but only after confirming the
+	// object still exists on IDrive e2.
+	if config.Options.IDrive.Enabled {
+		idrive.StartCacheCleanup()
+	}
+
 	// Create RWeb server
 	s := rweb.NewServer(rweb.ServerOptions{
 		Address: ":" + config.Options.Server.Port,
