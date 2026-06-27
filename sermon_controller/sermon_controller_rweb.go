@@ -212,6 +212,14 @@ func DeleteSermonRWeb(ctx rweb.Context) error {
 // sermons whose copy is verified present on IDrive e2, grouped by year, with a
 // batch-delete form.
 func AdminSermonCleanupRWeb(ctx rweb.Context) error {
+	// The cleanup tool verifies each local copy against IDrive e2 before deleting,
+	// so it is meaningless (and unsafe) when IDrive is disabled. Flash a notice and
+	// bounce back to the sermons list instead of rendering an empty/broken page.
+	if !config.Options.IDrive.Enabled {
+		return app.RedirectRWeb(ctx, "/admin/sermons",
+			"IDrive e2 is not enabled — sermon cleanup is unavailable.")
+	}
+
 	pg, err := page.AdminSermonCleanup()
 	if err != nil {
 		return err
@@ -224,6 +232,13 @@ func AdminSermonCleanupRWeb(ctx rweb.Context) error {
 // only one value per field), so we split them here. Each is independently
 // re-verified against IDrive e2 inside the service before its local copy is deleted.
 func AdminSermonCleanupRunRWeb(ctx rweb.Context) error {
+	// Guard against a stale/forged POST while IDrive is disabled — never delete a
+	// local copy when we cannot verify a cloud copy.
+	if !config.Options.IDrive.Enabled {
+		return app.RedirectRWeb(ctx, "/admin/sermons",
+			"IDrive e2 is not enabled — sermon cleanup is unavailable.")
+	}
+
 	csrf := ctx.Request().FormValue("csrf")
 	if !app.VerifyFormToken(csrf) {
 		return serr.New("Your form is expired. Go back, refresh the page and try again")
