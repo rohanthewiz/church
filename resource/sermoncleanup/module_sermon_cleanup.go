@@ -106,21 +106,36 @@ func (m *ModuleSermonCleanup) Render(params map[string]map[string]string, logged
 						b.Span("id", "sc-count").T("0"),
 					),
 					b.Button("type", "submit", "id", "sc-submit", "class", "sc-delete-btn", "disabled", "disabled").
-						T("Delete selected local copies"),
+						T("Delete Selected Local Copies"),
 				),
 
-				// One section + table per year.
+				// One section + table per year. Only the topmost (newest) year group
+				// is expanded on load; the rest render collapsed (class "sc-collapsed")
+				// and can be unfolded by clicking the year title. The per-group count is
+				// always visible so an admin can see group sizes without expanding them.
 				b.Wrap(func() {
-					element.ForEach(years, func(year string) {
+					for idx, year := range years {
 						rows := groups[year]
-						b.DivClass("sc-year-group").R(
+
+						// Collapse every group except the first.
+						groupClass := "sc-year-group"
+						if idx > 0 {
+							groupClass += " sc-collapsed"
+						}
+
+						b.DivClass(groupClass).R(
 							b.H3Class("sc-year-heading").R(
-								b.LabelClass("sc-year-select").R(
-									b.Input("type", "checkbox", "class", "sc-year-master",
-										"data-year", year, "onclick", "scToggleYear(this);"),
-									b.T(" "+year),
+								// Year-level select-all checkbox. Kept separate from the
+								// fold toggle so selecting a year never folds it and vice versa.
+								b.Input("type", "checkbox", "class", "sc-year-master",
+									"data-year", year, "onclick", "scToggleYear(this);"),
+								// Clicking the title (caret + year + count) folds/unfolds
+								// just this group.
+								b.SpanClass("sc-year-title", "onclick", "scToggleFold(this);").R(
+									b.SpanClass("sc-caret").T("▸"),
+									b.T(year),
+									b.SpanClass("sc-year-count").T(strconv.Itoa(len(rows))+" sermon"+plural(len(rows))),
 								),
-								b.SpanClass("sc-year-count").T(" ("+strconv.Itoa(len(rows))+")"),
 							),
 							b.TableClass("sc-table").R(
 								b.THead().R(
@@ -143,13 +158,15 @@ func (m *ModuleSermonCleanup) Render(params map[string]map[string]string, logged
 											b.TdClass("sc-file").T(s.FileName),
 											b.TdClass("sc-path").T(s.CloudPath),
 											b.TdClass("sc-size").T(formatBytes(s.CloudSize)),
-											b.TdClass("sc-accessed").T(formatLastAccessed(s.LastAccessed)),
+											b.TdClass("sc-accessed").R(
+												renderAccessed(b, s),
+											),
 										)
 									}),
 								),
 							),
 						)
-					})
+					}
 				}),
 			)
 			b.Script().T(cleanupJS)
@@ -157,6 +174,14 @@ func (m *ModuleSermonCleanup) Render(params map[string]map[string]string, logged
 	)
 
 	return b.String()
+}
+
+// plural returns the "s" suffix for counts other than 1, for simple "N sermon(s)" labels.
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
 }
 
 // formatBytes renders a byte count in human-friendly units.
@@ -173,14 +198,27 @@ func formatBytes(n int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "KMGTPE"[exp])
 }
 
-// formatLastAccessed shows the absolute time plus a coarse relative age, or a dash
-// when the file was never tracked (e.g. uploaded but never served).
-func formatLastAccessed(t *time.Time) string {
-	if t == nil {
-		return "—"
+// renderAccessed fills the "Last accessed" cell. It prefers the tracked
+// last_accessed_at; when that is missing (file predates access tracking or was never
+// served through GetSermon) it falls back to the local file's modification time,
+// tagged "file date" so the admin knows it is not a true access time. A dash is shown
+// only when neither is available.
+func renderAccessed(b *element.Builder, s idrive.LocalSermonInfo) (x any) {
+	switch {
+	case s.LastAccessed != nil:
+		b.T(formatTimeWithAge(*s.LastAccessed))
+	case !s.ModTime.IsZero():
+		b.T(formatTimeWithAge(s.ModTime))
+		b.SpanClass("sc-mtime-tag").T("file date")
+	default:
+		b.T("—")
 	}
-	age := time.Since(*t)
-	return t.Local().Format("2006-01-02 15:04") + " (" + humanizeAge(age) + ")"
+	return
+}
+
+// formatTimeWithAge shows an absolute local time plus a coarse relative age.
+func formatTimeWithAge(t time.Time) string {
+	return t.Local().Format("2006-01-02 15:04") + " (" + humanizeAge(time.Since(t)) + ")"
 }
 
 func humanizeAge(d time.Duration) string {

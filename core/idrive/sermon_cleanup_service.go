@@ -51,6 +51,18 @@ type LocalSermonInfo struct {
 	CloudSize     int64      // size of the IDrive object in bytes (when present)
 	CloudPath     string     // human-friendly "bucket/year/filename" for display
 	LastAccessed  *time.Time // from sermon_cache_access; nil if never tracked
+	ModTime       time.Time  // local file mtime, used as a fallback when LastAccessed is nil
+}
+
+// effectiveAccess returns the timestamp used to order/age a cached file: the tracked
+// last-accessed time when we have it, otherwise the local file's modification time.
+// This lets the listing show and sort by *something* even for files that predate
+// access tracking or were never served through GetSermon.
+func (s LocalSermonInfo) effectiveAccess() time.Time {
+	if s.LastAccessed != nil {
+		return *s.LastAccessed
+	}
+	return s.ModTime
 }
 
 // Eligible reports whether the local copy can be safely deleted: the cloud copy
@@ -128,12 +140,24 @@ func ScanEligibleForDeletion() (eligible []LocalSermonInfo, err error) {
 		}
 	}
 
-	// Sort: newest year first, then file name ascending.
+	// Sort: newest year first (this also drives the year-grouping order in the UI),
+	// then — within a year — oldest-idle-first so the best deletion candidates (the
+	// stalest cached files) surface at the top of each group. The admin UI groups by
+	// year and folds all but the topmost group, so keeping year as the primary key
+	// preserves that grouping while honoring the ordering inside each group.
+	//
+	// The age key is effectiveAccess(): the tracked last_accessed_at when present,
+	// otherwise the local file's mtime. File name breaks exact ties.
 	sort.Slice(eligible, func(i, j int) bool {
-		if eligible[i].Year != eligible[j].Year {
-			return eligible[i].Year > eligible[j].Year
+		a, b := eligible[i], eligible[j]
+		if a.Year != b.Year {
+			return a.Year > b.Year // newest year first
 		}
-		return eligible[i].FileName < eligible[j].FileName
+		at, bt := a.effectiveAccess(), b.effectiveAccess()
+		if !at.Equal(bt) {
+			return at.Before(bt) // oldest (most idle) first
+		}
+		return a.FileName < b.FileName
 	})
 
 	return eligible, nil
@@ -172,8 +196,10 @@ func walkLocalSermons(root string) (infos []LocalSermonInfo, err error) {
 		year, fileName := parts[0], parts[1]
 
 		var size int64
+		var modTime time.Time
 		if fi, statErr := d.Info(); statErr == nil {
 			size = fi.Size()
+			modTime = fi.ModTime()
 		}
 
 		infos = append(infos, LocalSermonInfo{
@@ -182,6 +208,7 @@ func walkLocalSermons(root string) (infos []LocalSermonInfo, err error) {
 			RelFileSpec:   year + "/" + fileName, // IDrive key uses forward slashes
 			LocalFileSpec: path,
 			LocalSize:     size,
+			ModTime:       modTime,
 		})
 		return nil
 	})
