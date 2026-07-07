@@ -1,6 +1,7 @@
 package payment
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"strconv"
@@ -46,7 +47,7 @@ func (p ChargePresenter) Upsert() (updateOp bool, err error) {
 		logger.LogErr(err, "Error in charge from presenter")
 		return updateOp, err
 	}
-	fmt.Printf("In Upsert: charge model (from presenter) %#v\n", chg)
+	logger.Debug("In Upsert: charge model (from presenter)", "charge", fmt.Sprintf("%#v", chg))
 	if create {
 		err = chg.Insert(dbH)
 		if err != nil {
@@ -65,6 +66,31 @@ func (p ChargePresenter) Upsert() (updateOp bool, err error) {
 		}
 	}
 	return
+}
+
+// FindChargeIdByPaymentToken returns the local DB id of a charge previously recorded
+// under the given payment token (for PaymentIntents flows the token column holds the
+// PaymentIntent id). This gives us idempotency: the receipt page can be reloaded, or a
+// webhook can arrive after the redirect, without inserting duplicate charge rows --
+// the caller feeds the found id back into ChargePresenter.Id so Upsert takes the update path.
+func FindChargeIdByPaymentToken(token string) (id int64, found bool, err error) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return 0, false, nil
+	}
+	dbH, err := db.Db()
+	if err != nil {
+		return 0, false, err
+	}
+	chg, err := models.Charges(dbH, qm.Where("payment_token = ?", token)).One()
+	if err != nil {
+		// sql.ErrNoRows is the expected miss case - not an error for our purposes
+		if err == sql.ErrNoRows {
+			return 0, false, nil
+		}
+		return 0, false, serr.Wrap(err, "Error querying charge by payment token", "token", token)
+	}
+	return chg.ID, true, nil
 }
 
 // Returns a charge model for id `id` or error
@@ -123,7 +149,10 @@ func modelFromPresenter(cp ChargePresenter) (chgMod *models.Charge, create_op bo
 	chgMod.AmountPaid = null.NewInt64(cp.AmtPaid, true)
 	chgMod.Refunded = null.NewBool(cp.Refunded, true)
 	chgMod.AmountRefunded = null.NewInt64(cp.AmtRefunded, true)
-	chgMod.Meta = null.NewString("", true) // no meta for now
+	// Meta carries auxiliary identifiers as JSON (e.g. the Stripe charge id under the
+	// PaymentIntents flow, where PaymentToken holds the intent id). Passed through
+	// rather than blanked so callers control what lands here.
+	chgMod.Meta = null.NewString(strings.TrimSpace(cp.Meta), true)
 
 	return
 }

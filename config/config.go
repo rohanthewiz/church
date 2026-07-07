@@ -107,6 +107,16 @@ type EnvConfig struct {
 	Stripe struct {
 		PubKey  string `yaml:"pub_key"`
 		PrivKey string `yaml:"priv_key"`
+		// TxDescription labels each charge in the Stripe dashboard and on receipts.
+		// Configurable per site because this framework serves multiple churches --
+		// a hardcoded description would brand every site's donations with the wrong name.
+		// When empty, payment_controller falls back to CopyrightOwner + " Donation".
+		TxDescription string `yaml:"tx_description"`
+		// WebhookSecret is the signing secret (whsec_...) for this site's Stripe
+		// webhook endpoint (dashboard -> Developers -> Webhooks). Used to verify
+		// the Stripe-Signature header on /webhooks/stripe. Leave empty to
+		// effectively disable webhook processing (the endpoint answers 503).
+		WebhookSecret string `yaml:"webhook_secret"`
 	} `yaml:"stripe"`
 	Bootstrap struct {
 		AdminUser string `yaml:"admin_user"` // Superadmin username for auto-bootstrap

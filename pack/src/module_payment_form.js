@@ -1,57 +1,123 @@
 // We can put required variable (dummy) declarations here before "// PACKER START"
 // These are not packed
 // Actual variable definitions must be in place where the asset is included
+// (module_payment_form.go injects: var stripe = Stripe('<pub key>'); var elements;)
 var stripe,
     elements;
 
 // PACKER START ModulePaymentForm_js
 $(document).ready(function() {
-    var style = {
-        base: {
-            fontSize: '15px',
-            color: "#32325d",
-        }
-    };
-    var card = elements.create('card', {style: style});
-    card.mount('#card-element');
-    card.addEventListener('change', function(event) {
-        var displayError = document.getElementById('card-errors');
-        if (event.error) {
-            displayError.textContent = event.error.message;
-        } else {
-            displayError.textContent = '';
-        }
+    // Deferred-intent Payment Element flow:
+    //   mount element -> giver fills form -> submit:
+    //     elements.submit() -> POST /payments/create-intent (server creates the
+    //     PaymentIntent and returns its client secret) -> stripe.confirmPayment
+    //     (Stripe handles SCA/3DS and wallets) -> redirect to /payments/receipt.
+    // The element is created *before* any intent exists, so it needs a provisional
+    // amount; we keep it synced from the amount input below. The real charge amount
+    // is always what the server puts on the PaymentIntent - the client-side amount
+    // only drives which payment methods the element offers (e.g. wallet minimums).
+    var DEFAULT_CENTS = 100;
+
+    elements = stripe.elements({
+        mode: 'payment',
+        amount: DEFAULT_CENTS,
+        currency: 'usd',
+        appearance: { variables: { fontSizeBase: '15px', colorText: '#32325d' } }
     });
-    // Create a token or display error on form submission
+
+    // Name and email are collected by our own form fields, so tell the element
+    // not to render its own copies. Because of 'never' here, we are REQUIRED to
+    // supply billing_details in confirmPayment below - that is precisely what puts
+    // the giver's name on the transaction in the Stripe dashboard.
+    var paymentElement = elements.create('payment', {
+        fields: { billingDetails: { name: 'never', email: 'never' } }
+    });
+    paymentElement.mount('#card-element');
+
+    paymentElement.on('change', function(event) {
+        var displayError = document.getElementById('card-errors');
+        displayError.textContent = event.error ? event.error.message : '';
+    });
+
+    function amountToCents() {
+        var amt = parseFloat(document.getElementsByName('amount')[0].value);
+        if (isNaN(amt) || amt <= 0) return 0;
+        return Math.round(amt * 100);
+    }
+
+    // Keep the element's notion of the amount in step with the giving amount input
+    document.getElementsByName('amount')[0].addEventListener('change', function() {
+        var cents = amountToCents();
+        if (cents > 0) elements.update({ amount: cents });
+    });
+
+    function showError(msg) {
+        document.getElementById('card-errors').textContent = msg;
+    }
+
+    function setSubmitting(submitting) {
+        var sbtn = document.getElementById('payment_form_submit_btn');
+        if (submitting) {
+            sbtn.setAttribute('disabled', 'disabled');
+            sbtn.innerHTML = 'Processing...';
+        } else {
+            sbtn.removeAttribute('disabled');
+            sbtn.innerHTML = 'Send My Gift';
+        }
+    }
+
     var form = document.getElementById('payment-form');
     form.addEventListener('submit', function(event) {
-        sbtn = document.getElementById("payment_form_submit_btn");
-        sbtn.setAttribute('disabled', 'disabled');
-        sbtn.InnerHTML = "Processing...";
         event.preventDefault();
-        stripe.createToken(card).then( function(result) {
-            if (result.error) {
-                var errorEle = document.getElementById('card-errors');
-                errorEle.textContent = result.error.message;
-            } else {
-                stripeTokenHandler(result.token);
-            }
-            sbtn.InnerHTML = "Submit";
-            sbtn.removeAttribute('disabled');
+
+        if (amountToCents() < 50) { // Stripe minimum charge is $0.50
+            showError('Please enter a giving amount of at least $0.50');
+            return;
+        }
+        setSubmitting(true);
+
+        var fullname = form.elements['fullname'].value.trim();
+        var email = form.elements['email'].value.trim();
+
+        // Validates the payment element's inputs; required before confirmPayment
+        // in the deferred-intent flow
+        elements.submit().then(function(res) {
+            if (res.error) { throw res.error; }
+            // Create the PaymentIntent server-side with the form details attached
+            return fetch('/payments/create-intent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    csrf: form.elements['csrf'].value,
+                    amount: form.elements['amount'].value,
+                    fullname: fullname,
+                    email: email,
+                    comment: form.elements['comment'].value
+                })
+            });
+        }).then(function(resp) {
+            return resp.json();
+        }).then(function(data) {
+            if (data.error) { throw { message: data.error }; }
+            return stripe.confirmPayment({
+                elements: elements,
+                clientSecret: data.clientSecret,
+                confirmParams: {
+                    // Stripe appends ?payment_intent=... on redirect; the receipt
+                    // handler retrieves and records the completed intent
+                    return_url: window.location.origin + '/payments/receipt',
+                    payment_method_data: {
+                        billing_details: { name: fullname, email: email }
+                    }
+                }
+            });
+        }).then(function(result) {
+            // confirmPayment only resolves here on failure (success navigates away)
+            if (result && result.error) { throw result.error; }
+        }).catch(function(err) {
+            showError(err && err.message ? err.message : 'Something went wrong. Please try again.');
+            setSubmitting(false);
         });
-        // This probably shouldn't be here, but we have to cover the case where the promise doesn't fire off
-        sbtn.InnerHTML = "Submit";
-        sbtn.removeAttribute('disabled');
     });
 });
-
-function stripeTokenHandler(token) {
-    var form = document.getElementById('payment-form');
-    var hInput = document.createElement('input');
-    hInput.setAttribute('type', 'hidden');
-    hInput.setAttribute('name', 'stripeToken');
-    hInput.setAttribute('value', token.id);
-    form.appendChild(hInput);
-    form.submit();
-}
 // PACKER END

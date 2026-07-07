@@ -1,8 +1,10 @@
 package payment_controller
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 
 	"github.com/labstack/echo"
@@ -12,10 +14,9 @@ import (
 	ctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/payment"
-	gmail "github.com/rohanthewiz/gmail_send"
 	"github.com/rohanthewiz/logger"
-	"github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/charge"
+	stripe "github.com/stripe/stripe-go/v86"
+	"github.com/stripe/stripe-go/v86/charge"
 )
 
 func NewPayment(c echo.Context) error {
@@ -39,7 +40,11 @@ func PaymentReceipt(c echo.Context) (err error) {
 	return
 }
 
-const txDescription = "CCSWM Donation"
+// The transaction description is now resolved per site via txDescription()
+// in payment_recorder.go (config Stripe.tx_description, falling back to
+// CopyrightOwner + " Donation"). The old const branded every site's gifts
+// as CCSWM's:
+// const txDescription = "CCSWM Donation"
 
 func UpsertPayment(c echo.Context) error {
 	csrf := c.FormValue("csrf")
@@ -65,9 +70,11 @@ func UpsertPayment(c echo.Context) error {
 	// Make the Charge
 	stripe.Key = config.Options.Stripe.PrivKey // Todo! create env var override //os.Getenv("STRIPE_PRIV_KEY")
 	chgParams := &stripe.ChargeParams{
-		Amount:      stripe.Int64(int64(amt * 100.0)), // Todo! Verify amount is expressed as cents
+		// math.Round, not a bare cast: int64(32.57 * 100) truncates 3256.9999... to 3256,
+		// silently shorting the gift by a cent. Amount is in cents per Stripe's contract.
+		Amount:      stripe.Int64(int64(math.Round(amt * 100.0))),
 		Currency:    stripe.String(string(stripe.CurrencyUSD)),
-		Description: stripe.String(txDescription),
+		Description: stripe.String(txDescription()),
 	}
 	err = chgParams.SetSource(paymentToken)
 	if err != nil {
@@ -110,8 +117,7 @@ func savePayment(chgResult *stripe.Charge, fullName, email, comment, paymentToke
 	chg.CustomerEmail = email
 	chg.Comment = comment
 	chg.AmtPaid = chgResult.Amount // *chgParams.Amount
-	// chg.CustomerName = ?
-	chg.Description = txDescription
+	chg.Description = txDescription()
 	chg.PaymentToken = paymentToken
 	chg.Captured = chgResult.Captured
 	chg.Paid = chgResult.Paid
@@ -121,8 +127,14 @@ func savePayment(chgResult *stripe.Charge, fullName, email, comment, paymentToke
 	if cust != nil {
 		chg.CustomerId = cust.ID
 	}
-	chg.ReceiptNumber = chgResult.ID
+	// ReceiptNumber now stores the actual receipt number; the Stripe charge id
+	// (needed for refund/dispute reconciliation) goes into Meta as JSON.
+	// Previously the charge id was stored in the receipt number column.
+	chg.ReceiptNumber = chgResult.ReceiptNumber
 	chg.ReceiptURL = chgResult.ReceiptURL
+	if metaBytes, jerr := json.Marshal(chargeMeta{StripeChargeId: chgResult.ID}); jerr == nil {
+		chg.Meta = string(metaBytes)
+	}
 
 	updateOp, err := chg.Upsert()
 	if err != nil {
@@ -136,33 +148,8 @@ func savePayment(chgResult *stripe.Charge, fullName, email, comment, paymentToke
 		return "Inserted charge into DB"
 	}(updateOp))
 
-	amt := float64(chg.AmtPaid) / 100.0
-	strAmt := fmt.Sprintf("%0.2f", amt)
-
-	msg := `<body><p>Thank you ` + fullName + `, for your investment into the Kingdom!</p>
-<p>The Lord bless you and keep you. The Lord make His face to shine upon you.</p>
-<p>
-Description: ` + chg.Description + `<br>
-Comment: ` + chg.Comment + `<br>
-Amount: ` + strAmt + `<br>
-Receipt Number: ` + chg.ReceiptNumber + `<br>
-Receipt Link: <a href="` + chg.ReceiptURL + `">Online Receipt</a><br>
-</p>
-</body>`
-
-	gcfg := gmail.GSMTPConfig{
-		AccountEmail: config.Options.Gmail.Account,
-		Word:         config.Options.Gmail.Word, // Can use an app password here (Enable MFA then setup app password)
-		FromName:     config.Options.Gmail.FromName,
-		Subject:      "Giving Receipt",
-		ToAddrs:      []string{email},
-		BCCs:         config.Options.Gmail.BCCs,
-		Body:         msg,
-	}
-	err = gmail.GmailSend(gcfg)
-	if err != nil {
-		logger.LogErr(err)
-	}
+	// Receipt email composition/sending is shared with the PaymentIntents flow
+	sendReceiptEmail(chg)
 }
 
 // func ListPayments(c echo.Context) error {

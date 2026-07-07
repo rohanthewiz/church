@@ -73,7 +73,8 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 		),
 		b.DivClass("form-row").R(
 			b.Label("for", "amount").T("Giving amount"),
-			b.Input("name", "amount", "type", "number", "min", "0", "step", "0.01").R(),
+			// min mirrors Stripe's $0.50 USD minimum charge (also enforced server-side)
+			b.Input("name", "amount", "type", "number", "min", "0.50", "step", "0.01").R(),
 		),
 		b.DivClass("form-row").R(
 			b.Label("for", "comment").T("Comment"),
@@ -81,9 +82,12 @@ func (m *ModulePaymentForm) Render(params map[string]map[string]string, loggedIn
 		),
 		b.Button("id", "payment_form_submit_btn", "class", "submit-button").T("Send My Gift"),
 
+		// Only the Stripe handle is initialized here; the packed script creates
+		// `elements` itself (Payment Element in deferred-intent mode needs
+		// mode/amount/currency options, which live with the rest of the JS logic)
 		b.Script("type", "text/javascript").T(`
 			var stripe = Stripe('`+config.Options.Stripe.PubKey+`');
-			var elements = stripe.elements();`+
+			var elements;`+
 			packed.ModulePaymentForm_js),
 	)
 	return b.String()

@@ -113,8 +113,16 @@ func ServeRWeb() {
 	// Payments
 	pay := s.Group("/payments", authctlr.UseCustomContextRWeb)
 	pay.Get("/new", payment_controller.NewPaymentRWeb)
-	pay.Post("/create", payment_controller.UpsertPaymentRWeb) // create
+	// PaymentIntents flow: the form JS posts here for a client secret, confirms the
+	// payment with Stripe directly (SCA/3DS, wallets), then Stripe redirects to
+	// /receipt below, which records the completed intent locally.
+	// Replaces the legacy token+Charges post:
+	// pay.Post("/create", payment_controller.UpsertPaymentRWeb) // create
+	pay.Post("/create-intent", payment_controller.CreatePaymentIntentRWeb)
 	pay.Get("/receipt", payment_controller.PaymentReceiptRWeb)
+	// Stripe server-to-server events (payment_intent.succeeded). Deliberately outside
+	// the session middleware: the caller is Stripe, authenticated by signature, not cookie.
+	s.Post("/webhooks/stripe", payment_controller.StripeWebhookRWeb)
 
 	// Sermons
 	ser := s.Group("/sermons", authctlr.UseCustomContextRWeb)
