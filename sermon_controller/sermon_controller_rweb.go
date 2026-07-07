@@ -84,7 +84,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	var localFileSpec string
 
 	csrf := ctx.Request().FormValue("csrf")
-	// Check that this token is present and valid in Redis
+	// Check that this token is present and valid in the in-process kvstore
 	if !app.VerifyFormToken(csrf) {
 		err := serr.New("Your form is expired. Go back to the form, refresh the page and try again")
 		return err

@@ -83,10 +83,13 @@ type EnvConfig struct {
 		Main   FTPConfig `yaml:"main"`
 		Backup FTPConfig `yaml:"backup"`
 	} `yaml:"ftp"`
-	Redis struct {
-		Host string `yaml:"host"`
-		Port string `yaml:"port"`
-	} `yaml:"redis"`
+	// Redis was retired when sessions/tokens moved to the in-process core/kvstore.
+	// Any `redis:` block in options.yml is simply ignored now. Kept for reference
+	// until a durable external store (for mobile tokens / multi-instance) is chosen.
+	// Redis struct {
+	// 	Host string `yaml:"host"`
+	// 	Port string `yaml:"port"`
+	// } `yaml:"redis"`
 	IDrive struct {
 		Enabled         bool   `yaml:"enabled"`
 		EndPoint        string `yaml:"end_point"`

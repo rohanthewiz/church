@@ -59,7 +59,7 @@ func EditEventRWeb(ctx rweb.Context) error {
 
 func UpsertEventRWeb(ctx rweb.Context) error {
 	csrf := ctx.Request().FormValue("csrf")
-	// At the action func (example UpsertEvent), check that this token is present and valid in Redis
+	// At the action func (example UpsertEvent), check that this token is present and valid in the in-process kvstore
 	if !app.VerifyFormToken(csrf) {
 		err := errors.New("Your form is expired. Go back to the form, refresh the page and try again")
 		return err

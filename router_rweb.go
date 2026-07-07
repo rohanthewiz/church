@@ -25,8 +25,6 @@ import (
 	"github.com/rohanthewiz/rweb"
 )
 
-// todo !! setup cert renew on a chron job
-
 //go:generate go run pack/packer.go
 
 func ServeRWeb() {
@@ -57,7 +55,14 @@ func ServeRWeb() {
 
 	// Static files
 	s.StaticFiles("/assets/", "dist", 1)
-	s.StaticFiles("/media/", "sermons", 1) // TODO - path_from_proj_root(config.Options.IDrive.LocalSermonsDir)
+	// Serve cached sermon media from the same directory the IDrive cache and
+	// cleanup service use, so all three always agree on where files live.
+	// Fall back to the historical "sermons" dir for configs predating the key.
+	sermonsDir := config.Options.IDrive.LocalSermonsDir
+	if sermonsDir == "" {
+		sermonsDir = "sermons"
+	}
+	s.StaticFiles("/media/", sermonsDir, 1)
 
 	// Home page — wrapped in a group with the auth middleware so session/login
 	// state is available for rendering admin menus when the user is logged in.

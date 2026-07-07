@@ -31,8 +31,12 @@ func GetFullCalendarEventsRWeb(ctx rweb.Context) error {
 	if err != nil {
 		return err
 	}
-	condition := "event_date >= '" + startDate + "' AND event_date <= '" + endDate + "'"
-	evts, err := models.Events(dbH, qm.Where(condition), qm.OrderBy("event_date ASC"), qm.Limit(100)).All()
+	// Bind the range bounds as placeholders — start/end arrive straight from the
+	// query string, so concatenating them into the WHERE clause would be an SQL
+	// injection vector. SQLBoiler rewrites `?` to the Postgres `$n` form for us.
+	evts, err := models.Events(dbH,
+		qm.Where("event_date >= ? AND event_date <= ?", startDate, endDate),
+		qm.OrderBy("event_date ASC"), qm.Limit(100)).All()
 	if err != nil {
 		return serr.Wrap(err, "Error obtaining events")
 	}

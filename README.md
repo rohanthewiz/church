@@ -225,6 +225,25 @@ exec chpst -e /etc/service/church/env_dir "/home/myuser/go/src/github.com/rohant
 ## Backup the DB (Might be a good candidate for crontab)
 - On the server run `pg_dump -U myuser church_development > ~/church_db-2018-0624.sql`
 
+## Backlog / Future Work
+Known improvements queued up, roughly in priority order:
+
+### Security / correctness
+- **Role-level enforcement in `AdminGuardRWeb`** — the middleware currently only checks that a user is logged in (username present in session). The 5-level role model (SuperAdmin 99, Admin 1, Publisher 5, Editor 7, RegisteredUser 9) should be enforced per route: carry the role in the session and guard admin routes with an appropriate role threshold.
+
+### Architecture
+- **Extract lifecycle from `ServeRWeb`** — seeding (`admin.Bootstrap`), module registration, and IDrive client init are buried inside the serve call; extract so they can be run/tested independently and support multiple instances.
+- **Durable kvstore backend** — sessions and CSRF/mobile tokens live in the in-process `core/kvstore`, so a restart logs everyone out and blocks horizontal scaling. Add a pluggable durable backend (e.g. DuckDB/Postgres-backed) behind the same interface.
+- **Reduce package-level globals** — config, db handle, module registry, kvstore, and S3 clients are all package globals, which hinders testing and multi-site-in-one-process setups.
+
+### Features / API
+- **JSON API buildout** — `GET /api/v1/sermons` (with its `SermonsResp` DTO) is the template; add DTOs for other resources. Presenters must never be serialized directly (`user.Presenter` carries password/salt/reset-token fields).
+- **Integration with BlueLetterBible.org** — link scripture references in sermons/articles out to BlueLetterBible (and possibly pull passage text/tools into sermon pages).
+
+### Ops
+- **Automate TLS cert renewal** — cert/key files are read once at startup; set up renewal (e.g. certbot cron + graceful reload or rweb-level reload) so certs don't silently expire.
+- Verify HTTP Range support in `basectlr.SendAudioFileRWeb` for mobile audio seeking.
+
 ## Contributing
 - Contribute only non-styling changes. Styling should be done in your main project
 - Individual projects can make styling changes in their master branch

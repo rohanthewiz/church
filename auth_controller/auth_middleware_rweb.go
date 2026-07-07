@@ -26,7 +26,7 @@ func RedirectRWeb(ctx rweb.Context, url, fl_msg string) error {
 // RWeb Middleware for storing session in context
 // Logged in means we have
 //  1. a valid session cookie
-//  2. a (non-expired) session in redis whose key is the value of the session cookie
+//  2. a (non-expired) session in the in-process kvstore whose key is the value of the session cookie
 func UseCustomContextRWeb(ctx rweb.Context) error {
 	// Get Session key
 	sessKey := EnsureSessionCookieRWeb(ctx)

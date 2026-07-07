@@ -20,8 +20,9 @@ func InitClient() {
 }
 
 // GetSermon gets the sermon by year and filename
-// Return it as bytes so the caller can simply push the contents to the user
-// (TODO - we will have a LRU cleanup process - track usages in some structure (redis?))
+// Return it as bytes so the caller can simply push the contents to the user.
+// Access is tracked (TrackSermonAccess) so the LRU eviction loop in
+// sermon_cache.go can reclaim locally-cached copies that go idle.
 func GetSermon(year, fName string) (fileBytes []byte, err error) {
 	relFileSpec, localFileSpec := sermon.GetRelAndLocalFileSpecs(year, fName)
 
@@ -57,7 +58,7 @@ func getSermonFromIDrive(relFileSpec, localFileSpec string) (fileBytes []byte, e
 	}
 	logger.Info(fmt.Sprintf("Successfully obtained sermon %q from IDrive.\n", localFileSpec))
 
-	go func() { // Cache sermon locally - TODO some LRU process
+	go func() { // Cache sermon locally; the LRU eviction loop reclaims it once idle
 		// Ensure sermon dir
 		sermonDir := filepath.Dir(localFileSpec)
 		err = fileops.EnsureDir(sermonDir)

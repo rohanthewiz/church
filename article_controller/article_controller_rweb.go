@@ -65,7 +65,7 @@ func EditArticleRWeb(ctx rweb.Context) error {
 
 func UpsertArticleRWeb(ctx rweb.Context) error {
 	csrf := ctx.Request().FormValue("csrf")
-	if !app.VerifyFormToken(csrf) { // check that csrf is present and valid in Redis
+	if !app.VerifyFormToken(csrf) { // check that csrf is present and valid in the in-process kvstore
 		err := errors.New("Your form is expired. Go back to the form, refresh the page and try again")
 		return err
 	}

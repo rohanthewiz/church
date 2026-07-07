@@ -7,15 +7,6 @@ import (
 	"time"
 )
 
-func example() { // todo - make into a test
-	password := "abcde"
-	salt := GenSalt("$&@randomness!!$$$")
-	// todo - Save salt in db
-
-	fmt.Println("Password:", password, " Salt:", salt, " Hash:",
-		PasswordHash(password, salt))
-}
-
 func PasswordHash(password, salt string) string {
 	return cryptit(8, 32, password, salt)
 }

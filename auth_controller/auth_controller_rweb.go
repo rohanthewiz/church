@@ -3,7 +3,6 @@ package auth_controller
 import (
 	"bytes"
 	"net/http"
-	"strconv"
 
 	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/flash"
@@ -14,7 +13,6 @@ import (
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
-	"gopkg.in/nullbio/null.v6"
 )
 
 // GET /login - Login Form
@@ -73,21 +71,23 @@ func LogoutHandlerRWeb(ctx rweb.Context) error { // don't ever send an error bac
 	return app.RedirectRWeb(ctx, "/pages/home", "Logged out")
 }
 
-// POST /adduser
-// This function is deprecated - security loophole!
-func RegisterUserRWeb(ctx rweb.Context) error {
-	salt := auth.GenSalt("j$&@randomness!!$$$")
-	pass_hash := auth.PasswordHash(ctx.Request().QueryParam("password"), salt)
-	role_int, err := strconv.Atoi(ctx.Request().QueryParam("role"))
-	if err != nil {
-		logger.LogErr(err, "Invalid role supplied")
-		return app.RedirectRWeb(ctx, "/admin/users", "Invalid role supplied")
-	}
-	err = user.SaveUser(ctx.Request().QueryParam("username"), null.NewString(pass_hash, true), null.NewString(salt, true), role_int)
-	if err != nil {
-		logger.LogErr(err, "Unable to SaveUser")
-		return app.RedirectRWeb(ctx, "/admin/users", "Unable to register user")
-	}
-	logger.Log("Info", "User successfully created", "user", ctx.Request().QueryParam("username"))
-	return app.RedirectRWeb(ctx, "/admin/users", "User successfully registered")
-}
+// RegisterUserRWeb was deprecated as a security loophole (unauthenticated user
+// creation with a caller-chosen role, credentials in the query string) and is no
+// longer routed. User creation goes through the admin-guarded
+// user_controller.UpsertUserRWeb instead. Kept for reference only.
+// func RegisterUserRWeb(ctx rweb.Context) error {
+// 	salt := auth.GenSalt("j$&@randomness!!$$$")
+// 	pass_hash := auth.PasswordHash(ctx.Request().QueryParam("password"), salt)
+// 	role_int, err := strconv.Atoi(ctx.Request().QueryParam("role"))
+// 	if err != nil {
+// 		logger.LogErr(err, "Invalid role supplied")
+// 		return app.RedirectRWeb(ctx, "/admin/users", "Invalid role supplied")
+// 	}
+// 	err = user.SaveUser(ctx.Request().QueryParam("username"), null.NewString(pass_hash, true), null.NewString(salt, true), role_int)
+// 	if err != nil {
+// 		logger.LogErr(err, "Unable to SaveUser")
+// 		return app.RedirectRWeb(ctx, "/admin/users", "Unable to register user")
+// 	}
+// 	logger.Log("Info", "User successfully created", "user", ctx.Request().QueryParam("username"))
+// 	return app.RedirectRWeb(ctx, "/admin/users", "User successfully registered")
+// }
