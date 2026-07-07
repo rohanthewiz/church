@@ -11,6 +11,16 @@ import (
 	"github.com/vattle/sqlboiler/queries/qm"
 )
 
+// FullcalendarEvent is the JSON shape the FullCalendar JS widget expects for
+// each event (https://fullcalendar.io/docs/event-object).
+type FullcalendarEvent struct {
+	Title  string `json:"title"`
+	Start  string `json:"start"`
+	End    string `json:"end,omitempty"`
+	AllDay bool   `json:"allDay"`
+	Url    string `json:"url"`
+}
+
 // Return events between the given dates as FullCalendar events
 func GetFullCalendarEventsRWeb(ctx rweb.Context) error {
 	var startDate, endDate string

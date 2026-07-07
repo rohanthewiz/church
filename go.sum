@@ -66,16 +66,8 @@ github.com/johntdyer/slack-go v0.0.0-20230314151037-c5bf334f9b6e h1:5tRmeUw/tXT/
 github.com/johntdyer/slack-go v0.0.0-20230314151037-c5bf334f9b6e/go.mod h1:u0Jo4f2dNlTJeeOywkM6bLwxq6gC3pZ9rEFHn3AhTdk=
 github.com/johntdyer/slackrus v0.0.0-20230315191314-80bc92dee4fc h1:enUIjGI+ljPLV2X3Mu3noR0P3m2NaIFGRsp96J8RBio=
 github.com/johntdyer/slackrus v0.0.0-20230315191314-80bc92dee4fc/go.mod h1:EM3NFHkhmCX05s6UvxWSJ8h/3mluH4tF6bYr9FXF1Cg=
-github.com/labstack/echo v3.3.10+incompatible h1:pGRcYk231ExFAyoAjAfD85kQzRJCRI8bbnE7CX5OEgg=
-github.com/labstack/echo v3.3.10+incompatible/go.mod h1:0INS7j/VjnFxD4E2wkz67b8cVwCLbBmJyDaka6Cmk1s=
-github.com/labstack/gommon v0.2.7 h1:2qOPq/twXDrQ6ooBGrn3mrmVOC+biLlatwgIu8lbzRM=
-github.com/labstack/gommon v0.2.7/go.mod h1:/tj9csK2iPSBvn+3NLM9e52usepMtrd5ilFYA+wQNJ4=
 github.com/lib/pq v1.12.0 h1:mC1zeiNamwKBecjHarAr26c/+d8V5w/u4J0I/yASbJo=
 github.com/lib/pq v1.12.0/go.mod h1:/p+8NSbOcwzAEI7wiMXFlgydTwcgTr3OSKMsD2BitpA=
-github.com/mattn/go-colorable v0.0.9 h1:UVL0vNpWh04HeJXV0KLcaT7r06gOH2l4OW6ddYRUIY4=
-github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
-github.com/mattn/go-isatty v0.0.4 h1:bnP0vzxcAdeI1zdubAl5PjU6zsERjGZb7raWodagDYs=
-github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNxMWT7Zi4=
 github.com/nullbio/inflect v0.0.0-20170731032957-3edb4592a77b h1:/vTNA41SN6jHp+9pCTzuUDU/JG3jAirMGpXgyZ5NtNM=
 github.com/nullbio/inflect v0.0.0-20170731032957-3edb4592a77b/go.mod h1:swC7cAYI9CGqNNwWp9olT8FdQWP0WAdO0m6NPlwuWaw=
 github.com/nxadm/tail v1.4.4/go.mod h1:kenIhsEOeOJmVchQTgglprH7qJGnHDVpk1VPCcaMI8A=
@@ -123,10 +115,6 @@ github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOf
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/stripe/stripe-go/v86 v86.1.0 h1:xisqyg8BzooIEpaB74d8SD26d9JIPVQ1TkeB6t7gBKo=
 github.com/stripe/stripe-go/v86 v86.1.0/go.mod h1:Co7QRXCKGNOPTugAdvjgRo+KcMtd9hxy+pZMN0yThsQ=
-github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
-github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
-github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 h1:gKMu1Bf6QINDnvyZuTaACm9ofY+PRh+5vFz4oxBZeF8=
-github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4/go.mod h1:50wTf68f99/Zt14pr046Tgt3Lp2vLyFZKzbFXTOabXw=
 github.com/vattle/sqlboiler v2.5.0+incompatible h1:Wt7km7/dtfzZD8gt1u3NWeK0AuF5UEr26kVD360w2PA=
 github.com/vattle/sqlboiler v2.5.0+incompatible/go.mod h1:Q3YlQv8muqQLqYsCfq0TjX87Ec/oUbIcLuZFZIUV614=
 github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb h1:lyL3z7vYwTWXf4/bI+A01+cCSnfhKIBhy+SQ46Z/ml8=

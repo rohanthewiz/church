@@ -12,6 +12,16 @@ import (
 	"github.com/vattle/sqlboiler/queries/qm"
 )
 
+// SermonsResp is the public JSON DTO for a sermon. Dates are ISO8601 strings.
+// Keep this a deliberate subset of the sermon model — presenters/models must
+// not be serialized directly.
+type SermonsResp struct {
+	Title         string `json:"title"`
+	DateTaught    string `json:"date_taught"`
+	ScriptureRefs string `json:"scripture_refs"`
+	AudioLink     string `json:"audio_link"`
+}
+
 func APISermonsRWeb(ctx rweb.Context) error {
 	// TODO - Query params
 	limit := ctx.Request().QueryParam("limit")

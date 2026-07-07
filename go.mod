@@ -13,7 +13,6 @@ require (
 	github.com/aws/smithy-go v1.22.1
 	github.com/h2non/bimg v1.0.19
 	github.com/jlaffaye/ftp v0.0.0-20181011150954-fe787349a520
-	github.com/labstack/echo v3.3.10+incompatible
 	github.com/lib/pq v1.12.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
@@ -48,19 +47,13 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.2 // indirect
 	github.com/johntdyer/slack-go v0.0.0-20230314151037-c5bf334f9b6e // indirect
 	github.com/johntdyer/slackrus v0.0.0-20230315191314-80bc92dee4fc // indirect
-	github.com/labstack/gommon v0.2.7 // indirect
-	github.com/mattn/go-colorable v0.0.9 // indirect
-	github.com/mattn/go-isatty v0.0.4 // indirect
 	github.com/nullbio/inflect v0.0.0-20170731032957-3edb4592a77b // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.33.1 // indirect
 	github.com/relistan/rubberneck v1.3.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasttemplate v0.0.0-20170224212429-dcecefd839c4 // indirect
 	golang.org/x/net v0.24.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/relistan/rubberneck.v1 v1.0.1 // indirect
 )

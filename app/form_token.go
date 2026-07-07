@@ -1,30 +1,20 @@
 package app
 
 import (
-	"net/http"
 	"time"
 
-	"github.com/labstack/echo"
-	"github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/core/kvstore"
-	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/resource/auth"
 	"github.com/rohanthewiz/serr"
 )
 
-// Note on Redirect: the SeeOther code (303) is the preferred code when redirecting after a post
-// so the browser knows to do a fresh get request
+// Form tokens are single-purpose CSRF tokens: a random key is stored in the
+// kvstore when a form is rendered, then checked (and implicitly aged out by
+// TTL) when the form posts back. They are transport-agnostic — nothing here
+// depends on the HTTP stack — which is why they live in their own file
+// rather than alongside the RWeb handlers.
 
-func Redirect(c echo.Context, url, fl_msg string) {
-	if fl_msg != "" {
-		fl := flash.NewFlash()
-		fl.Info = fl_msg // todo warn and error
-		fl.Set(c)
-	}
-	c.Redirect(http.StatusSeeOther, url)
-}
-
-// Generate and persist form token
+// GenerateFormToken generates and persists a form token
 func GenerateFormToken() (token string, err error) {
 	tokenLifetime := 3600 * time.Second
 	token = auth.RandomKey()
@@ -45,9 +35,4 @@ func VerifyFormToken(token string) bool {
 		return true
 	}
 	return false
-}
-
-func IsLoggedIn(c echo.Context) bool {
-	cc, ok := c.(*context.CustomContext)
-	return ok && cc.Admin
 }

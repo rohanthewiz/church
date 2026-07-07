@@ -4,8 +4,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
-	"github.com/labstack/echo"
-	"github.com/rohanthewiz/church/resource/cookie"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/rweb"
 )
@@ -20,40 +18,6 @@ type Flash struct {
 
 func NewFlash() *Flash {
 	return new(Flash)
-}
-
-func (f Flash) Set(c echo.Context) (err error) {
-	byts, err := json.Marshal(f)
-	if err != nil {
-		return err
-	}
-	b64d := base64.StdEncoding.EncodeToString(byts)
-	cookie.Set(c, flash_cookie_name, b64d)
-	return
-}
-
-func GetOrNew(c echo.Context) (fl *Flash) {
-	var err error
-	fl, err = Get(c)
-	if err != nil {
-		fl = new(Flash)
-	}
-	return
-}
-
-func Get(c echo.Context) (*Flash, error) {
-	cookie_val, err := cookie.GetAndClear(c, flash_cookie_name)
-	if err != nil {
-		return nil, err
-	}
-	byts, err := base64.StdEncoding.DecodeString(cookie_val)
-	if err != nil {
-		return nil, err
-	}
-
-	fl := NewFlash()
-	err = json.Unmarshal(byts, fl)
-	return fl, err
 }
 
 // SetRWeb sets flash message for RWeb context
