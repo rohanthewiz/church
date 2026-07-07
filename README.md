@@ -174,6 +174,25 @@ vips -v
 - `cp options-sample.yml options.yml`
 - Update config params: `sudo nano cfg/options.yml`
 
+#### TLS / Let's Encrypt
+TLS is configured in the `server` section of `cfg/options.yml` and only activates outside development. Two modes:
+
+**Automatic (recommended)** — in-process Let's Encrypt via autocert; certs are issued and renewed with no certbot or cron:
+```yaml
+server:
+  domain: "example.org"
+  port: "80"        # plain HTTP: answers ACME HTTP-01 challenges, redirects the rest to HTTPS
+  use_tls: true
+  tls_port: "443"   # default
+  auto_cert: true
+  auto_cert_domains: ["example.org", "www.example.org"]  # falls back to [domain]
+  auto_cert_email: "admin@example.org"       # optional: LE expiry/problem notices
+  auto_cert_cache_dir: "certs/autocert"      # default; holds private keys - keep out of git
+```
+Requires ports 80/443 to be reachable from the internet (Let's Encrypt validates over them).
+
+**Managed cert files** — set `auto_cert: false` (or omit) and provide `cert_file`/`key_file`. The server hot-reloads the pair whenever the cert file changes, so an external renewer (e.g. certbot cron) just replaces the files — no restart needed.
+
 #### Create a Random Seeds file
 - Create a file: `cfg/random_seeds.txt` and populate it with random strings _one per line_.
 - If you are not paranoid about security (you should be) you can just copy from the provided sample file `cp cfg/rand_seeds.txt.sample cfg/rand_seeds.txt`
@@ -241,7 +260,6 @@ Known improvements queued up, roughly in priority order:
 - **Integration with BlueLetterBible.org** — link scripture references in sermons/articles out to BlueLetterBible (and possibly pull passage text/tools into sermon pages).
 
 ### Ops
-- **Automate TLS cert renewal** — cert/key files are read once at startup; set up renewal (e.g. certbot cron + graceful reload or rweb-level reload) so certs don't silently expire.
 - Verify HTTP Range support in `basectlr.SendAudioFileRWeb` for mobile audio seeking.
 
 ## Contributing

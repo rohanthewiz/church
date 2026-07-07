@@ -57,6 +57,25 @@ type EnvConfig struct {
 		UseTLS   bool   `yaml:"use_tls"`
 		CertFile string `yaml:"cert_file"`
 		KeyFile  string `yaml:"key_file"`
+		// TLSPort is where the HTTPS listener binds when use_tls is true
+		// (default "443"). `port` then carries the plain-HTTP listener that
+		// answers ACME HTTP-01 challenges and redirects everything else to
+		// HTTPS — so in production use port: "80" alongside use_tls.
+		TLSPort string `yaml:"tls_port"`
+		// AutoCert switches TLS to fully in-process Let's Encrypt: certs are
+		// issued and renewed automatically via ACME (autocert), no certbot or
+		// cron needed. When false but use_tls is true, cert_file/key_file are
+		// served with hot reload, so an external renewer (e.g. certbot) only
+		// has to replace the files — no restart.
+		AutoCert bool `yaml:"auto_cert"`
+		// Domains autocert may respond for (Let's Encrypt hard-requires a
+		// public DNS name). Falls back to [domain] when empty.
+		AutoCertDomains []string `yaml:"auto_cert_domains"`
+		// Optional contact for Let's Encrypt expiry/problem notices
+		AutoCertEmail string `yaml:"auto_cert_email"`
+		// Where autocert persists issued certs across restarts
+		// (default "certs/autocert"). Keep this out of version control.
+		AutoCertCacheDir string `yaml:"auto_cert_cache_dir"`
 	} `yaml:"server"`
 	Log struct {
 		Level     string `yaml:"level"`

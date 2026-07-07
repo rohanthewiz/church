@@ -3,6 +3,7 @@ package church
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/rohanthewiz/church/admin"
 	"github.com/rohanthewiz/church/admin_controller"
@@ -42,15 +43,21 @@ func ServeRWeb() {
 		idrive.StartCacheCleanup()
 	}
 
+	// TLS (see tls_rweb.go): autocert (in-process Let's Encrypt) or hot-reloaded
+	// cert files. Also starts the HTTP challenge/redirect listener when enabled.
+	// A cert misconfiguration is unrecoverable, so fail startup loudly rather
+	// than silently serving plain HTTP with use_tls set.
+	tlsCfg, err := buildTLSCfg()
+	if err != nil {
+		logger.LogErr(err, "TLS configuration failed - exiting")
+		os.Exit(1)
+	}
+
 	// Create RWeb server
 	s := rweb.NewServer(rweb.ServerOptions{
 		Address: ":" + config.Options.Server.Port,
 		Verbose: true, // config.AppEnv == config.Environments.Development,
-		TLS: rweb.TLSCfg{
-			UseTLS:   config.Options.Server.UseTLS && config.AppEnv != "development",
-			KeyFile:  config.Options.Server.KeyFile,
-			CertFile: config.Options.Server.CertFile,
-		},
+		TLS:     tlsCfg,
 	})
 
 	// Static files

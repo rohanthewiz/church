@@ -1,8 +1,6 @@
 module github.com/rohanthewiz/church
 
-go 1.23.0
-
-toolchain go1.23.2
+go 1.24.0
 
 require (
 	github.com/PuerkitoBio/goquery v1.4.1
@@ -16,12 +14,12 @@ require (
 	github.com/lib/pq v1.12.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
-	github.com/rohanthewiz/element v0.5.4
+	github.com/rohanthewiz/element v0.5.6
 	github.com/rohanthewiz/gmail_send v1.0.0
-	github.com/rohanthewiz/logger v1.2.20
+	github.com/rohanthewiz/logger v1.3.0
 	github.com/rohanthewiz/roftp v0.2.0
-	github.com/rohanthewiz/rweb v0.1.21-0.20251126232937-647d2fc62424
-	github.com/rohanthewiz/serr v1.2.20
+	github.com/rohanthewiz/rweb v0.1.27-0.20260707123520-9c2144b2ed7c
+	github.com/rohanthewiz/serr v1.4.0
 	github.com/stripe/stripe-go/v86 v86.1.0
 	github.com/vattle/sqlboiler v2.5.0+incompatible
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb
@@ -45,15 +43,14 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.24.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.28.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.2 // indirect
-	github.com/johntdyer/slack-go v0.0.0-20230314151037-c5bf334f9b6e // indirect
-	github.com/johntdyer/slackrus v0.0.0-20230315191314-80bc92dee4fc // indirect
 	github.com/nullbio/inflect v0.0.0-20170731032957-3edb4592a77b // indirect
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.33.1 // indirect
 	github.com/relistan/rubberneck v1.3.0 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
+	github.com/sirupsen/logrus v1.9.4 // indirect
 	golang.org/x/net v0.24.0 // indirect
-	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/sys v0.39.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/DATA-DOG/go-sqlmock.v1 v1.3.0 // indirect
 	gopkg.in/relistan/rubberneck.v1 v1.0.1 // indirect
 )
