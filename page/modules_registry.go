@@ -1,24 +1,27 @@
 package page
 
 import (
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/resource/calendar"
+	"github.com/rohanthewiz/church/resource/content"
 	"github.com/rohanthewiz/church/resource/event"
+	"github.com/rohanthewiz/church/resource/menu"
 	"github.com/rohanthewiz/church/resource/payment"
 	"github.com/rohanthewiz/church/resource/sermon"
-	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/church/resource/menu"
+	"github.com/rohanthewiz/church/resource/sermoncleanup"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/church/standalone_modules/easy_tabs"
-	"strings"
 	"github.com/rohanthewiz/church/standalone_modules/slick_carousel"
 	"sort"
-	"github.com/rohanthewiz/church/resource/content"
-	"github.com/rohanthewiz/church/resource/calendar"
+	"strings"
 )
 
 const numOfModules = 15
+
 var modulesRegistry map[string]func(module.Presenter) (module.Module, error)
 var moduleTypeToName map[string]module.Name
+
 // module option types (by Id(s) or by limit/offset) - (used mainly in page form)
 var moduleContentBy map[string]content.ModuleContentType
 
@@ -32,8 +35,8 @@ var singularToPlural map[string]string
 func RegisterModules() {
 	modulesRegistry = make(map[string]func(module.Presenter) (module.Module, error), numOfModules)
 	moduleTypeToName = make(map[string]module.Name, numOfModules)
-	moduleContentBy = make(map[string]content.ModuleContentType, numOfModules / 2)
-	singularToPlural = make(map[string]string, numOfModules / 2) // half number of modules is a fair capacity estimate
+	moduleContentBy = make(map[string]content.ModuleContentType, numOfModules/2)
+	singularToPlural = make(map[string]string, numOfModules/2) // half number of modules is a fair capacity estimate
 
 	singularToPlural["article"] = "articles"
 	addToRegistry(article.ModuleTypeArticleForm, "article", article.NewModuleArticleForm)
@@ -66,6 +69,9 @@ func RegisterModules() {
 	moduleContentBy[sermon.ModuleTypeRecentSermons] = content.ModuleContentByPagination
 	addToRegistry(sermon.ModuleTypeSingleSermon, "sermon", sermon.NewModuleSingleSermon)
 	moduleContentBy[sermon.ModuleTypeSingleSermon] = content.ModuleContentBySingleId
+	// Admin-only utility module; hardwired into its admin page, never placed on
+	// dynamic pages (excluded from availableModuleTypes below).
+	addToRegistry(sermoncleanup.ModuleTypeSermonCleanup, "sermon", sermoncleanup.NewModuleSermonCleanup)
 
 	singularToPlural["page"] = "pages"
 	addToRegistry(ModuleTypeLoginForm, "", NewModuleLoginForm)
@@ -108,7 +114,8 @@ func availableModuleTypes() (types []string) {
 		if strings.Contains(lwrModType, "form") ||
 			strings.Contains(lwrModType, "user") ||
 			strings.Contains(lwrModType, "page") ||
-			strings.Contains(lwrModType, "menu") {
+			strings.Contains(lwrModType, "menu") ||
+			strings.Contains(lwrModType, "cleanup") {
 			continue
 		}
 		types = append(types, k)

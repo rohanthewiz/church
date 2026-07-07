@@ -36,6 +36,14 @@ func ServeRWeb() {
 
 	idrive.InitClient()
 
+	// Background LRU eviction of locally-cached sermons downloaded from IDrive e2.
+	// Scans hourly and deletes copies idle > 4h, but only after confirming the
+	// object still exists on IDrive e2. Opt-in: only runs when idrive.auto_cleanup
+	// is true. The admin Sermon Cleanup tool works regardless of this flag.
+	if config.Options.IDrive.Enabled && config.Options.IDrive.AutoCleanup {
+		idrive.StartCacheCleanup()
+	}
+
 	// Create RWeb server
 	s := rweb.NewServer(rweb.ServerOptions{
 		Address: ":" + config.Options.Server.Port,
@@ -160,6 +168,9 @@ func ServeRWeb() {
 	ad.Get("/sermons/edit/:id", sermon_controller.EditSermonRWeb)
 	ad.Post("/sermons/update/:id", sermon_controller.UpsertSermonRWeb) // update
 	ad.Get("/sermons/delete/:id", sermon_controller.DeleteSermonRWeb)
+	// Local sermon-cache cleanup tool (lists copies safe to delete, batch-deletes them)
+	ad.Get("/sermons/cleanup", sermon_controller.AdminSermonCleanupRWeb)
+	ad.Post("/sermons/cleanup", sermon_controller.AdminSermonCleanupRunRWeb)
 
 	// Admin Events
 	ad.Get("/events", event_controller.AdminListEventsRWeb)

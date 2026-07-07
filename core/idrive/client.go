@@ -32,6 +32,9 @@ func GetSermon(year, fName string) (fileBytes []byte, err error) {
 		if err != nil {
 			return fileBytes, serr.Wrap(err, "error obtaining file from IDriveE2", "year", year, "sermon", fName)
 		}
+		// Track this fresh download so the LRU cleanup process can later evict it.
+		// Run async so access tracking never adds latency to serving the sermon.
+		go TrackSermonAccess(relFileSpec, localFileSpec)
 		return fileBytes, nil
 	}
 
@@ -40,6 +43,9 @@ func GetSermon(year, fName string) (fileBytes []byte, err error) {
 	if err != nil {
 		return fileBytes, serr.Wrap(err, "could not read cached sermon file from server")
 	}
+	// Bump last-accessed on a local cache hit too, so frequently played sermons
+	// stay resident and only genuinely idle files are evicted.
+	go TrackSermonAccess(relFileSpec, localFileSpec)
 	return
 }
 

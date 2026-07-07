@@ -2,11 +2,13 @@ package sermon_controller
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -204,4 +206,62 @@ func DeleteSermonRWeb(ctx rweb.Context) error {
 		logger.LogErr(err, msg, "when", "deleting sermon")
 	}
 	return app.RedirectRWeb(ctx, "/admin/sermons", msg)
+}
+
+// AdminSermonCleanupRWeb renders the admin Sermon Cleanup page: locally-cached
+// sermons whose copy is verified present on IDrive e2, grouped by year, with a
+// batch-delete form.
+func AdminSermonCleanupRWeb(ctx rweb.Context) error {
+	// The cleanup tool verifies each local copy against IDrive e2 before deleting,
+	// so it is meaningless (and unsafe) when IDrive is disabled. Flash a notice and
+	// bounce back to the sermons list instead of rendering an empty/broken page.
+	if !config.Options.IDrive.Enabled {
+		return app.RedirectRWebWarn(ctx, "/admin/sermons",
+			"IDrive e2 is not enabled — sermon cleanup is unavailable.")
+	}
+
+	pg, err := page.AdminSermonCleanup()
+	if err != nil {
+		return err
+	}
+	return ctx.WriteHTML(string(base.RenderPageListRWeb(pg, ctx)))
+}
+
+// AdminSermonCleanupRunRWeb handles the batch-delete POST. The selected IDrive
+// keys arrive in a single newline-delimited hidden field (rweb's FormValue exposes
+// only one value per field), so we split them here. Each is independently
+// re-verified against IDrive e2 inside the service before its local copy is deleted.
+func AdminSermonCleanupRunRWeb(ctx rweb.Context) error {
+	// Guard against a stale/forged POST while IDrive is disabled — never delete a
+	// local copy when we cannot verify a cloud copy.
+	if !config.Options.IDrive.Enabled {
+		return app.RedirectRWebWarn(ctx, "/admin/sermons",
+			"IDrive e2 is not enabled — sermon cleanup is unavailable.")
+	}
+
+	csrf := ctx.Request().FormValue("csrf")
+	if !app.VerifyFormToken(csrf) {
+		return serr.New("Your form is expired. Go back, refresh the page and try again")
+	}
+
+	raw := ctx.Request().FormValue("selected_specs")
+	var specs []string
+	for _, line := range strings.Split(raw, "\n") {
+		if s := strings.TrimSpace(line); s != "" {
+			specs = append(specs, s)
+		}
+	}
+
+	if len(specs) == 0 {
+		return app.RedirectRWeb(ctx, "/admin/sermons/cleanup", "No sermons were selected for cleanup")
+	}
+
+	res := idrive.DeleteVerifiedLocalCopies(specs)
+
+	msg := "Deleted " + strconv.Itoa(len(res.Deleted)) + " local sermon copy(ies)"
+	if len(res.Skipped) > 0 {
+		msg += "; " + strconv.Itoa(len(res.Skipped)) + " skipped (kept local)"
+		logger.Warn("Sermon cleanup skipped some files", "skipped", fmt.Sprintf("%v", res.Skipped))
+	}
+	return app.RedirectRWeb(ctx, "/admin/sermons/cleanup", msg)
 }
