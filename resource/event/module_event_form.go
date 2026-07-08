@@ -39,7 +39,24 @@ func (m ModuleEventForm) getData() (pres Presenter, err error) {
 	if err != nil {
 		return pres, serr.Wrap(err, "Unable to obtain event with id: "+fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 	}
-	return presenterFromModel(evt), err
+	pres = presenterFromModel(evt)
+	// Recurrence lives in its own table; load it only here (single-event edit)
+	// rather than in presenterFromModel, which list views call per row
+	if err = pres.LoadRecurrence(evt.ID); err != nil {
+		logger.LogErr(err, "Unable to load recurrence rule for event form", "event_id", pres.Id)
+	}
+	return pres, nil
+}
+
+// selectOptions renders a select control's options, marking the current value
+func selectOptions(b *element.Builder, opts [][2]string, current string) {
+	for _, opt := range opts {
+		params := []string{"value", opt[0]}
+		if opt[0] == current {
+			params = append(params, "selected", "selected")
+		}
+		b.Option(params...).T(opt[1])
+	}
 }
 
 func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn bool) string {
@@ -91,6 +108,50 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 					b.Input("name", "event_time", "type", "time", "value", evt.EventTime),
 					b.Label("class", "control-label", "for", "event_time").T("Event Time"),
 					// b.IClass("bar"),
+				),
+			),
+			// Recurrence rule. Weekday applies to both frequencies; the
+			// "which week" select only matters for monthly ("second Saturday",
+			// "last Sunday") and is ignored server-side for weekly.
+			b.DivClass("form-inline").R(
+				b.DivClass("form-group").R(
+					b.Select("name", "recur_freq", "id", "recur_freq").R(
+						b.Wrap(func() {
+							selectOptions(b, [][2]string{
+								{"", "None (one-time)"},
+								{RecurWeekly, "Weekly"},
+								{RecurMonthly, "Monthly"},
+							}, evt.RecurFreq)
+						}),
+					),
+					b.Label("class", "control-label", "for", "recur_freq").T("Repeats"),
+				),
+				b.DivClass("form-group").R(
+					b.Select("name", "recur_weekday", "id", "recur_weekday").R(
+						b.Wrap(func() {
+							selectOptions(b, [][2]string{
+								{"0", "Sunday"}, {"1", "Monday"}, {"2", "Tuesday"},
+								{"3", "Wednesday"}, {"4", "Thursday"}, {"5", "Friday"},
+								{"6", "Saturday"},
+							}, evt.RecurWeekday)
+						}),
+					),
+					b.Label("class", "control-label", "for", "recur_weekday").T("On"),
+				),
+				b.DivClass("form-group").R(
+					b.Select("name", "recur_week", "id", "recur_week").R(
+						b.Wrap(func() {
+							selectOptions(b, [][2]string{
+								{"1", "First"}, {"2", "Second"}, {"3", "Third"},
+								{"4", "Fourth"}, {"-1", "Last"},
+							}, evt.RecurWeek)
+						}),
+					),
+					b.Label("class", "control-label", "for", "recur_week").T("Week (monthly)"),
+				),
+				b.DivClass("form-group").R(
+					b.Input("name", "recur_until", "type", "date", "value", evt.RecurUntil),
+					b.Label("class", "control-label", "for", "recur_until").T("Repeat until (optional)"),
 				),
 			),
 			b.DivClass("form-inline").R(

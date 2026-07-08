@@ -74,6 +74,11 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 		ContactPhone:  strings.TrimSpace(ctx.Request().FormValue("contact_phone")),
 		ContactEmail:  strings.TrimSpace(ctx.Request().FormValue("contact_email")),
 		ContactURL:    strings.TrimSpace(ctx.Request().FormValue("contact_url")),
+		// Recurrence rule fields; parsed and validated in UpsertEvent
+		RecurFreq:    strings.TrimSpace(ctx.Request().FormValue("recur_freq")),
+		RecurWeekday: strings.TrimSpace(ctx.Request().FormValue("recur_weekday")),
+		RecurWeek:    strings.TrimSpace(ctx.Request().FormValue("recur_week")),
+		RecurUntil:   strings.TrimSpace(ctx.Request().FormValue("recur_until")),
 	}
 	// set embedded fields etc
 	efs.Id = ctx.Request().FormValue("event_id")

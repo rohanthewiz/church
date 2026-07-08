@@ -2,6 +2,7 @@ package event
 
 import (
 	"strconv"
+	"time"
 
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
@@ -69,12 +70,50 @@ func (p Presenter) UpsertEvent() error {
 	} else {
 		err = evt.Update(db)
 		if err != nil {
-			err = serr.Wrap(err, "Error updating event in DB")
+			return serr.Wrap(err, "Error updating event in DB")
 		} else {
 			Log("Info", "Successfully updated event")
 		}
 	}
-	return err
+
+	// Sync the recurrence rule after the event row exists (Insert populates
+	// evt.ID via RETURNING). A failure here is reported, not swallowed — an
+	// admin who set "every Sunday" must know if the rule didn't stick.
+	if err = p.upsertRecurrenceRule(evt.ID); err != nil {
+		return serr.Wrap(err, "Event saved but its recurrence rule failed to save")
+	}
+	return nil
+}
+
+// upsertRecurrenceRule translates the presenter's form-string recurrence
+// fields into a validated rule row, or removes the rule when frequency is
+// back to "None".
+func (p Presenter) upsertRecurrenceRule(eventID int64) error {
+	if p.RecurFreq == RecurNone {
+		return DeleteRecurrence(eventID)
+	}
+
+	weekday, err := strconv.Atoi(p.RecurWeekday)
+	if err != nil {
+		return serr.Wrap(err, "recurrence weekday must be numeric", "weekday", p.RecurWeekday)
+	}
+	rec := Recurrence{
+		EventID: eventID,
+		Freq:    p.RecurFreq,
+		Weekday: time.Weekday(weekday),
+	}
+	if p.RecurFreq == RecurMonthly {
+		// The form always submits a week value; it is only meaningful for monthly
+		if rec.Week, err = strconv.Atoi(p.RecurWeek); err != nil {
+			return serr.Wrap(err, "recurrence week must be numeric", "week", p.RecurWeek)
+		}
+	}
+	if p.RecurUntil != "" {
+		if rec.Until, err = time.Parse("2006-01-02", p.RecurUntil); err != nil {
+			return serr.Wrap(err, "recurrence until must be YYYY-MM-DD", "until", p.RecurUntil)
+		}
+	}
+	return UpsertRecurrence(rec) // validates the assembled rule
 }
 
 func DeleteEventById(id string) error {

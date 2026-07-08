@@ -2,13 +2,11 @@ package calendar
 
 import (
 	"strconv"
+	"time"
 
-	"github.com/rohanthewiz/church/db"
-	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/resource/event"
 	tu "github.com/rohanthewiz/church/util/timeutil"
 	"github.com/rohanthewiz/rweb"
-	"github.com/rohanthewiz/serr"
-	"github.com/vattle/sqlboiler/queries/qm"
 )
 
 // FullcalendarEvent is the JSON shape the FullCalendar JS widget expects for
@@ -21,33 +19,47 @@ type FullcalendarEvent struct {
 	Url    string `json:"url"`
 }
 
-// Return events between the given dates as FullCalendar events
+// Return events between the given dates as FullCalendar events.
+// Delegates to event.WindowedEvents so the website calendar shows recurring
+// occurrences ("every Sunday", "second Saturday") exactly like the mobile API
+// — one source of truth for expansion.
 func GetFullCalendarEventsRWeb(ctx rweb.Context) error {
-	var startDate, endDate string
-	startDate = ctx.Request().QueryParam("start")
-	endDate = ctx.Request().QueryParam("end")
-	var fEvents []FullcalendarEvent
-	dbH, err := db.Db()
+	// FullCalendar sends start/end as ISO dates; parse (never concatenate into
+	// SQL — this endpoint was an injection vector once, commit cb80039) and
+	// fall back to the default upcoming window on anything malformed.
+	from, ok := parseFCDate(ctx.Request().QueryParam("start"))
+	if !ok {
+		from = time.Now()
+	}
+	to, ok := parseFCDate(ctx.Request().QueryParam("end"))
+	if !ok {
+		to = from.AddDate(0, 0, event.DefaultWindowDays)
+	}
+
+	events, err := event.WindowedEvents(from, to)
 	if err != nil {
 		return err
 	}
-	// Bind the range bounds as placeholders — start/end arrive straight from the
-	// query string, so concatenating them into the WHERE clause would be an SQL
-	// injection vector. SQLBoiler rewrites `?` to the Postgres `$n` form for us.
-	evts, err := models.Events(dbH,
-		qm.Where("event_date >= ? AND event_date <= ?", startDate, endDate),
-		qm.OrderBy("event_date ASC"), qm.Limit(100)).All()
-	if err != nil {
-		return serr.Wrap(err, "Error obtaining events")
-	}
 
-	for _, evt := range evts {
-		fe := FullcalendarEvent{AllDay: true} // We have no end date
-		fe.Title = evt.Title
-		fe.Start = evt.EventDate.Format(tu.ISO8601DateTime)
-		fe.Url = "/events/" + strconv.FormatInt(evt.ID, 10)
-		fEvents = append(fEvents, fe)
+	fEvents := make([]FullcalendarEvent, 0, len(events))
+	for _, evt := range events {
+		fEvents = append(fEvents, FullcalendarEvent{
+			Title:  evt.Title,
+			Start:  evt.EventDate, // date-only is valid for allDay events
+			AllDay: true,          // we have no end date
+			Url:    "/events/" + strconv.FormatInt(evt.ID, 10),
+		})
 	}
 
 	return ctx.WriteJSON(&fEvents)
+}
+
+// parseFCDate accepts the shapes FullCalendar emits: plain dates and full
+// ISO8601 timestamps (of which the leading 10 chars are the date).
+func parseFCDate(s string) (time.Time, bool) {
+	if len(s) > 10 {
+		s = s[:10]
+	}
+	t, err := time.Parse(tu.ISO8601Date, s)
+	return t, err == nil
 }

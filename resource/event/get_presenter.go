@@ -21,6 +21,36 @@ type Presenter struct {
 	ContactPhone          string
 	ContactEmail          string
 	ContactURL            string
+	// Recurrence rule as it travels through the admin form (string form
+	// values; parsed and validated in UpsertEvent). Empty RecurFreq means a
+	// one-time event. Populated from event_recurrences by LoadRecurrence —
+	// deliberately not in presenterFromModel, which runs per row in list
+	// views and would N+1 the recurrence table.
+	RecurFreq    string // "", "weekly", "monthly"
+	RecurWeekday string // "0" (Sunday) .. "6" (Saturday)
+	RecurWeek    string // monthly: "1".."4" or "-1" (last)
+	RecurUntil   string // YYYY-MM-DD or "" for open-ended
+}
+
+// LoadRecurrence fills the presenter's recurrence fields from the DB.
+// Call after presenterFromModel when editing a single event.
+func (p *Presenter) LoadRecurrence(eventID int64) error {
+	rec, found, err := GetRecurrence(eventID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil
+	}
+	p.RecurFreq = rec.Freq
+	p.RecurWeekday = fmt.Sprintf("%d", int(rec.Weekday))
+	if rec.Freq == RecurMonthly {
+		p.RecurWeek = fmt.Sprintf("%d", rec.Week)
+	}
+	if !rec.Until.IsZero() {
+		p.RecurUntil = rec.Until.Format("2006-01-02")
+	}
+	return nil
 }
 
 type PresenterParams struct {
