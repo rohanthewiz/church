@@ -3,9 +3,9 @@ package template
 import (
 	"bytes"
 
-	"github.com/rohanthewiz/church/agrid"
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/flash"
+	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/menu"
 	"github.com/rohanthewiz/church/view"
@@ -31,16 +31,15 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	<script type="text/javascript" src="/assets/js/moment.min.js"></script>
 	<script type="text/javascript" src="/assets/js/fullcalendar.min.js"></script>
 	<script type="text/javascript" src="/assets/js/slick-1.8.1.min.js"></script>
-	<script type="text/javascript" src="/assets/js/ag-grid.min.js"></script>
 	<script type="text/javascript" src="/assets/js/sweetalert2-7.12.15.all.min.js"></script>`)
 
 	b := element.NewBuilder()
 
-	b.Script("type", "text/javascript").R(
-		b.T(agrid.LinkCellRenderer),
-		b.T(agrid.ConfirmlinkCellRenderer),
-		b.T(agrid.ConfirmDelete),
-	)
+	// Home-grown grid (replaces the AG Grid bundle + its cell-renderer shims).
+	// Inlined so list pages need no extra asset fetch; the JS enhances every
+	// .ch-grid rendered by the list modules.
+	b.Style().T(grid.CSS)
+	b.Script("type", "text/javascript").T(grid.JS)
 
 	b.T(`</head><body class="theme-` + config.Options.Theme + `">`)
 

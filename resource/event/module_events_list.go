@@ -1,11 +1,9 @@
 package event
 
 import (
-	"encoding/json"
 	"strings"
 
-	"github.com/rohanthewiz/church/agrid"
-	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
@@ -40,23 +38,7 @@ func (m ModuleEventsList) getData() ([]Presenter, error) {
 	return QueryEvents(m.Opts.Condition, "event_date "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
-type eventsListRowDef struct {
-	Id        string `json:"id,omitempty"`
-	Published string `json:"published,omitempty"`
-	Slug      string `json:"slug,omitempty"`
-	Cats      string `json:"cats,omitempty"`
-	UpdatedBy string `json:"updatedBy"`
-	Title     string `json:"title"`
-	EventDate string `json:"eventDate"`
-	Edit      string `json:"edit,omitempty"`
-	Delete    string `json:"delete"`
-}
-
 func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn bool) string {
-	eventsEditURL := config.AdminPrefix + "/" + m.Opts.ItemsURLPath + "/edit/"
-	eventsDeleteURL := config.AdminPrefix + "/" + m.Opts.ItemsURLPath + "/delete/"
-	newPath := config.AdminPrefix + "/" + m.Opts.ItemsURLPath + "/new"
-
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to this module
 		m.SetLimitAndOffset(opts)
 	}
@@ -68,81 +50,57 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 		return ""
 	}
 
-	// Setup AgGrid
-	var columnDefs []agrid.ColumnDef
-	if m.Opts.IsAdmin {
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Id", Field: "id", Width: 105})
+	// Grid setup — the event date column powers sorting and year grouping
+	g := grid.Grid{
+		Class:        "events-list-grid",
+		EmptyMessage: "No events found",
+		Limit:        m.Opts.Limit,
+		Offset:       m.Opts.Offset,
 	}
-	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Event Date", Field: "eventDate", Width: 190})
-	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Title", Field: "title", CellRenderer: "linkCellRenderer"})
-	// columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Description", Field: "Summary", Width: 200, CellRenderer: "eventsListRenderer"})
 	if m.Opts.IsAdmin {
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Slug", Field: "slug"})
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Categories", Field: "cats"})
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Updated By", Field: "updatedBy", Width: 196})
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Published", Field: "published", Width: 190})
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "", Field: "edit", Width: 120, CellRenderer: "linkCellRenderer"})
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "", Field: "delete", Width: 120, CellRenderer: "confirmLinkCellRenderer"})
+		g.Columns = append(g.Columns, grid.Column{Header: "Id", Type: grid.ColNum, Shrink: true})
+	}
+	g.Columns = append(g.Columns,
+		grid.Column{Header: "Event Date", Type: grid.ColDate, Width: 120, GroupBy: true},
+		grid.Column{Header: "Title"},
+	)
+	if m.Opts.IsAdmin {
+		g.Columns = append(g.Columns,
+			grid.Column{Header: "Slug", Popup: true},
+			grid.Column{Header: "Categories", Popup: true},
+			grid.Column{Header: "Updated By"},
+			grid.Column{Header: "Published"},
+			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // edit
+			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // delete
+		)
 	}
 
-	var rowData []eventsListRowDef
 	for _, evt := range evts {
 		published := "draft"
 		if evt.Published {
 			published = "published"
 		}
 
-		row := eventsListRowDef{}
+		var row []grid.Cell
 		if m.Opts.IsAdmin {
-			row.Id = evt.Id
+			row = append(row, grid.Text(evt.Id))
 		}
-		row.EventDate = evt.EventDate
-		row.Title = evt.Title + "|" + "/" + m.Opts.ItemsURLPath + "/" + evt.Id // base64.StdEncoding.EncodeToString([]byte(title))
-		// row.Summary = base64.StdEncoding.EncodeToString([]byte(evt.Summary))
+		row = append(row,
+			grid.Text(evt.EventDate),
+			grid.Link(evt.Title, "/"+m.Opts.ItemsURLPath+"/"+evt.Id),
+		)
 		if m.Opts.IsAdmin {
-			row.Slug = evt.Slug
-			row.Cats = strings.Join(evt.Categories, ", ")
-			row.UpdatedBy = evt.UpdatedBy
-			row.Published = published
-			row.Edit = "edit|" + eventsEditURL + evt.Id
-			row.Delete = "del|" + eventsDeleteURL + evt.Id
+			row = append(row,
+				grid.Text(evt.Slug),
+				grid.Text(strings.Join(evt.Categories, ", ")),
+				grid.Text(evt.UpdatedBy),
+				grid.Text(published),
+				grid.EditLink(m.GetEditURL()+evt.Id),
+				grid.DeleteLink(m.GetDeleteURL()+evt.Id),
+			)
 		}
-		rowData = append(rowData, row)
+		g.Rows = append(g.Rows, row)
 	}
-
-	columnDefsAsJson, err := json.Marshal(columnDefs)
-	rowDataAsJson, err := json.Marshal(rowData)
-	if err != nil {
-		LogErr(err, "Error converting Event column defs to JSON")
-	}
-	jsConvertColumnDefs := "var eventsListColumnDefs = JSON.parse(`" + string(columnDefsAsJson) + "`);"
-	jsConvertRowData := "var rowData = JSON.parse(`" + string(rowDataAsJson) + "`);"
-	gridOptions := `var eventsListGridOptions = {
-			columnDefs: eventsListColumnDefs, rowData: rowData,
-			enableSorting: true, enableFilter: true,
-			components: {
-				'linkCellRenderer': chLinkCellRenderer, 'confirmLinkCellRenderer': chConfirmLinkCellRenderer },
-			onGridReady: function() { eventsListGridOptions.api.sizeColumnsToFit(); },
-			onCellClicked: function(event) {
-				console.log(event.column);
-				if (event.column.colId !== "summary" && event.column.colId !== "slug" &&
-					event.column.colId !== "cats") return;
-				var content = event.value;
-				if (event.column.colId === "summary") { content = atob(content); }
-				swal({ title: event.column.colDef.headerName, html: content }); // deliberately leaving off type here
-			},
-	};`
-
-	scriptBody := `new agGrid.Grid(document.querySelector('.events-list-grid'), eventsListGridOptions);`
-	// eventsListRenderer := `function EventsListContentRenderer() {}
-	//	EventsListContentRenderer.prototype.init = function(params) {
-	//		var content = atob(params.value)
-	//		this.eGui = document.createElement('div');
-	//		this.eGui.innerHTML = content;
-	//	};
-	//	EventsListContentRenderer.prototype.getGui = function() {
-	//		return this.eGui;
-	//	};`
 
 	b := element.NewBuilder()
 
@@ -151,15 +109,12 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 			b.T(m.Opts.Title),
 			b.Wrap(func() {
 				if m.Opts.IsAdmin {
-					b.AClass("btn-add", "href", newPath, "title", "Add Events").T("+")
+					b.AClass("btn-add", "href", m.GetNewURL(), "title", "Add Events").T("+")
 				}
 			}),
 		),
 		b.DivClass("list-wrapper").R(
-			b.DivClass("events-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(),
-			b.Script("type", "text/javascript").T(
-				jsConvertColumnDefs+jsConvertRowData+gridOptions+ // eventsListRenderer,
-					`$(document).ready(function() {`+scriptBody+`});`),
+			g.Render(b),
 		),
 	)
 

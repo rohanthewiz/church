@@ -1,12 +1,10 @@
 package sermon
 
 import (
-	"encoding/json"
 	"strconv"
 	"strings"
 
-	"github.com/rohanthewiz/church/agrid"
-	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
@@ -41,24 +39,7 @@ func (m ModuleSermonsList) GetData() ([]Presenter, error) {
 	return QuerySermons(m.Opts.Condition, "date_taught "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
-type sermonsListRowDef struct {
-	Id            string `json:"id,omitempty"`
-	Published     string `json:"published,omitempty"`
-	Slug          string `json:"slug,omitempty"`
-	ScriptureRefs string `json:"scriptures,omitempty"`
-	Cats          string `json:"cats,omitempty"`
-	UpdatedBy     string `json:"updatedBy"`
-	Title         string `json:"title"`
-	DateTaught    string `json:"dateTaught"`
-	Edit          string `json:"edit,omitempty"`
-	Delete        string `json:"delete"`
-}
-
 func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn bool) string {
-	sermonsEditURL := config.AdminPrefix + "/" + m.Opts.ItemsURLPath + "/edit/"
-	sermonsDeleteURL := config.AdminPrefix + "/" + m.Opts.ItemsURLPath + "/delete/"
-	newPath := config.AdminPrefix + "/" + m.Opts.ItemsURLPath + "/new"
-
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to this module
 		m.SetLimitAndOffset(opts)
 	}
@@ -75,82 +56,60 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 		logger.Log("Info", strconv.Itoa(len(sermons))+" sermon(s) found")
 	}
 
-	// Setup AgGrid
-	var columnDefs []agrid.ColumnDef
-	if m.Opts.IsAdmin {
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Id", Field: "id", Width: 105})
+	// Grid setup — columns mirror the former AG Grid defs; the date column
+	// drives the year-grouping toggle. Column and row ordering must agree.
+	g := grid.Grid{
+		Class:        "sermons-list-grid",
+		EmptyMessage: "No sermons found",
+		Limit:        m.Opts.Limit,
+		Offset:       m.Opts.Offset,
 	}
-	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Date Preached", Field: "dateTaught", Width: 190})
-	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Title", Field: "title", CellRenderer: "linkCellRenderer"})
-	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Scripture Refs.", Field: "scriptures", Width: 196})
-	columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Categories", Field: "cats"})
 	if m.Opts.IsAdmin {
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Slug", Field: "slug"})
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Updated By", Field: "updatedBy", Width: 196})
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "Published", Field: "published", Width: 190})
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "", Field: "edit", Width: 120, CellRenderer: "linkCellRenderer"})
-		columnDefs = append(columnDefs, agrid.ColumnDef{HeaderName: "", Field: "delete", Width: 120, CellRenderer: "confirmLinkCellRenderer"})
+		g.Columns = append(g.Columns, grid.Column{Header: "Id", Type: grid.ColNum, Shrink: true})
+	}
+	g.Columns = append(g.Columns,
+		grid.Column{Header: "Date Preached", Type: grid.ColDate, Width: 120, GroupBy: true},
+		grid.Column{Header: "Title"},
+		grid.Column{Header: "Scripture Refs."},
+		grid.Column{Header: "Categories", Popup: true},
+	)
+	if m.Opts.IsAdmin {
+		g.Columns = append(g.Columns,
+			grid.Column{Header: "Slug", Popup: true},
+			grid.Column{Header: "Updated By"},
+			grid.Column{Header: "Published"},
+			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // edit
+			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // delete
+		)
 	}
 
-	var rowData []sermonsListRowDef
 	for _, ser := range sermons {
 		published := "draft"
 		if ser.Published {
 			published = "published"
 		}
 
-		row := sermonsListRowDef{}
+		var row []grid.Cell
 		if m.Opts.IsAdmin {
-			row.Id = ser.Id
+			row = append(row, grid.Text(ser.Id))
 		}
-		row.DateTaught = ser.DateTaught
-		row.Title = ser.Title + "|" + "/" + m.Opts.ItemsURLPath + "/" + ser.Id // base64.StdEncoding.EncodeToString([]byte(title))
-		row.ScriptureRefs = strings.Join(ser.ScriptureRefs, ", ")
-		row.Cats = strings.Join(ser.Categories, ", ")
-		// row.Summary = base64.StdEncoding.EncodeToString([]byte(ser.Summary))
+		row = append(row,
+			grid.Text(ser.DateTaught),
+			grid.Link(ser.Title, "/"+m.Opts.ItemsURLPath+"/"+ser.Id),
+			grid.Text(strings.Join(ser.ScriptureRefs, ", ")),
+			grid.Text(strings.Join(ser.Categories, ", ")),
+		)
 		if m.Opts.IsAdmin {
-			row.Slug = ser.Slug
-			row.UpdatedBy = ser.UpdatedBy
-			row.Published = published
-			row.Edit = "edit|" + sermonsEditURL + ser.Id
-			row.Delete = "del|" + sermonsDeleteURL + ser.Id
+			row = append(row,
+				grid.Text(ser.Slug),
+				grid.Text(ser.UpdatedBy),
+				grid.Text(published),
+				grid.EditLink(m.GetEditURL()+ser.Id),
+				grid.DeleteLink(m.GetDeleteURL()+ser.Id),
+			)
 		}
-		rowData = append(rowData, row)
+		g.Rows = append(g.Rows, row)
 	}
-
-	columnDefsAsJson, err := json.Marshal(columnDefs)
-	rowDataAsJson, err := json.Marshal(rowData)
-	if err != nil {
-		logger.LogErr(err, "Error converting Sermon column defs to JSON")
-	}
-	jsConvertColumnDefs := "var sermonsListColumnDefs = JSON.parse(`" + string(columnDefsAsJson) + "`);"
-	jsConvertRowData := "var rowData = JSON.parse(`" + string(rowDataAsJson) + "`);"
-	gridOptions := `var sermonsListGridOptions = {
-			columnDefs: sermonsListColumnDefs, rowData: rowData,
-			enableSorting: true, enableFilter: true,
-			components: {
-				'linkCellRenderer': chLinkCellRenderer, 'confirmLinkCellRenderer': chConfirmLinkCellRenderer },
-			onGridReady: function() { sermonsListGridOptions.api.sizeColumnsToFit(); },
-			onCellClicked: function(event) {
-				console.log(event.column);
-				if (event.column.colId !== "summary" && event.column.colId !== "slug" &&
-					event.column.colId !== "cats") return;
-				var content = event.value;
-				if (event.column.colId === "summary") { content = atob(content); }
-				swal({ title: event.column.colDef.headerName, html: content }); // deliberately leaving off type here
-			},
-	};`
-
-	scriptBody := `new agGrid.Grid(document.querySelector('.sermons-list-grid'), sermonsListGridOptions);`
-	// sermonsListRenderer := `function SermonsListContentRenderer() {}
-	//	SermonsListContentRenderer.prototype.init = function(params) {
-	//		var content = atob(params.value)
-	//		this.eGui = document.createElement('div');
-	//		this.eGui.innerHTML = content;
-	//	};
-	//	SermonsListContentRenderer.prototype.getGui = function() {
-	//		return this.eGui;
-	//	};`
 
 	b := element.NewBuilder()
 
@@ -159,15 +118,12 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 			b.T(m.Opts.Title),
 			b.Wrap(func() {
 				if m.Opts.IsAdmin {
-					b.A("class", "btn-add", "href", newPath, "title", "Add Sermon").T("+")
+					b.A("class", "btn-add", "href", m.GetNewURL(), "title", "Add Sermon").T("+")
 				}
 			}),
 		),
 		b.DivClass("ch-sermons-list-wrapper").R(
-			b.DivClass("sermons-list-grid ag-theme-material", "style", `width: 98vw; height: calc(100vh - 226px)`).R(), // Todo make height calc -ve param into a config
-			b.Script("type", "text/javascript").T(
-				jsConvertColumnDefs+jsConvertRowData+gridOptions+ // sermonsListRenderer,
-					`$(document).ready(function() {`+scriptBody+`});`),
+			g.Render(b),
 		),
 	)
 
