@@ -15,14 +15,26 @@ package grid
 const CSS = `
 .ch-grid {
   --chg-accent: #3f6ea5;
+  --chg-accent-fg: #fff;     /* text on accent-colored surfaces */
   --chg-accent-soft: #eef3f9;
   --chg-border: #e2e6ea;
+  --chg-bg: #fff;            /* table + control surfaces */
+  --chg-bg-alt: #fbfcfd;     /* zebra stripe */
   --chg-head-bg: #f7f9fb;
+  --chg-head-fg: #345;
   --chg-hover: #f2f6fb;
   --chg-muted: #667;
+  --chg-row-border: #f0f2f4;
+  --chg-danger: #c0392b;
+  /* Data grids read best in the platform UI font; sites that want the grid to
+     blend with their body font can set --chg-font: inherit. */
+  --chg-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   width: 100%;
+  font-family: var(--chg-font);
   font-size: 0.92em;
 }
+/* Form controls don't inherit font by default — pull them onto the grid font. */
+.ch-grid input, .ch-grid button, .ch-grid select { font-family: inherit; }
 .ch-grid:not(.ch-grid-ready) .ch-grid-jsonly { display: none; }
 
 .ch-grid .ch-grid-toolbar {
@@ -35,14 +47,15 @@ const CSS = `
 }
 .ch-grid .ch-grid-search {
   padding: 0.35rem 0.6rem; min-width: 220px;
+  background: var(--chg-bg); color: inherit;
   border: 1px solid var(--chg-border); border-radius: 4px;
 }
 .ch-grid .ch-grid-groupbtn {
   padding: 0.35rem 0.8rem; cursor: pointer;
-  background: #fff; color: var(--chg-accent);
+  background: var(--chg-bg); color: var(--chg-accent);
   border: 1px solid var(--chg-accent); border-radius: 4px; font-weight: 600;
 }
-.ch-grid .ch-grid-groupbtn.ch-grid-active { background: var(--chg-accent); color: #fff; }
+.ch-grid .ch-grid-groupbtn.ch-grid-active { background: var(--chg-accent); color: var(--chg-accent-fg); }
 .ch-grid .ch-grid-count { margin-left: auto; color: var(--chg-muted); font-size: 0.9em; }
 
 /* The scroll container gives large grids their own scrollbar (with a sticky
@@ -50,7 +63,7 @@ const CSS = `
    fixed-height viewport divs. */
 .ch-grid .ch-grid-scroll {
   overflow: auto; max-height: calc(100vh - 240px);
-  border: 1px solid var(--chg-border); border-radius: 6px; background: #fff;
+  border: 1px solid var(--chg-border); border-radius: 6px; background: var(--chg-bg);
 }
 .ch-grid table.ch-grid-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .ch-grid .ch-grid-table th {
@@ -58,7 +71,7 @@ const CSS = `
   background: var(--chg-head-bg);
   text-align: left; padding: 0.5rem 0.6rem;
   font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.4px;
-  color: #345; border-bottom: 2px solid var(--chg-border);
+  color: var(--chg-head-fg); border-bottom: 2px solid var(--chg-border);
   white-space: nowrap;
 }
 .ch-grid .ch-grid-table th.ch-grid-shrink { width: 1%; }
@@ -67,21 +80,24 @@ const CSS = `
 .ch-grid .ch-grid-sort-ind { color: var(--chg-accent); font-size: 0.9em; padding-left: 0.25rem; }
 
 /* Filter row sits under the sticky header row; sticky too so filters stay
-   visible while scrolling. 2.1em ≈ the header row's rendered height. */
-.ch-grid .ch-grid-filter-row th { top: 2.1em; padding: 0.25rem 0.4rem; background: #fff; }
+   visible while scrolling. 2.1em ≈ the header row's rendered height.
+   Shares --chg-head-bg so title row + filter row read as one themed header
+   block (a hard-coded #fff here left a white bar on dark themes). */
+.ch-grid .ch-grid-filter-row th { top: 2.1em; padding: 0.25rem 0.4rem; background: var(--chg-head-bg); }
 .ch-grid .ch-grid-colfilter {
   width: 100%; box-sizing: border-box; padding: 0.25rem 0.4rem;
+  background: var(--chg-bg); color: inherit;
   border: 1px solid var(--chg-border); border-radius: 4px; font-size: 0.95em;
 }
 
 .ch-grid .ch-grid-table td {
-  padding: 0.45rem 0.6rem; border-bottom: 1px solid #f0f2f4; vertical-align: top;
+  padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--chg-row-border); vertical-align: top;
 }
 .ch-grid .ch-grid-table tbody tr:hover { background: var(--chg-hover); }
-.ch-grid .ch-grid-table tbody tr:nth-child(even):not(:hover) { background: #fbfcfd; }
+.ch-grid .ch-grid-table tbody tr:nth-child(even):not(:hover) { background: var(--chg-bg-alt); }
 .ch-grid .ch-grid-table a { color: var(--chg-accent); text-decoration: none; }
 .ch-grid .ch-grid-table a:hover { text-decoration: underline; }
-.ch-grid a.ch-grid-del { color: #c0392b; }
+.ch-grid a.ch-grid-del { color: var(--chg-danger); }
 .ch-grid td.ch-grid-popup { cursor: pointer; }
 .ch-grid .ch-grid-empty-row td { color: var(--chg-muted); font-style: italic; text-align: center; padding: 1.2rem; }
 
@@ -98,7 +114,7 @@ const CSS = `
 .ch-grid tr.ch-grid-year-row:not(.ch-grid-collapsed) .ch-grid-caret { transform: rotate(90deg); }
 .ch-grid .ch-grid-year-count {
   font-weight: 500; font-size: 0.8em; color: var(--chg-muted);
-  background: #fff; border-radius: 999px; padding: 0.05rem 0.45rem; margin-left: 0.3rem;
+  background: var(--chg-bg); border-radius: 999px; padding: 0.05rem 0.45rem; margin-left: 0.3rem;
 }
 
 .ch-grid .ch-grid-pager, .ch-grid .ch-grid-serverpager {
@@ -107,10 +123,14 @@ const CSS = `
 }
 .ch-grid .ch-grid-pager button {
   padding: 0.25rem 0.7rem; cursor: pointer;
-  background: #fff; border: 1px solid var(--chg-border); border-radius: 4px;
+  background: var(--chg-bg); color: inherit;
+  border: 1px solid var(--chg-border); border-radius: 4px;
 }
 .ch-grid .ch-grid-pager button:disabled { opacity: 0.45; cursor: default; }
-.ch-grid .ch-grid-pager select { padding: 0.2rem 0.3rem; border: 1px solid var(--chg-border); border-radius: 4px; }
+.ch-grid .ch-grid-pager select {
+  padding: 0.2rem 0.3rem; background: var(--chg-bg); color: inherit;
+  border: 1px solid var(--chg-border); border-radius: 4px;
+}
 .ch-grid .ch-grid-serverpager a { color: var(--chg-accent); font-weight: 600; text-decoration: none; }
 `
 
