@@ -12,3 +12,4 @@ vendor/
 
 
 sqlboiler.toml
+test_scripts/event_form_preview/preview.html
