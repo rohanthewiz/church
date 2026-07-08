@@ -17,7 +17,10 @@ import (
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/page_controller"
 	"github.com/rohanthewiz/church/payment_controller"
+	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/calendar"
+	"github.com/rohanthewiz/church/resource/event"
+	"github.com/rohanthewiz/church/resource/feed"
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/sermon_controller"
 	"github.com/rohanthewiz/church/user_controller"
@@ -104,8 +107,20 @@ func ServeRWeb() {
 	// Super admin setup
 	s.Get("/super", admin_controller.SetupSuperAdminRWeb) // (API) Establish first SuperAdmin
 
-	// API routes
-	s.Get("/api/v1/sermons", sermon.APISermonsRWeb)
+	// JSON API v1 — consumed by the church_mobile app (Phase 1: read-only,
+	// published content only; see ai_docs/plans/2026-0707-mobile-app-flutter-api-plan.md).
+	// Deliberately outside the session middleware: these endpoints are public
+	// reads; auth arrives in Phase 2 as a Bearer-token guard on a sub-group.
+	api := s.Group("/api/v1")
+	api.Get("/sermons", sermon.APISermonsRWeb)
+	api.Get("/sermons/:id", sermon.APISermonRWeb)
+	api.Get("/articles", article.APIArticlesRWeb)
+	api.Get("/articles/:id", article.APIArticleRWeb)
+	api.Get("/events", event.APIEventsRWeb)
+	api.Get("/events/:id", event.APIEventRWeb)
+	api.Get("/feed", feed.APIFeedRWeb)
+
+	// FullCalendar-shaped events JSON for the website's calendar widget
 	s.Get("/calendar", calendar.GetFullCalendarEventsRWeb)
 
 	// Non-admin dynamic pages (the majority of the pages) are handled here
