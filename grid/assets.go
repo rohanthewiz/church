@@ -26,12 +26,18 @@ const CSS = `
   --chg-muted: #667;
   --chg-row-border: #f0f2f4;
   --chg-danger: #c0392b;
+  --chg-scroll-thumb: #c9d2da;
+  --chg-scroll-thumb-hover: #a9b6c2;
   /* Data grids read best in the platform UI font; sites that want the grid to
      blend with their body font can set --chg-font: inherit. */
   --chg-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   width: 100%;
   font-family: var(--chg-font);
   font-size: 0.92em;
+  /* Without this, macOS renders light-on-dark text noticeably heavier
+     (looks bolded on dark themes). */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 /* Form controls don't inherit font by default — pull them onto the grid font. */
 .ch-grid input, .ch-grid button, .ch-grid select { font-family: inherit; }
@@ -42,7 +48,7 @@ const CSS = `
   margin: 0.5rem 0; padding: 0.5rem 0.75rem;
   background: var(--chg-accent-soft);
   border: 1px solid var(--chg-border);
-  border-left: 4px solid var(--chg-accent);
+  border-left: 2px solid var(--chg-accent);
   border-radius: 6px;
 }
 .ch-grid .ch-grid-search {
@@ -64,7 +70,23 @@ const CSS = `
 .ch-grid .ch-grid-scroll {
   overflow: auto; max-height: calc(100vh - 240px);
   border: 1px solid var(--chg-border); border-radius: 6px; background: var(--chg-bg);
+  /* Slim theme-aware scrollbar. Firefox and Chrome 121+ take the standard
+     properties (and then ignore the -webkit rules); Safari and older Chrome
+     take the -webkit rules below. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--chg-scroll-thumb) transparent;
 }
+.ch-grid .ch-grid-scroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.ch-grid .ch-grid-scroll::-webkit-scrollbar-track { background: transparent; }
+.ch-grid .ch-grid-scroll::-webkit-scrollbar-thumb {
+  /* Transparent border + padding-box clip floats the thumb off the edge,
+     giving a pill look without a visible track. */
+  background: var(--chg-scroll-thumb);
+  border: 3px solid transparent; background-clip: padding-box;
+  border-radius: 999px;
+}
+.ch-grid .ch-grid-scroll::-webkit-scrollbar-thumb:hover { background-color: var(--chg-scroll-thumb-hover); }
+.ch-grid .ch-grid-scroll::-webkit-scrollbar-corner { background: transparent; }
 .ch-grid table.ch-grid-table { width: 100%; border-collapse: separate; border-spacing: 0; }
 .ch-grid .ch-grid-table th {
   position: sticky; top: 0; z-index: 1;
@@ -92,6 +114,9 @@ const CSS = `
 
 .ch-grid .ch-grid-table td {
   padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--chg-row-border); vertical-align: top;
+  /* Pin the weight so site-theme table rules can't bold row content;
+     inline <b>/<strong> in HTML cells still render bold. */
+  font-weight: 400;
 }
 .ch-grid .ch-grid-table tbody tr:hover { background: var(--chg-hover); }
 .ch-grid .ch-grid-table tbody tr:nth-child(even):not(:hover) { background: var(--chg-bg-alt); }
