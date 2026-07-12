@@ -3,10 +3,12 @@ package slick_carousel
 import (
 	"fmt"
 
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeSlickCarousel = "carousel"
@@ -36,11 +38,15 @@ func NewModuleSlickCarousel(pres module.Presenter) (module.Module, error) {
 
 // Opts.ItemIds take precedence over other parameters
 func (m ModuleSlickCarousel) getData() ([]article.Presenter, error) {
+	dbH, err := db.Db()
+	if err != nil {
+		return nil, serr.Wrap(err, "Could not obtain DB handle")
+	}
 	if len(m.Opts.ItemIds) > 0 {
 		// fmt.Println("*|* About to run presentersFromIds", "m.Opts.ItemIds", m.Opts.ItemIds)
-		return article.PresentersFromIds(m.Opts.ItemIds)
+		return article.PresentersFromIds(dbH, m.Opts.ItemIds)
 	}
-	return article.QueryArticles(m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, m.Opts.Offset)
+	return article.QueryArticles(dbH, m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
 func (m *ModuleSlickCarousel) Render(params map[string]map[string]string, loggedIn bool) (out string) {

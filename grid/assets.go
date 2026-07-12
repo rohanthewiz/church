@@ -157,6 +157,27 @@ const CSS = `
   border: 1px solid var(--chg-border); border-radius: 4px;
 }
 .ch-grid .ch-grid-serverpager a { color: var(--chg-accent); font-weight: 600; text-decoration: none; }
+
+/* Small screens: bigger touch targets and a toolbar that wraps instead of
+   overflowing. The scroll container already handles wide tables (horizontal
+   pan stays inside the grid, never the page). */
+@media (max-width: 640px) {
+  /* iOS Safari zooms the page when a focused control's font is under 16px --
+     pin every grid control to 16px so tapping search/filter doesn't zoom. */
+  .ch-grid .ch-grid-search,
+  .ch-grid .ch-grid-colfilter,
+  .ch-grid .ch-grid-pager select { font-size: 16px; }
+  .ch-grid .ch-grid-toolbar { gap: 0.5rem; padding: 0.5rem; }
+  /* Let the search box shrink into the row instead of forcing a 220px track */
+  .ch-grid .ch-grid-search { min-width: 0; flex: 1 1 140px; }
+  /* Row count drops to its own line rather than squeezing the controls */
+  .ch-grid .ch-grid-count { margin-left: 0; flex-basis: 100%; }
+  /* ~44px minimum touch targets (Apple HIG) for pager and grouping controls */
+  .ch-grid .ch-grid-pager button,
+  .ch-grid .ch-grid-groupbtn { padding: 0.55rem 1rem; min-height: 44px; }
+  .ch-grid .ch-grid-pager select { min-height: 44px; padding: 0.3rem 0.4rem; }
+  .ch-grid tr.ch-grid-year-row td { padding: 0.7rem 0.6rem; }
+}
 `
 
 // JS implements the interactive behavior. One chGridInit() per .ch-grid.

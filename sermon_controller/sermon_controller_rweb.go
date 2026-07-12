@@ -17,6 +17,7 @@ import (
 	"github.com/rohanthewiz/church/config"
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/core/idrive"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/sermon"
@@ -165,7 +166,12 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	}
 
 	// Save it
-	slug, err := serPres.Upsert()
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return err
+	}
+	slug, err := serPres.Upsert(dbH)
 	// fmt.Printf("*|* serPres --> %#v\n", serPres)
 	if err != nil {
 		return err
@@ -204,7 +210,12 @@ func DeleteSermonRWeb(ctx rweb.Context) error {
 	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/sermons"); !ok {
 		return err
 	}
-	err := sermon.DeleteSermonById(ctx.Request().PathParam("id"))
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return app.RedirectRWeb(ctx, "/admin/sermons", "Error deleting sermon")
+	}
+	err = sermon.DeleteSermonById(dbH, ctx.Request().PathParam("id"))
 	msg := "Sermon with id: " + ctx.Request().PathParam("id") + " deleted"
 	if err != nil {
 		msg = "Error attempting to delete sermon with id: " + ctx.Request().PathParam("id")

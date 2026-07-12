@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
@@ -48,7 +49,11 @@ func NewModuleEventsList(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleEventsList) getData() ([]Presenter, error) {
-	return QueryEvents(m.Opts.Condition, "event_date "+m.Order(), m.Opts.Limit, m.Opts.Offset)
+	dbH, err := db.Db()
+	if err != nil {
+		return nil, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	return QueryEvents(dbH, m.Opts.Condition, "event_date "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
 func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn bool) string {

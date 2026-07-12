@@ -11,14 +11,11 @@ import (
 	. "github.com/vattle/sqlboiler/queries/qm"
 )
 
-func QueryArticles(condition, order string, limit, offset int64) (presenters []Presenter, err error) {
-	// Log("Debug", "Article query", "condition:", condition, " order:", order,
-	//	" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
-	db, err := db.Db()
-	if err != nil {
-		return
-	}
-	articles, err := models.Articles(db, Where(condition), OrderBy(order), Limit(int(limit)), Offset(int(offset))).All()
+// Query functions take the executor first (db.Executor — see db/executor.go);
+// boundaries (modules, controllers, bootstrap) fetch db.Db() and pass it down.
+
+func QueryArticles(exec db.Executor, condition, order string, limit, offset int64) (presenters []Presenter, err error) {
+	articles, err := models.Articles(exec, Where(condition), OrderBy(order), Limit(int(limit)), Offset(int(offset))).All()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error querying articles")
 	}
@@ -28,30 +25,26 @@ func QueryArticles(condition, order string, limit, offset int64) (presenters []P
 	return
 }
 
-func RecentArticles(limit int64) (presenters []Presenter, err error) {
+func RecentArticles(exec db.Executor, limit int64) (presenters []Presenter, err error) {
 	condition := "1 = 1"
 	order := "created_at DESC"
-	return QueryArticles(condition, order, limit, 0)
+	return QueryArticles(exec, condition, order, limit, 0)
 }
 
-func (p Presenter) UpsertArticle() error {
-	db, err := db.Db()
-	if err != nil {
-		return err
-	}
-	art, create, err := modelFromPresenter(p)
+func (p Presenter) UpsertArticle(exec db.Executor) error {
+	art, create, err := modelFromPresenter(exec, p)
 	if err != nil {
 		return serr.Wrap(err, "Error in article from presenter")
 	}
 	if create {
-		err = art.Insert(db)
+		err = art.Insert(exec)
 		if err != nil {
 			return serr.Wrap(err, "Error inserting new article into DB")
 		} else {
 			Log("Info", "Successfully created article")
 		}
 	} else {
-		err = art.Update(db)
+		err = art.Update(exec)
 		if err != nil {
 			return serr.Wrap(err, "Error updating article in DB")
 		} else {
@@ -61,12 +54,8 @@ func (p Presenter) UpsertArticle() error {
 	return err
 }
 
-func DeleteArticleById(id string) error {
+func DeleteArticleById(exec db.Executor, id string) error {
 	const when = "When deleting article by id"
-	dbH, err := db.Db()
-	if err != nil {
-		return err
-	}
 	if id == "" {
 		return serr.New("Id to delete is empty string")
 	}
@@ -74,7 +63,7 @@ func DeleteArticleById(id string) error {
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Article id to integer", "Id", id, "when", when)
 	}
-	err = models.Articles(dbH, Where("id=?", intId)).DeleteAll()
+	err = models.Articles(exec, Where("id=?", intId)).DeleteAll()
 	if err != nil {
 		return serr.Wrap(err, "Error when deleting article by id", "id", id, "when", when)
 	}
@@ -82,14 +71,14 @@ func DeleteArticleById(id string) error {
 }
 
 // Returns an article model for id `id` or a new article model
-func findModelByIdOrCreate(id string) (art *models.Article) {
+func findModelByIdOrCreate(exec db.Executor, id string) (art *models.Article) {
 	if id != "" {
 		intId, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
 			LogErr(err, "Unable to convert Article id to integer", "Id", id)
 			return new(models.Article)
 		}
-		art, err = findArticleById(intId)
+		art, err = findArticleById(exec, intId)
 		if err != nil {
 			return new(models.Article)
 		}
@@ -101,24 +90,16 @@ func findModelByIdOrCreate(id string) (art *models.Article) {
 }
 
 // Returns an article for id `id` or error
-func findArticleById(id int64) (*models.Article, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, serr.Wrap(err)
-	}
-	art, err := models.Articles(dbH, Where("id = ?", id)).One()
+func findArticleById(exec db.Executor, id int64) (*models.Article, error) {
+	art, err := models.Articles(exec, Where("id = ?", id)).One()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error retreiving article by id", "id", fmt.Sprintf("%d", id))
 	}
 	return art, err
 }
 
-func findArticleBySlug(slug string) (*models.Article, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, serr.Wrap(err, "Error obtaining DB handle")
-	}
-	art, err := models.Articles(dbH, Where("slug = ?", slug)).One()
+func findArticleBySlug(exec db.Executor, slug string) (*models.Article, error) {
+	art, err := models.Articles(exec, Where("slug = ?", slug)).One()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving article by slug", "slug", slug)
 	}

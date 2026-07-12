@@ -3,6 +3,7 @@ package menu
 import (
 	"strings"
 
+	theDB "github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -30,13 +31,23 @@ type MenuItem struct {
 // For a given menu definition we get its itemDefinitions / presenters
 // And render recursively
 func RenderNav(slug string, loggedIn bool) string {
+	// RenderNav is invoked from the page template, which has no DB context, so
+	// this is the boundary where the handle is fetched. A nil executor is a
+	// legitimate state here (fresh install, DB down): menuDefFromSlug then
+	// falls back to the hardwired menu definitions so the site stays usable.
+	var exec theDB.Executor
+	if dbH, err := theDB.Db(); err != nil {
+		logger.LogErr(err, "Could not obtain DB handle for menu render; using hardwired menus", "slug", slug)
+	} else {
+		exec = dbH
+	}
 	b := element.NewBuilder()
-	b.Nav("id", slug).T(buildMenu(slug, loggedIn))
+	b.Nav("id", slug).T(buildMenu(exec, slug, loggedIn))
 	return b.String()
 }
 
-func buildMenu(slug string, loggedIn bool) string {
-	menuDef, err := menuDefFromSlug(slug)
+func buildMenu(exec theDB.Executor, slug string, loggedIn bool) string {
+	menuDef, err := menuDefFromSlug(exec, slug)
 	if err != nil {
 		ser := serr.Wrap(err, "Error obtaining menu def by slug")
 		logger.LogErr(ser, "Error building menu from slug", "slug", slug)
@@ -53,7 +64,7 @@ func buildMenu(slug string, loggedIn bool) string {
 
 			for _, item := range menuDef.Items {
 				if strings.TrimSpace(item.SubMenuSlug) != "" { // we have a submenu specified
-					submenuDef, err := menuDefFromSlug(item.SubMenuSlug)
+					submenuDef, err := menuDefFromSlug(exec, item.SubMenuSlug)
 					if err != nil {
 						logger.LogErr(err, "Could not obtain a menu def from slug", "slug",
 							item.SubMenuSlug)
@@ -65,12 +76,12 @@ func buildMenu(slug string, loggedIn bool) string {
 					if strings.ToLower(item.Label) == currentPage {
 						b.LiClass("menuitem-active").R(
 							b.A("href", "#").T(item.Label),
-							b.T(buildMenu(item.SubMenuSlug, loggedIn)),
+							b.T(buildMenu(exec, item.SubMenuSlug, loggedIn)),
 						)
 					} else {
 						b.Li().R(
 							b.A("href", "#").T(item.Label),
-							b.T(buildMenu(item.SubMenuSlug, loggedIn)),
+							b.T(buildMenu(exec, item.SubMenuSlug, loggedIn)),
 						)
 					}
 				} else {

@@ -4,9 +4,11 @@ import (
 	"strconv"
 
 	"github.com/rohanthewiz/church/core/html"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeRecentSermons = "sermons_recent"
@@ -35,7 +37,11 @@ func NewModuleRecentSermons(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleRecentSermons) GetData() ([]Presenter, error) {
-	return QuerySermons(m.Opts.Condition, "date_taught "+m.Order(), m.Opts.Limit, 0)
+	dbH, err := db.Db()
+	if err != nil {
+		return nil, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	return QuerySermons(dbH, m.Opts.Condition, "date_taught "+m.Order(), m.Opts.Limit, 0)
 }
 
 func (m *ModuleRecentSermons) Render(params map[string]map[string]string, loggedIn bool) string {

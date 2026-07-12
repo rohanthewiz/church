@@ -57,6 +57,14 @@ func Import() (byts []byte) {
 	}
 	defer rs.Close()
 
+	// Destination handle: imports read from the legacy DB (db2 above) but
+	// upsert into the main database.
+	mainDbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain a handle on the main database")
+		return fail
+	}
+
 	//var rows []importReceptor
 
 	for rs.Next() {
@@ -91,7 +99,7 @@ func Import() (byts []byte) {
 		pres.UpdatedBy = "Importer"
 		pres.Published = true
 		pres.CreateSlug()
-		if _, err = pres.Upsert(); err != nil {
+		if _, err = pres.Upsert(mainDbH); err != nil {
 			return []byte(`{"success": false}`)
 		}
 

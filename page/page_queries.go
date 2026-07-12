@@ -11,25 +11,25 @@ import (
 	. "github.com/vattle/sqlboiler/queries/qm"
 )
 
+// Query functions take the executor first (db.Executor — see db/executor.go);
+// boundaries (modules, controllers, the page presenters' entry points) fetch
+// db.Db() and pass it down.
+
 // Fixup Received data for Presenter
-func UpsertPage(pres Presenter) (pgUrl string, err error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return pgUrl, err
-	}
-	model, create, err := modelFromPresenter(pres)
+func UpsertPage(exec db.Executor, pres Presenter) (pgUrl string, err error) {
+	model, create, err := modelFromPresenter(exec, pres)
 	if err != nil {
 		return pgUrl, serr.Wrap(err, "Error in page model from presenter")
 	}
 	if create {
-		err = model.Insert(dbH)
+		err = model.Insert(exec)
 		if err != nil {
 			return pgUrl, serr.Wrap(err, "Error inserting new page into DB")
 		} else {
 			Log("Info", "Successfully inserted page into db")
 		}
 	} else {
-		err = model.Update(dbH)
+		err = model.Update(exec)
 		if err != nil {
 			return pgUrl, serr.Wrap(err, "Error updating page in DB")
 		} else {
@@ -40,14 +40,9 @@ func UpsertPage(pres Presenter) (pgUrl string, err error) {
 	return
 }
 
-func queryPages(condition, order string, limit int64, offset int64) ([]Presenter, error) {
-	// fmt.Println("condition:", condition, " order:", order, " limit:", limit, " offset:", offset)
+func queryPages(exec db.Executor, condition, order string, limit int64, offset int64) ([]Presenter, error) {
 	presenters := []Presenter{}
-	dbH, err := db.Db()
-	if err != nil {
-		return presenters, err
-	}
-	pages, err := models.Pages(dbH, Where(condition), OrderBy(order), Limit(int(limit)), Offset(int(offset))).All()
+	pages, err := models.Pages(exec, Where(condition), OrderBy(order), Limit(int(limit)), Offset(int(offset))).All()
 	if err != nil {
 		return presenters, serr.Wrap(err, "Error obtaining DB handle")
 	}
@@ -65,12 +60,8 @@ func queryPages(condition, order string, limit int64, offset int64) ([]Presenter
 	return presenters, err
 }
 
-func DeletePageById(id string) error {
+func DeletePageById(exec db.Executor, id string) error {
 	const when = "When deleting page by id"
-	dbH, err := db.Db()
-	if err != nil {
-		return err
-	}
 	if id == "" {
 		return serr.New("Id to delete is empty string", "when", when)
 	}
@@ -78,31 +69,23 @@ func DeletePageById(id string) error {
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Page id to integer", "Id", id, "when", when)
 	}
-	err = models.Pages(dbH, Where("id=?", intId)).DeleteAll()
+	err = models.Pages(exec, Where("id=?", intId)).DeleteAll()
 	if err != nil {
 		return serr.Wrap(err, "Error when deleting page by id", "id", id, "when", when)
 	}
 	return nil
 }
 
-func findPageById(id int64) (*models.Page, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, serr.Wrap(err, "Error obtaining DB handle")
-	}
-	pg, err := models.Pages(dbH, Where("id = ?", id)).One()
+func findPageById(exec db.Executor, id int64) (*models.Page, error) {
+	pg, err := models.Pages(exec, Where("id = ?", id)).One()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving page by id", "id", fmt.Sprintf("%d", id))
 	}
 	return pg, err
 }
 
-func findPageBySlug(slug string) (*models.Page, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, serr.Wrap(err, "Error obtaining DB handle")
-	}
-	pg, err := models.Pages(dbH, Where("slug = ?", slug)).One()
+func findPageBySlug(exec db.Executor, slug string) (*models.Page, error) {
+	pg, err := models.Pages(exec, Where("slug = ?", slug)).One()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving page by slug", "slug", slug)
 	}

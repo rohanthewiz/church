@@ -114,7 +114,7 @@ func WindowedEvents(from, to time.Time) ([]EventAPI, error) {
 			"cap", strconv.Itoa(baseEventsCap))
 	}
 
-	recs, err := allRecurrences()
+	recs, err := allRecurrences(dbH)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +231,7 @@ func APIEventRWeb(ctx rweb.Context) error {
 	}
 
 	dto := eventToAPI(evt, true)
-	if rec, found, err := GetRecurrence(evt.ID); err != nil {
+	if rec, found, err := GetRecurrence(dbH, evt.ID); err != nil {
 		logger.LogErr(err, "could not load recurrence for event detail", "id", ctx.Request().Param("id"))
 	} else if found {
 		dto.Recurring = true

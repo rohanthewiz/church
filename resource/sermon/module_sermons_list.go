@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
@@ -49,7 +50,11 @@ func NewModuleSermonsList(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleSermonsList) GetData() ([]Presenter, error) {
-	return QuerySermons(m.Opts.Condition, "date_taught "+m.Order(), m.Opts.Limit, m.Opts.Offset)
+	dbH, err := db.Db()
+	if err != nil {
+		return nil, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	return QuerySermons(dbH, m.Opts.Condition, "date_taught "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
 func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn bool) string {

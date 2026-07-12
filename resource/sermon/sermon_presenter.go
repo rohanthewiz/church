@@ -1,16 +1,18 @@
 package sermon
 
 import (
-	"github.com/rohanthewiz/church/resource/content"
-	"github.com/rohanthewiz/church/models"
-	"fmt"
-	"time"
-	"github.com/rohanthewiz/church/config"
-	"github.com/rohanthewiz/logger"
-	"strings"
-	"gopkg.in/nullbio/null.v6"
-	"github.com/rohanthewiz/serr"
 	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/resource/content"
+	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
+	"gopkg.in/nullbio/null.v6"
 )
 
 type Presenter struct {
@@ -23,8 +25,8 @@ type Presenter struct {
 	ScriptureRefs []string
 }
 
-func PresenterFromSlug(slug string) (pres Presenter, err error) {
-	model, err := findSermonBySlug(slug)
+func PresenterFromSlug(exec db.Executor, slug string) (pres Presenter, err error) {
+	model, err := findSermonBySlug(exec, slug)
 	if err != nil {
 		return pres, serr.Wrap(err, "Error finding sermon by slug")
 	}
@@ -35,8 +37,8 @@ func PresenterFromSlug(slug string) (pres Presenter, err error) {
 	return
 }
 
-func presenterFromId(id int64) (pres Presenter, err error) {
-	model, err := findSermonById(id)
+func presenterFromId(exec db.Executor, id int64) (pres Presenter, err error) {
+	model, err := findSermonById(exec, id)
 	if err != nil {
 		return pres, serr.Wrap(err, "Unable to obtain sermon", "when", "finding sermon by Id")
 	}
@@ -96,8 +98,8 @@ func presenterFromModel(ser *models.Sermon) (pres Presenter) {
 	return
 }
 
-func modelFromPresenter(ser Presenter) (sermod *models.Sermon, create_op bool, err error) {
-	sermod = findByIdOrCreate(ser.Id)
+func modelFromPresenter(exec db.Executor, ser Presenter) (sermod *models.Sermon, create_op bool, err error) {
+	sermod = findByIdOrCreate(exec, ser.Id)
 	if sermod.ID < 1 {
 		create_op = true
 	}

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
@@ -28,7 +29,12 @@ func (m ModuleSingleEvent) getData() (pres Presenter, err error) {
 	if len(m.Opts.ItemIds) < 1 {
 		return
 	}
-	evt, err := findEventById(m.Opts.ItemIds[0])
+	dbH, err := db.Db()
+	if err != nil {
+		LogErr(err, "Could not obtain DB handle")
+		return pres, err
+	}
+	evt, err := findEventById(dbH, m.Opts.ItemIds[0])
 	if err != nil {
 		LogErr(err, "Unable to obtain event", "event_id", fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 		return pres, err

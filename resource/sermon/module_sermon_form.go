@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
@@ -32,7 +33,11 @@ func NewModuleSermonForm(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleSermonForm) getData() (pres Presenter, err error) {
-	ser, err := findSermonById(m.Opts.ItemIds[0])
+	dbH, err := db.Db()
+	if err != nil {
+		return pres, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	ser, err := findSermonById(dbH, m.Opts.ItemIds[0])
 	if err != nil {
 		return pres, serr.Wrap(err, "Unable to obtain sermon", "id", fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 	}

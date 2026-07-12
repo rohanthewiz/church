@@ -42,6 +42,10 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	b.Style().T(grid.CSS)
 	b.Script("type", "text/javascript").T(grid.JS)
 
+	// Small-screen overrides for the three-column layout (see responsive_css.go).
+	// Emitted after the app.css link so it wins the cascade on every site.
+	b.Style().T(ResponsiveCSS)
+
 	b.T(`</head><body class="theme-` + config.Options.Theme + `">`)
 
 	// Banner

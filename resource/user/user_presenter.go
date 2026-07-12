@@ -1,14 +1,16 @@
 package user
 
 import (
-	"fmt"
-	"github.com/rohanthewiz/serr"
-	"github.com/rohanthewiz/church/models"
-	"github.com/rohanthewiz/church/config"
 	"errors"
-	"github.com/rohanthewiz/church/resource/auth"
-	"gopkg.in/nullbio/null.v6"
+	"fmt"
 	"time"
+
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/resource/auth"
+	"github.com/rohanthewiz/serr"
+	"gopkg.in/nullbio/null.v6"
 )
 
 type Presenter struct {
@@ -60,8 +62,8 @@ func presenterFromModel(usr *models.User) (pres Presenter) {
 	return
 }
 
-func modelFromPresenter(pres Presenter) (usrmod *models.User, createOp bool, err error) {
-	usrmod = findByIdOrCreate(pres.Id)
+func modelFromPresenter(exec db.Executor, pres Presenter) (usrmod *models.User, createOp bool, err error) {
+	usrmod = findByIdOrCreate(exec, pres.Id)
 	if usrmod.ID < 1 {
 		createOp = true
 	}
@@ -88,8 +90,8 @@ func modelFromPresenter(pres Presenter) (usrmod *models.User, createOp bool, err
 	return
 }
 
-func presenterFromUsername(username string) (pres Presenter, err error) {
-	model, err := findUserByUsername(username)
+func presenterFromUsername(exec db.Executor, username string) (pres Presenter, err error) {
+	model, err := findUserByUsername(exec, username)
 	if err != nil {
 		return pres, serr.Wrap(err, "Error finding user by username")
 	}

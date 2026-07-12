@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
@@ -26,15 +27,19 @@ func NewModuleArticleFull(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleArticleFull) getData() (pres Presenter, err error) {
+	dbH, err := db.Db()
+	if err != nil {
+		return pres, serr.Wrap(err, "Could not obtain DB handle")
+	}
 	// If the module instance has an item slug defined, it takes highest precedence
 	if m.Opts.ItemSlug != "" {
-		pres, err = presenterFromSlug(m.Opts.ItemSlug)
+		pres, err = presenterFromSlug(dbH, m.Opts.ItemSlug)
 	} else {
 		if len(m.Opts.ItemIds) < 1 {
 			return pres, serr.Wrap(errors.New("No item ids found"),
 				"module_options", fmt.Sprintf("%#v", m.Opts))
 		}
-		pres, err = presenterFromId(m.Opts.ItemIds[0]) // Todo presenterFromId for other resources
+		pres, err = presenterFromId(dbH, m.Opts.ItemIds[0]) // Todo presenterFromId for other resources
 	}
 	return
 }

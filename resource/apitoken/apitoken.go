@@ -65,20 +65,16 @@ func HashToken(plain string) string {
 // Issue creates a token for the user and returns the plaintext exactly once.
 // device is an optional client label ("Pixel 9") to help users recognize
 // sessions in any future "manage devices" UI.
-func Issue(userID int64, device string) (plain string, expiresAt time.Time, err error) {
+func Issue(exec db.Executor, userID int64, device string) (plain string, expiresAt time.Time, err error) {
 	buf := make([]byte, tokenBytes)
 	if _, err = rand.Read(buf); err != nil {
 		return "", expiresAt, serr.Wrap(err, "error generating api token")
 	}
 	plain = hex.EncodeToString(buf)
 
-	dbH, err := db.Db()
-	if err != nil {
-		return "", expiresAt, serr.Wrap(err)
-	}
 	now := time.Now()
 	expiresAt = now.Add(TokenTTL)
-	_, err = dbH.Exec(`
+	_, err = exec.Exec(`
 		INSERT INTO api_tokens (token_hash, user_id, device, created_at, expires_at)
 		VALUES ($1, $2, $3, $4, $5)`,
 		HashToken(plain), userID, device, now, expiresAt)
@@ -91,17 +87,12 @@ func Issue(userID int64, device string) (plain string, expiresAt time.Time, err 
 // LookupUser resolves a plaintext bearer token to its user. found=false (no
 // error) covers every auth-failure case identically — unknown token, expired
 // token, disabled user — so the guard's 401 leaks nothing about which it was.
-func LookupUser(plain string) (tu TokenUser, found bool, err error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return tu, false, serr.Wrap(err)
-	}
-
+func LookupUser(exec db.Executor, plain string) (tu TokenUser, found bool, err error) {
 	hash := HashToken(plain)
 	// Expiry and enabled checks live in the query so the answer is atomic
 	// with the read — no window where a just-disabled user still passes.
 	var lastName sql.NullString
-	row := dbH.QueryRow(`
+	row := exec.QueryRow(`
 		SELECT u.id, u.username, u.first_name, u.last_name, u.email_address, u.role
 		FROM api_tokens t
 		JOIN users u ON u.id = t.user_id
@@ -118,19 +109,15 @@ func LookupUser(plain string) (tu TokenUser, found bool, err error) {
 
 	// Touch last_used_at best-effort: it powers "which devices are active"
 	// diagnostics only, so a failed touch must not fail the request.
-	_, _ = dbH.Exec(`UPDATE api_tokens SET last_used_at = $1 WHERE token_hash = $2`,
+	_, _ = exec.Exec(`UPDATE api_tokens SET last_used_at = $1 WHERE token_hash = $2`,
 		time.Now(), hash)
 	return tu, true, nil
 }
 
 // RevokeByHash deletes one token (logout of this device). Idempotent: revoking
 // an already-gone token is success, not an error.
-func RevokeByHash(hash string) error {
-	dbH, err := db.Db()
-	if err != nil {
-		return serr.Wrap(err)
-	}
-	if _, err = dbH.Exec(`DELETE FROM api_tokens WHERE token_hash = $1`, hash); err != nil {
+func RevokeByHash(exec db.Executor, hash string) error {
+	if _, err := exec.Exec(`DELETE FROM api_tokens WHERE token_hash = $1`, hash); err != nil {
 		return serr.Wrap(err, "error revoking api token")
 	}
 	return nil
@@ -138,12 +125,8 @@ func RevokeByHash(hash string) error {
 
 // RevokeAllForUser deletes every token a user holds — "log out everywhere",
 // and the right call after a password change or account disable.
-func RevokeAllForUser(userID int64) error {
-	dbH, err := db.Db()
-	if err != nil {
-		return serr.Wrap(err)
-	}
-	if _, err = dbH.Exec(`DELETE FROM api_tokens WHERE user_id = $1`, userID); err != nil {
+func RevokeAllForUser(exec db.Executor, userID int64) error {
+	if _, err := exec.Exec(`DELETE FROM api_tokens WHERE user_id = $1`, userID); err != nil {
 		return serr.Wrap(err, "error revoking user api tokens")
 	}
 	return nil

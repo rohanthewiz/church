@@ -3,9 +3,11 @@ package article
 import (
 	"strconv"
 
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeRecentArticles = "articles_recent"
@@ -34,7 +36,11 @@ func NewModuleRecentArticles(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleRecentArticles) GetData() ([]Presenter, error) {
-	return QueryArticles(m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, 0)
+	dbH, err := db.Db()
+	if err != nil {
+		return nil, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	return QueryArticles(dbH, m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, 0)
 }
 
 func (m *ModuleRecentArticles) Render(params map[string]map[string]string, loggedIn bool) string {

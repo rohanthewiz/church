@@ -170,5 +170,27 @@ variants/resizing for mobile bandwidth (article/sermon images currently ship at 
    CSRF form token (grid delete links now submit a POST form via `data-csrf`);
    `InitDB2` returns its error.
 5. Responsive pass: media queries for the 3-column layout and grid, using the event form as
-   the pattern.
-6. Executor-injection refactor for queries, then auth/payment tests.
+   the pattern. — **DONE 2026-07-12**: framework-level `template.ResponsiveCSS`
+   (template/responsive_css.go, inlined after app.css so every site gets it without a
+   stylus rebuild) stacks #left-side/#main/#right-side inside the #mid scroller under
+   768px with main content first (flex order), and neutralizes the site CSS's
+   min-width:800px; grid/assets.go gained a 640px block (16px control fonts to stop
+   iOS focus-zoom, 44px touch targets, wrapping toolbar).
+6. Executor-injection refactor for queries, then auth/payment tests. — **DONE 2026-07-12**:
+   `db.Executor` interface (db/executor.go; method-set-identical to vattle's
+   boil.Executor so it passes to generated models without adapters). All query/presenter
+   functions in resource/{sermon,article,event,user,payment,apitoken,menu}, page, and
+   core/idrive's sermon cache now take the executor as first param; db.Db() is fetched
+   only at boundaries (handlers, module getData, background services, bootstrap).
+   New tests: web auth flow (login success/failure/oracle-free unknown user, session
+   cookie passes AdminGuard, anonymous + stale-cookie redirects) in auth_controller;
+   ChargePresenter.Upsert insert/update/validation + FindChargeIdByPaymentToken in
+   resource/payment (direct sqlmock injection — no global swap); webhook signature
+   gate (503 unconfigured / 400 forged / 200 ack with a real HMAC-signed payload) and
+   recordPaymentIntent idempotency in payment_controller.
+
+Also done 2026-07-12: `GET /api/v1/app-config` (mobile milestone (b) part 1) —
+resource/apiv1/appconfig.go returns church_name, theme, stripe_publishable_key,
+giving_contacts (never null), features {giving: both Stripe keys present,
+sermon_audio: idrive enabled}, server_version; DB-free by design; contract tests in
+resource/apiv1/appconfig_test.go. Remaining for milestone (b): JSON create-intent.

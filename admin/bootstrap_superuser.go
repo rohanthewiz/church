@@ -2,11 +2,11 @@ package admin
 
 import (
 	"errors"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/resource/auth"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/logger"
 	"gopkg.in/nullbio/null.v6"
-	"io/ioutil"
 	"os"
 )
 
@@ -15,22 +15,31 @@ var SuperToken string
 const tokenFile = "token.txt"
 
 func AuthBootstrap() {
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Error obtaining DB handle for auth bootstrap")
+		return
+	}
 	// If no superadmins exists then we are likely starting the app for the first time
-	exists, err := user.SuperAdminsExist()
+	exists, err := user.SuperAdminsExist(dbH)
 	if err != nil {
 		logger.LogErr(err, "Error querying for superadmin")
 	}
 	if !exists {
 		SuperToken = auth.RandomKey()
-		ioutil.WriteFile("token.txt", []byte(SuperToken), os.ModePerm)
+		os.WriteFile("token.txt", []byte(SuperToken), os.ModePerm)
 		logger.Log("info", "superadmin token created in <project root>/"+tokenFile)
 	}
 }
 
 func CreateSuperUser(username, password string) (err error) {
+	dbH, err := db.Db()
+	if err != nil {
+		return errors.New("Error obtaining DB handle for super user creation")
+	}
 	salt := auth.GenSalt("j$&@randomness!!$$$")
 	pass_hash := auth.PasswordHash(password, salt)
-	err = user.SaveUser(username, null.NewString(pass_hash, true), null.NewString(salt, true), user.Roles.SuperAdmin)
+	err = user.SaveUser(dbH, username, null.NewString(pass_hash, true), null.NewString(salt, true), user.Roles.SuperAdmin)
 	if err != nil {
 		return errors.New("Error saving super user")
 	}

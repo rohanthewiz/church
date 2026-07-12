@@ -17,6 +17,7 @@ import (
 	"github.com/rohanthewiz/church/page_controller"
 	"github.com/rohanthewiz/church/payment_controller"
 	"github.com/rohanthewiz/church/resource/apitoken"
+	"github.com/rohanthewiz/church/resource/apiv1"
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/calendar"
 	"github.com/rohanthewiz/church/resource/event"
@@ -115,6 +116,9 @@ func ServeRWeb() {
 	// Deliberately outside the session middleware: these endpoints are public
 	// reads; auth arrives in Phase 2 as a Bearer-token guard on a sub-group.
 	api := s.Group("/api/v1")
+	// Boot-time site config for the app (church name, Stripe publishable key,
+	// feature flags). Public: fetched before any login.
+	api.Get("/app-config", apiv1.APIAppConfigRWeb)
 	api.Get("/sermons", sermon.APISermonsRWeb)
 	api.Get("/sermons/:id", sermon.APISermonRWeb)
 	api.Get("/articles", article.APIArticlesRWeb)

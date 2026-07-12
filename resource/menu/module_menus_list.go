@@ -2,6 +2,7 @@ package menu
 
 import (
 	"github.com/rohanthewiz/church/app"
+	theDB "github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
@@ -46,7 +47,11 @@ func NewModuleMenusList(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleMenusList) GetData() ([]MenuDef, error) {
-	return queryMenus(m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, m.Opts.Offset)
+	dbH, err := theDB.Db()
+	if err != nil {
+		return nil, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	return queryMenus(dbH, m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
 func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn bool) string {

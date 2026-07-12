@@ -12,36 +12,32 @@ import (
 	"gopkg.in/nullbio/null.v6"
 )
 
-func AllUsers() (models.UserSlice, error) {
-	db, err := db.Db()
-	if err != nil {
-		return models.UserSlice{}, err
-	}
-	return models.Users(db).All()
+// Query functions take the executor as their first parameter (db.Executor —
+// see db/executor.go) rather than reaching for the db.Db() global themselves.
+// Callers at request/bootstrap boundaries fetch the handle once and pass it
+// down, which is what lets these run against a transaction or a sqlmock.
+
+func AllUsers(exec db.Executor) (models.UserSlice, error) {
+	return models.Users(exec).All()
 }
 
-func SaveUser(username string, phash, salt null.String, role int) error {
-	var err error
+func SaveUser(exec db.Executor, username string, phash, salt null.String, role int) error {
 	u := &models.User{
-		Username: username,
+		Username:          username,
 		EncryptedPassword: phash,
-		EncryptedSalt: salt,
-		Role: role,
-		Enabled: true,
-		EmailAddress: "superadmin@thisSite.com",
-		FirstName: "Super",
+		EncryptedSalt:     salt,
+		Role:              role,
+		Enabled:           true,
+		EmailAddress:      "superadmin@thisSite.com",
+		FirstName:         "Super",
 	}
-	db, err := db.Db()
-	if err != nil {
-		return err
-	}
-	err = u.Insert(db)
+	err := u.Insert(exec)
 	if err != nil {
 		LogErr(err, "Failed to insert user into db")
 		return err
 	}
 	Log("Info", "User Added", "Username", username, "Password hash", phash.String, "Salt", salt.String)
-	return err
+	return nil
 }
 
 // AuthUser is the identity + credential view needed by the API login flow
@@ -64,12 +60,8 @@ type AuthUser struct {
 // login verification. found=false (no error) when the username doesn't exist
 // or the account is disabled — callers answer both identically so responses
 // don't become a username oracle.
-func AuthUserByUsername(username string) (au AuthUser, found bool, err error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return au, false, serr.Wrap(err, "Error obtaining DB handle")
-	}
-	usr, err := models.Users(dbH, Where("username = ? and enabled = ?", username, true)).One()
+func AuthUserByUsername(exec db.Executor, username string) (au AuthUser, found bool, err error) {
+	usr, err := models.Users(exec, Where("username = ? and enabled = ?", username, true)).One()
 	if err != nil {
 		// SQLBoiler v2 wraps the sentinel, so unwrap by message. "No such
 		// user" is a normal outcome; anything else is a real infra error.
@@ -91,18 +83,14 @@ func AuthUserByUsername(username string) (au AuthUser, found bool, err error) {
 }
 
 // Return user's stored credentials
-func UserCreds(username string) (string, string, error) {
-	db, err := db.Db()
-	if err != nil {
-		return "", "", err
-	}
-	user, err := models.Users(db,
+func UserCreds(exec db.Executor, username string) (string, string, error) {
+	user, err := models.Users(exec,
 		Select("encrypted_password", "encrypted_salt"),
-	Where("username = ? and enabled = ?", username, true)).One()
+		Where("username = ? and enabled = ?", username, true)).One()
 	if err != nil {
 		return "", "", err
 	}
-	return user.EncryptedPassword.String, user.EncryptedSalt.String, err
+	return user.EncryptedPassword.String, user.EncryptedSalt.String, nil
 }
 
 func FullName(usr *models.User) string {
@@ -113,11 +101,6 @@ func FullName(usr *models.User) string {
 	return out
 }
 
-func SuperAdminsExist() (bool, error) {
-	db, err := db.Db()
-	if err != nil {
-		Log("Error", "Error obtaining db handle", "when", "opening db")
-		return false, err
-	}
-	return models.Users(db, Where("role = ?", Roles.SuperAdmin)).Exists()
+func SuperAdminsExist(exec db.Executor) (bool, error) {
+	return models.Users(exec, Where("role = ?", Roles.SuperAdmin)).Exists()
 }

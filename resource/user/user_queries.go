@@ -2,26 +2,23 @@ package user
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 	. "github.com/vattle/sqlboiler/queries/qm"
-	"strconv"
 )
 
-func (p Presenter) UpsertUser() error {
-	db, err := db.Db()
-	if err != nil {
-		return err
-	}
-	usr, create, err := modelFromPresenter(p)
+func (p Presenter) UpsertUser(exec db.Executor) error {
+	usr, create, err := modelFromPresenter(exec, p)
 	if err != nil {
 		LogErr(err, "Error in user from presenter")
 		return err
 	}
 	if create {
-		err = usr.Insert(db)
+		err = usr.Insert(exec)
 		if err != nil {
 			LogErr(err, "Error inserting user into DB")
 			return err
@@ -29,7 +26,7 @@ func (p Presenter) UpsertUser() error {
 			LogAsync("Info", "Successfully created user")
 		}
 	} else {
-		err = usr.Update(db)
+		err = usr.Update(exec)
 		if err != nil {
 			LogErr(err, "Error updating user in DB")
 		} else {
@@ -40,14 +37,14 @@ func (p Presenter) UpsertUser() error {
 }
 
 // Returns a user model for id `id` or a new user model
-func findByIdOrCreate(id string) (model *models.User) {
+func findByIdOrCreate(exec db.Executor, id string) (model *models.User) {
 	if id != "" {
 		intId, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
 			LogErr(err, "Unable to convert User id to integer", "Id", id)
 			return new(models.User)
 		}
-		model, err = findUserById(intId)
+		model, err = findUserById(exec, intId)
 		if err != nil {
 			return new(models.User)
 		}
@@ -58,12 +55,8 @@ func findByIdOrCreate(id string) (model *models.User) {
 	return
 }
 
-func DeleteUserById(id string) error {
+func DeleteUserById(exec db.Executor, id string) error {
 	const when = "When deleting user by id"
-	dbH, err := db.Db()
-	if err != nil {
-		return err
-	}
 	if id == "" {
 		return serr.NewSErr("Id to delete is empty string", "when", when)
 	}
@@ -71,7 +64,7 @@ func DeleteUserById(id string) error {
 	if err != nil {
 		return serr.Wrap(err, "unable to convert User id to integer", "Id", id, "when", when)
 	}
-	err = models.Users(dbH, Where("id=?", intId)).DeleteAll()
+	err = models.Users(exec, Where("id=?", intId)).DeleteAll()
 	if err != nil {
 		return serr.Wrap(err, "Error when deleting user by id", "id", id, "when", when)
 	}
@@ -79,12 +72,8 @@ func DeleteUserById(id string) error {
 }
 
 // Returns a user model for id `id` or error
-func findUserById(id int64) (*models.User, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, err
-	}
-	usr, err := models.Users(dbH, Where("id = ?", id)).One()
+func findUserById(exec db.Executor, id int64) (*models.User, error) {
+	usr, err := models.Users(exec, Where("id = ?", id)).One()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving user by id", "id", fmt.Sprintf("%d", id))
 	}
@@ -92,26 +81,16 @@ func findUserById(id int64) (*models.User, error) {
 }
 
 // Returns a user model username or error
-func findUserByUsername(username string) (*models.User, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, serr.Wrap(err, "Error obtaining DB handle")
-	}
-	usr, err := models.Users(dbH, Where("user = ?", username)).One()
+func findUserByUsername(exec db.Executor, username string) (*models.User, error) {
+	usr, err := models.Users(exec, Where("user = ?", username)).One()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving user by username", "username", username)
 	}
 	return usr, err
 }
 
-func QueryUsers(condition, order string, limit, offset int64) (presenters []Presenter, err error) {
-	// Log("Debug", "User query", "condition:", condition, " order:", order,
-	//	" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
-	dbH, err := db.Db()
-	if err != nil {
-		return
-	}
-	users, err := models.Users(dbH, Where(condition), OrderBy(order), Limit(int(limit)),
+func QueryUsers(exec db.Executor, condition, order string, limit, offset int64) (presenters []Presenter, err error) {
+	users, err := models.Users(exec, Where(condition), OrderBy(order), Limit(int(limit)),
 		Offset(int(offset))).All()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error querying users")

@@ -1,13 +1,15 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/models"
-	"github.com/rohanthewiz/serr"
 	"strconv"
-	. "github.com/rohanthewiz/logger"
 	"strings"
+
+	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/util/stringops"
+	. "github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 // Store Page definition
@@ -33,12 +35,12 @@ func (p * Presenter) CreateSlug() {
 
 
 // Given an id, get the model and build a presenter from the model
-func PresenterById(paramId string) (presenter Presenter, err error) {
+func PresenterById(exec db.Executor, paramId string) (presenter Presenter, err error) {
 	id, err := strconv.ParseInt(strings.TrimSpace(paramId), 10, 64)
 	if err != nil {
 		return presenter, serr.Wrap(err, "Could not convert paramId to int", "when", "building page Presenter")
 	}
-	model, err := findPageById(id)
+	model, err := findPageById(exec, id)
 	if err != nil {
 		return presenter, serr.Wrap(err, "Unable to obtain sermon", "id", paramId)
 	}
@@ -46,14 +48,14 @@ func PresenterById(paramId string) (presenter Presenter, err error) {
 }
 
 // Returns a model for id `id` or a new model
-func findPageByIdOrCreate(id string) (pg *models.Page) {
+func findPageByIdOrCreate(exec db.Executor, id string) (pg *models.Page) {
 	if id != "" {
 		intId, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
 			LogErr(err, "Unable to convert Page id to integer", "Id", id)
 			return new(models.Page)
 		}
-		pg, err = findPageById(intId)
+		pg, err = findPageById(exec, intId)
 		if err != nil {
 			return new(models.Page)
 		}

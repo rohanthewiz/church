@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
@@ -31,7 +32,11 @@ func NewModuleArticleForm(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleArticleForm) getData() (artPres Presenter, err error) {
-	art, err := findArticleById(m.Opts.ItemIds[0]) // len check safety on caller
+	dbH, err := db.Db()
+	if err != nil {
+		return artPres, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	art, err := findArticleById(dbH, m.Opts.ItemIds[0]) // len check safety on caller
 	if err != nil {
 		return artPres, serr.Wrap(err, "Unable to obtain article")
 	}

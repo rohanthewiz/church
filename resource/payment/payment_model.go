@@ -37,19 +37,15 @@ type ChargePresenter struct {
 	UpdatedAt     string
 }
 
-func (p ChargePresenter) Upsert() (updateOp bool, err error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return updateOp, err
-	}
-	chg, create, err := modelFromPresenter(p)
+func (p ChargePresenter) Upsert(exec db.Executor) (updateOp bool, err error) {
+	chg, create, err := modelFromPresenter(exec, p)
 	if err != nil {
 		logger.LogErr(err, "Error in charge from presenter")
 		return updateOp, err
 	}
 	logger.Debug("In Upsert: charge model (from presenter)", "charge", fmt.Sprintf("%#v", chg))
 	if create {
-		err = chg.Insert(dbH)
+		err = chg.Insert(exec)
 		if err != nil {
 			logger.LogErr(err, "Error inserting charge into DB")
 			return updateOp, err
@@ -58,7 +54,7 @@ func (p ChargePresenter) Upsert() (updateOp bool, err error) {
 		}
 	} else {
 		updateOp = true
-		err = chg.Update(dbH)
+		err = chg.Update(exec)
 		if err != nil {
 			logger.LogErr(err, "Error updating charge in DB")
 		} else {
@@ -73,16 +69,12 @@ func (p ChargePresenter) Upsert() (updateOp bool, err error) {
 // PaymentIntent id). This gives us idempotency: the receipt page can be reloaded, or a
 // webhook can arrive after the redirect, without inserting duplicate charge rows --
 // the caller feeds the found id back into ChargePresenter.Id so Upsert takes the update path.
-func FindChargeIdByPaymentToken(token string) (id int64, found bool, err error) {
+func FindChargeIdByPaymentToken(exec db.Executor, token string) (id int64, found bool, err error) {
 	token = strings.TrimSpace(token)
 	if token == "" {
 		return 0, false, nil
 	}
-	dbH, err := db.Db()
-	if err != nil {
-		return 0, false, err
-	}
-	chg, err := models.Charges(dbH, qm.Where("payment_token = ?", token)).One()
+	chg, err := models.Charges(exec, qm.Where("payment_token = ?", token)).One()
 	if err != nil {
 		// sql.ErrNoRows is the expected miss case - not an error for our purposes
 		if err == sql.ErrNoRows {
@@ -94,12 +86,8 @@ func FindChargeIdByPaymentToken(token string) (id int64, found bool, err error) 
 }
 
 // Returns a charge model for id `id` or error
-func findChargeById(id int64) (*models.Charge, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, err
-	}
-	ser, err := models.Charges(dbH, qm.Where("id = ?", id)).One()
+func findChargeById(exec db.Executor, id int64) (*models.Charge, error) {
+	ser, err := models.Charges(exec, qm.Where("id = ?", id)).One()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving charge by id", "id", fmt.Sprintf("%d", id))
 	}
@@ -107,14 +95,14 @@ func findChargeById(id int64) (*models.Charge, error) {
 }
 
 // Returns a charge model for id `id` or a new charge model
-func findByIdOrCreate(id string) (model *models.Charge) {
+func findByIdOrCreate(exec db.Executor, id string) (model *models.Charge) {
 	if id != "" {
 		intId, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
 			logger.LogErr(err, "Unable to convert Charge id to integer", "Id", id)
 			return new(models.Charge)
 		}
-		model, err = findChargeById(intId)
+		model, err = findChargeById(exec, intId)
 		if err != nil {
 			return new(models.Charge)
 		}
@@ -125,8 +113,8 @@ func findByIdOrCreate(id string) (model *models.Charge) {
 	return
 }
 
-func modelFromPresenter(cp ChargePresenter) (chgMod *models.Charge, create_op bool, err error) {
-	chgMod = findByIdOrCreate(cp.Id)
+func modelFromPresenter(exec db.Executor, cp ChargePresenter) (chgMod *models.Charge, create_op bool, err error) {
+	chgMod = findByIdOrCreate(exec, cp.Id)
 	if chgMod.ID < 1 {
 		create_op = true
 	}

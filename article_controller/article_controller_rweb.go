@@ -8,6 +8,7 @@ import (
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
 	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/article"
@@ -103,7 +104,12 @@ func UpsertArticleRWeb(ctx rweb.Context) error {
 		artPres.Published = true
 	}
 
-	err = artPres.UpsertArticle()
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return err
+	}
+	err = artPres.UpsertArticle(dbH)
 	if err != nil {
 		return err
 	}
@@ -126,7 +132,12 @@ func DeleteArticleRWeb(ctx rweb.Context) error {
 	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/articles"); !ok {
 		return err
 	}
-	err := article.DeleteArticleById(ctx.Request().PathParam("id"))
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return app.RedirectRWeb(ctx, "/admin/articles", "Error deleting article")
+	}
+	err = article.DeleteArticleById(dbH, ctx.Request().PathParam("id"))
 	msg := "Article with id: " + ctx.Request().PathParam("id") + " deleted"
 	if err != nil {
 		msg = "Error attempting to delete article with id: " + ctx.Request().PathParam("id")

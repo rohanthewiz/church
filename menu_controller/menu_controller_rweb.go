@@ -9,6 +9,7 @@ import (
 
 	"github.com/rohanthewiz/church/app"
 	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/menu"
@@ -116,7 +117,12 @@ func UpsertMenuRWeb(ctx rweb.Context) error {
 
 	fmt.Printf("*|* menu: %#v\n", mnu)
 
-	err = menu.UpsertMenu(mnu)
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return serr.Wrap(err)
+	}
+	err = menu.UpsertMenu(dbH, mnu)
 	if err != nil {
 		logger.LogErr(serr.Wrap(err, "Error in event upsert"))
 		return serr.Wrap(err)
@@ -134,7 +140,12 @@ func DeleteMenuRWeb(ctx rweb.Context) error {
 	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/menus"); !ok {
 		return err
 	}
-	err := menu.DeleteMenuById(ctx.Request().PathParam("id"))
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return app.RedirectRWeb(ctx, "/admin/menus", "Error deleting menu")
+	}
+	err = menu.DeleteMenuById(dbH, ctx.Request().PathParam("id"))
 	msg := "Menu with id: " + ctx.Request().PathParam("id") + " deleted"
 	if err != nil {
 		msg = "Error attempting to delete menu with id: " + ctx.Request().PathParam("id")

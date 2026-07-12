@@ -12,13 +12,12 @@ import (
 	. "github.com/vattle/sqlboiler/queries/qm"
 )
 
-func UpComingEvents() ([]Presenter, error) {
+// Query functions take the executor first (db.Executor — see db/executor.go);
+// boundaries (modules, controllers) fetch db.Db() and pass it down.
+
+func UpComingEvents(exec db.Executor) ([]Presenter, error) {
 	efs := []Presenter{}
-	db, err := db.Db()
-	if err != nil {
-		return efs, err
-	}
-	events, err := models.Events(db, OrderBy("event_date DESC"), Limit(8)).All()
+	events, err := models.Events(exec, OrderBy("event_date DESC"), Limit(8)).All()
 	if err != nil {
 		Log("Error", "Error obtaining upcoming events", "err", err.Error())
 		return efs, err
@@ -30,15 +29,10 @@ func UpComingEvents() ([]Presenter, error) {
 }
 
 // Condition is the condition expression without leading/trailing WHERE and AND
-func QueryEvents(condition, order string, limit int64, offset int64) ([]Presenter, error) {
-	// fmt.Println("condition:", condition, " order:", order, " limit:", limit, " offset:", offset)
+func QueryEvents(exec db.Executor, condition, order string, limit int64, offset int64) ([]Presenter, error) {
 	var pres []Presenter
 
-	db, err := db.Db()
-	if err != nil {
-		return pres, err
-	}
-	events, err := models.Events(db, Where(condition), OrderBy(order), Limit(int(limit)), Offset(int(offset))).All()
+	events, err := models.Events(exec, Where(condition), OrderBy(order), Limit(int(limit)), Offset(int(offset))).All()
 	if err != nil {
 		LogErr(serr.Wrap(err, "Error obtaining events"))
 		return pres, err
@@ -50,25 +44,21 @@ func QueryEvents(condition, order string, limit int64, offset int64) ([]Presente
 }
 
 // Given a Presenter, update or insert
-func (p Presenter) UpsertEvent() error {
-	db, err := db.Db()
-	if err != nil {
-		return err
-	}
-	evt, create, err := modelFromPresenter(p)
+func (p Presenter) UpsertEvent(exec db.Executor) error {
+	evt, create, err := modelFromPresenter(exec, p)
 	if err != nil {
 		return serr.Wrap(err)
 	}
 	if create {
 		evt.Slug = stringops.SlugWithRandomString(evt.Title) // create the unique id for the module
-		err = evt.Insert(db)
+		err = evt.Insert(exec)
 		if err != nil {
 			return serr.Wrap(err, "Error inserting event into DB")
 		} else {
 			Log("Info", "Successfully created event")
 		}
 	} else {
-		err = evt.Update(db)
+		err = evt.Update(exec)
 		if err != nil {
 			return serr.Wrap(err, "Error updating event in DB")
 		} else {
@@ -79,7 +69,7 @@ func (p Presenter) UpsertEvent() error {
 	// Sync the recurrence rule after the event row exists (Insert populates
 	// evt.ID via RETURNING). A failure here is reported, not swallowed — an
 	// admin who set "every Sunday" must know if the rule didn't stick.
-	if err = p.upsertRecurrenceRule(evt.ID); err != nil {
+	if err = p.upsertRecurrenceRule(exec, evt.ID); err != nil {
 		return serr.Wrap(err, "Event saved but its recurrence rule failed to save")
 	}
 	return nil
@@ -88,9 +78,9 @@ func (p Presenter) UpsertEvent() error {
 // upsertRecurrenceRule translates the presenter's form-string recurrence
 // fields into a validated rule row, or removes the rule when frequency is
 // back to "None".
-func (p Presenter) upsertRecurrenceRule(eventID int64) error {
+func (p Presenter) upsertRecurrenceRule(exec db.Executor, eventID int64) error {
 	if p.RecurFreq == RecurNone {
-		return DeleteRecurrence(eventID)
+		return DeleteRecurrence(exec, eventID)
 	}
 
 	weekday, err := strconv.Atoi(p.RecurWeekday)
@@ -113,15 +103,11 @@ func (p Presenter) upsertRecurrenceRule(eventID int64) error {
 			return serr.Wrap(err, "recurrence until must be YYYY-MM-DD", "until", p.RecurUntil)
 		}
 	}
-	return UpsertRecurrence(rec) // validates the assembled rule
+	return UpsertRecurrence(exec, rec) // validates the assembled rule
 }
 
-func DeleteEventById(id string) error {
+func DeleteEventById(exec db.Executor, id string) error {
 	const when = "When deleting event by id"
-	dbH, err := db.Db()
-	if err != nil {
-		return err
-	}
 	if id == "" {
 		return serr.New("Id to delete is empty string", "when", when)
 	}
@@ -129,20 +115,15 @@ func DeleteEventById(id string) error {
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Event id to integer", "Id", id, "when", when)
 	}
-	err = models.Events(dbH, Where("id=?", intId)).DeleteAll()
+	err = models.Events(exec, Where("id=?", intId)).DeleteAll()
 	if err != nil {
 		return serr.Wrap(err, "Error when deleting event by id", "id", id, "when", when)
 	}
 	return nil
 }
 
-func findEventById(id int64) (*models.Event, error) {
-	db, err := db.Db()
-	if err != nil {
-		Log("Error", "Error in EventById()", "error", err.Error())
-		return nil, err
-	}
-	evt, err := models.Events(db, Where("id = ?", id)).One()
+func findEventById(exec db.Executor, id int64) (*models.Event, error) {
+	evt, err := models.Events(exec, Where("id = ?", id)).One()
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +131,7 @@ func findEventById(id int64) (*models.Event, error) {
 }
 
 // Returns the models.Presenter with id `id` or a new models.Presenter
-func findModelByIdOrCreate(id string) *models.Event {
+func findModelByIdOrCreate(exec db.Executor, id string) *models.Event {
 	var evt *models.Event
 	if id != "" {
 		intId, err := strconv.ParseInt(id, 10, 64)
@@ -158,7 +139,7 @@ func findModelByIdOrCreate(id string) *models.Event {
 			Log("Error", "Unable to convert Presenter id to integer", "Id", id, "error", err.Error())
 			return new(models.Event)
 		}
-		evt, err = findEventById(intId)
+		evt, err = findEventById(exec, intId)
 		if err != nil {
 			return new(models.Event)
 		}

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
@@ -36,14 +37,18 @@ func NewModuleEventForm(pres module.Presenter) (module.Module, error) {
 
 // Since this is only called from Render(), so safeties are in the caller (Render())
 func (m ModuleEventForm) getData() (pres Presenter, err error) {
-	evt, err := findEventById(m.Opts.ItemIds[0])
+	dbH, err := db.Db()
+	if err != nil {
+		return pres, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	evt, err := findEventById(dbH, m.Opts.ItemIds[0])
 	if err != nil {
 		return pres, serr.Wrap(err, "Unable to obtain event with id: "+fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 	}
 	pres = presenterFromModel(evt)
 	// Recurrence lives in its own table; load it only here (single-event edit)
 	// rather than in presenterFromModel, which list views call per row
-	if err = pres.LoadRecurrence(evt.ID); err != nil {
+	if err = pres.LoadRecurrence(dbH, evt.ID); err != nil {
 		logger.LogErr(err, "Unable to load recurrence rule for event form", "event_id", pres.Id)
 	}
 	return pres, nil

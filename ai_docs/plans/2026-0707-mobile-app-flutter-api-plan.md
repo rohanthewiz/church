@@ -60,6 +60,12 @@ Everything renders HTML except:
   `auth_controller_rweb.go`).
 - Rate-limit / brute-force protection on login (mobile exposes it more).
 - `GET /api/v1/app-config` — church name, Stripe publishable key, feature flags.
+  — **IMPLEMENTED 2026-07-12** (`resource/apiv1/appconfig.go`): bare-object JSON
+  `{church_name, theme, stripe_publishable_key, giving_contacts ([] never null),
+  features: {giving, sermon_audio}, server_version}`. Public/unauthenticated,
+  reads only config.Options (works even with the DB down). `features.giving` is
+  true only when BOTH Stripe keys are configured. Contract tests in
+  `resource/apiv1/appconfig_test.go`.
 - JSON variant of create-intent + `GET /api/v1/payments/history` (charges table).
 
 ### Phase 3 — chat + push

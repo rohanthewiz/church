@@ -45,11 +45,11 @@ func main() {
 	monthlyID := seed("Men's Breakfast (last Sunday)", "smoke-monthly", "2026-07-26")
 	seed("Church Picnic", "smoke-onetime", "2026-08-15")
 
-	must(event.UpsertRecurrence(event.Recurrence{
+	must(event.UpsertRecurrence(dbH, event.Recurrence{
 		EventID: weeklyID, Freq: event.RecurWeekly, Weekday: time.Sunday,
 		Until: time.Date(2026, 9, 30, 0, 0, 0, 0, time.UTC), // series ends Sep 30
 	}))
-	must(event.UpsertRecurrence(event.Recurrence{
+	must(event.UpsertRecurrence(dbH, event.Recurrence{
 		EventID: monthlyID, Freq: event.RecurMonthly, Weekday: time.Sunday, Week: event.RecurWeekLast,
 	}))
 

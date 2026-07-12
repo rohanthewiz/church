@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/resource/payment"
 	gmail "github.com/rohanthewiz/gmail_send"
 	"github.com/rohanthewiz/logger"
@@ -111,9 +112,15 @@ func recordPaymentIntent(pi *stripe.PaymentIntent) (receiptURL string, err error
 		}
 	}
 
+	dbH, err := db.Db()
+	if err != nil {
+		return receiptURL, serr.Wrap(err, "Could not obtain DB handle to record charge",
+			"payment_intent", pi.ID)
+	}
+
 	// Idempotency gate: if we already recorded this intent, route to the update path
 	// and remember that we must not re-send the receipt email.
-	existingId, alreadyRecorded, err := payment.FindChargeIdByPaymentToken(pi.ID)
+	existingId, alreadyRecorded, err := payment.FindChargeIdByPaymentToken(dbH, pi.ID)
 	if err != nil {
 		// A lookup failure shouldn't abort recording -- worst case we insert a
 		// duplicate row, which is preferable to losing the record of a real charge.
@@ -124,7 +131,7 @@ func recordPaymentIntent(pi *stripe.PaymentIntent) (receiptURL string, err error
 		pres.Id = fmt.Sprintf("%d", existingId)
 	}
 
-	_, err = pres.Upsert()
+	_, err = pres.Upsert(dbH)
 	if err != nil {
 		return receiptURL, serr.Wrap(err, "Error saving charge record",
 			"payment_intent", pi.ID, "customer_name", pres.CustomerName)

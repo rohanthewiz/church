@@ -3,9 +3,11 @@ package article
 import (
 	"fmt"
 
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeArticlesBlog = "articles_blog"
@@ -35,11 +37,15 @@ func NewModuleArticlesBlog(pres module.Presenter) (module.Module, error) {
 
 // Opts.ItemIds take precedence over other parameters
 func (m ModuleArticlesBlog) getData() ([]Presenter, error) {
+	dbH, err := db.Db()
+	if err != nil {
+		return nil, serr.Wrap(err, "Could not obtain DB handle")
+	}
 	if len(m.Opts.ItemIds) > 0 {
 		//fmt.Println("*|* About to run PresentersFromIds", "m.Opts.ItemIds", m.Opts.ItemIds)
-		return PresentersFromIds(m.Opts.ItemIds)
+		return PresentersFromIds(dbH, m.Opts.ItemIds)
 	}
-	return QueryArticles(m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, m.Opts.Offset)
+	return QueryArticles(dbH, m.Opts.Condition, "updated_at "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
 func (m *ModuleArticlesBlog) Render(params map[string]map[string]string, loggedIn bool) string {

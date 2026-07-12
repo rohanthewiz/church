@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/rohanthewiz/church/config"
+	theDB "github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 	"gopkg.in/nullbio/null.v6"
-	"strings"
 )
 
 // This is a interim struct that sits closer to the database
@@ -41,8 +43,17 @@ func (m *MenuDef) CreateSlug() {
 	m.Slug = stringops.SlugWithRandomString(m.Title)
 }
 
-func menuDefFromSlug(slug string) (pres MenuDef, err error) {
-	model, err := findModelBySlug(slug)
+// menuDefFromSlug loads a menu definition. exec may be nil (no DB available —
+// fresh install or DB outage); the hardwired defaults then keep the site
+// navigable, same as when the slug simply isn't in the DB yet.
+func menuDefFromSlug(exec theDB.Executor, slug string) (pres MenuDef, err error) {
+	if exec == nil {
+		if def, ok := hardwiredMenuDef(slug); ok {
+			return def, nil
+		}
+		return pres, serr.New("No DB handle and no hardwired menu for slug", "slug", slug)
+	}
+	model, err := findModelBySlug(exec, slug)
 	if err != nil {
 		// Fall back to hardwired menu definitions so the site is usable
 		// before any menus have been created in the database.
@@ -131,8 +142,8 @@ func menuDefFromModel(model *models.MenuDef) (pres MenuDef, err error) {
 	return
 }
 
-func modelFromMenuDef(pres MenuDef) (model *models.MenuDef, create_op bool, err error) {
-	model = findModelByIdOrCreate(pres.Id)
+func modelFromMenuDef(exec theDB.Executor, pres MenuDef) (model *models.MenuDef, create_op bool, err error) {
+	model = findModelByIdOrCreate(exec, pres.Id)
 	if model.ID < 1 {
 		create_op = true
 	}

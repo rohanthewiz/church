@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/auth"
@@ -36,7 +37,12 @@ func AuthHandlerRWeb(ctx rweb.Context) error {
 	if len(username) < 1 || len(password) < 1 {
 		return app.RedirectRWeb(ctx, "/login", "Username and Password required for login")
 	}
-	stored_pass_hash, stored_salt, err := user.UserCreds(username) // creds from DB
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle for login")
+		return app.RedirectRWeb(ctx, "/login", "Something went wrong. Please try again.")
+	}
+	stored_pass_hash, stored_salt, err := user.UserCreds(dbH, username) // creds from DB
 	if err != nil {
 		logger.LogErr(err, "Error obtaining user creds from DB", "username", username)
 		return app.RedirectRWeb(ctx, "/login", "Invalid username and/or password")

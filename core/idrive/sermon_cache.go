@@ -19,8 +19,6 @@ package idrive
 //     we keep the local copy. The local file may be the only surviving copy.
 
 import (
-	"context"
-	"database/sql"
 	"os"
 	"strconv"
 	"time"
@@ -202,14 +200,14 @@ func runCacheCleanupPass() {
 }
 
 // selectIdleCachedSermons returns cached sermons not accessed since the cutoff.
-func selectIdleCachedSermons(dbh *sql.DB, cutoff time.Time) (sermons []cachedSermon, err error) {
+func selectIdleCachedSermons(exec db.Executor, cutoff time.Time) (sermons []cachedSermon, err error) {
 	const q = `
 		SELECT id, rel_file_spec, local_file_spec
 		FROM sermon_cache_access
 		WHERE last_accessed_at < $1
 		ORDER BY last_accessed_at ASC`
 
-	rows, err := dbh.QueryContext(context.TODO(), q, cutoff)
+	rows, err := exec.Query(q, cutoff)
 	if err != nil {
 		return nil, serr.Wrap(err)
 	}
@@ -229,8 +227,8 @@ func selectIdleCachedSermons(dbh *sql.DB, cutoff time.Time) (sermons []cachedSer
 }
 
 // deleteCachedSermonRow removes a single tracking row by primary key.
-func deleteCachedSermonRow(dbh *sql.DB, id int64) error {
-	_, err := dbh.Exec(`DELETE FROM sermon_cache_access WHERE id = $1`, id)
+func deleteCachedSermonRow(exec db.Executor, id int64) error {
+	_, err := exec.Exec(`DELETE FROM sermon_cache_access WHERE id = $1`, id)
 	if err != nil {
 		return serr.Wrap(err)
 	}
@@ -240,12 +238,8 @@ func deleteCachedSermonRow(dbh *sql.DB, id int64) error {
 // DeleteCacheRowByRelSpec removes the tracking row for a single cached object by
 // its rel_file_spec (IDrive key). Used when a local copy is deleted outside the
 // background sweep (e.g. the admin Sermon Cleanup tool). A no-match is not an error.
-func DeleteCacheRowByRelSpec(relFileSpec string) error {
-	dbh, err := db.Db()
-	if err != nil {
-		return serr.Wrap(err)
-	}
-	if _, err = dbh.Exec(`DELETE FROM sermon_cache_access WHERE rel_file_spec = $1`, relFileSpec); err != nil {
+func DeleteCacheRowByRelSpec(exec db.Executor, relFileSpec string) error {
+	if _, err := exec.Exec(`DELETE FROM sermon_cache_access WHERE rel_file_spec = $1`, relFileSpec); err != nil {
 		return serr.Wrap(err, "failed to delete cache row", "relFileSpec", relFileSpec)
 	}
 	return nil
@@ -255,13 +249,8 @@ func DeleteCacheRowByRelSpec(relFileSpec string) error {
 // every tracked cached sermon. The table holds at most one row per cached file and
 // is small (only currently-cached files), so loading it whole is cheaper than
 // issuing a per-file query while building the admin cleanup listing.
-func LastAccessedByRelSpec() (map[string]time.Time, error) {
-	dbh, err := db.Db()
-	if err != nil {
-		return nil, serr.Wrap(err)
-	}
-
-	rows, err := dbh.Query(`SELECT rel_file_spec, last_accessed_at FROM sermon_cache_access`)
+func LastAccessedByRelSpec(exec db.Executor) (map[string]time.Time, error) {
+	rows, err := exec.Query(`SELECT rel_file_spec, last_accessed_at FROM sermon_cache_access`)
 	if err != nil {
 		return nil, serr.Wrap(err)
 	}

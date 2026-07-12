@@ -8,6 +8,7 @@ import (
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
 	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/util/stringops"
@@ -97,7 +98,12 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 		efs.Published = true
 	}
 
-	err = efs.UpsertEvent()
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return err
+	}
+	err = efs.UpsertEvent(dbH)
 	if err != nil {
 		logger.LogErr(err, "Error in event upsert", "event_presenter", fmt.Sprintf("%#v", efs))
 		return err
@@ -120,7 +126,12 @@ func DeleteEventRWeb(ctx rweb.Context) error {
 	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/events"); !ok {
 		return err
 	}
-	err := event.DeleteEventById(ctx.Request().PathParam("id"))
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return app.RedirectRWeb(ctx, "/admin/events", "Error deleting event")
+	}
+	err = event.DeleteEventById(dbH, ctx.Request().PathParam("id"))
 	msg := "Event with id: " + ctx.Request().PathParam("id") + " deleted"
 	if err != nil {
 		msg = "Error attempting to delete event with id: " + ctx.Request().PathParam("id")

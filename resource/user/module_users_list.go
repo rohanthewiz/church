@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
@@ -45,8 +46,15 @@ func NewModuleUsersList(pres module.Presenter) (module.Module, error) {
 	return module.Module(mod), nil
 }
 
+// GetData is a module boundary: modules are invoked by the page renderer
+// (which knows nothing of databases), so this is where the DB handle is
+// fetched and handed to the query layer.
 func (m ModuleUsersList) GetData() ([]Presenter, error) {
-	return QueryUsers(m.Opts.Condition, "first_name "+m.Order(), m.Opts.Limit, m.Opts.Offset)
+	dbH, err := db.Db()
+	if err != nil {
+		return nil, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	return QueryUsers(dbH, m.Opts.Condition, "first_name "+m.Order(), m.Opts.Limit, m.Opts.Offset)
 }
 
 func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn bool) string {

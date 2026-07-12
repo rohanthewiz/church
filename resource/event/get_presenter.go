@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/resource/content"
 	. "github.com/rohanthewiz/logger"
@@ -34,8 +35,8 @@ type Presenter struct {
 
 // LoadRecurrence fills the presenter's recurrence fields from the DB.
 // Call after presenterFromModel when editing a single event.
-func (p *Presenter) LoadRecurrence(eventID int64) error {
-	rec, found, err := GetRecurrence(eventID)
+func (p *Presenter) LoadRecurrence(exec db.Executor, eventID int64) error {
+	rec, found, err := GetRecurrence(exec, eventID)
 	if err != nil {
 		return err
 	}

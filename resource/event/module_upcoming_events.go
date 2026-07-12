@@ -3,9 +3,11 @@ package event
 import (
 	"strconv"
 
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeUpcomingEvents = "events_upcoming"
@@ -34,7 +36,11 @@ func NewModuleUpcomingEvents(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModuleUpcomingEvents) GetData() ([]Presenter, error) {
-	return QueryEvents(m.Opts.Condition, "event_date "+m.Order(), m.Opts.Limit, 0)
+	dbH, err := db.Db()
+	if err != nil {
+		return nil, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	return QueryEvents(dbH, m.Opts.Condition, "event_date "+m.Order(), m.Opts.Limit, 0)
 }
 
 func (m *ModuleUpcomingEvents) Render(params map[string]map[string]string, loggedIn bool) string {

@@ -14,15 +14,10 @@ import (
 
 // GetRecurrence loads an event's rule. found=false (no error) when the event
 // simply doesn't recur — the common case.
-func GetRecurrence(eventID int64) (rec Recurrence, found bool, err error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return rec, false, serr.Wrap(err)
-	}
-
+func GetRecurrence(exec db.Executor, eventID int64) (rec Recurrence, found bool, err error) {
 	var weekday int
 	var until sql.NullTime
-	row := dbH.QueryRow(
+	row := exec.QueryRow(
 		`SELECT event_id, freq, weekday, week, until FROM event_recurrences WHERE event_id = $1`, eventID)
 	err = row.Scan(&rec.EventID, &rec.Freq, &weekday, &rec.Week, &until)
 	if err == sql.ErrNoRows {
@@ -39,13 +34,9 @@ func GetRecurrence(eventID int64) (rec Recurrence, found bool, err error) {
 }
 
 // UpsertRecurrence writes an event's rule (insert or replace — one rule per event).
-func UpsertRecurrence(rec Recurrence) error {
+func UpsertRecurrence(exec db.Executor, rec Recurrence) error {
 	if err := rec.Validate(); err != nil {
 		return err
-	}
-	dbH, err := db.Db()
-	if err != nil {
-		return serr.Wrap(err)
 	}
 
 	var until any // nil -> SQL NULL for open-ended series
@@ -53,7 +44,7 @@ func UpsertRecurrence(rec Recurrence) error {
 		until = rec.Until
 	}
 	now := time.Now()
-	_, err = dbH.Exec(`
+	_, err := exec.Exec(`
 		INSERT INTO event_recurrences (event_id, freq, weekday, week, until, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $6)
 		ON CONFLICT (event_id)
@@ -70,12 +61,8 @@ func UpsertRecurrence(rec Recurrence) error {
 // DeleteRecurrence removes an event's rule (making it one-time again).
 // Deleting the event itself cascades via the FK, so this is only needed when
 // an admin switches recurrence back to "None".
-func DeleteRecurrence(eventID int64) error {
-	dbH, err := db.Db()
-	if err != nil {
-		return serr.Wrap(err)
-	}
-	if _, err = dbH.Exec(`DELETE FROM event_recurrences WHERE event_id = $1`, eventID); err != nil {
+func DeleteRecurrence(exec db.Executor, eventID int64) error {
+	if _, err := exec.Exec(`DELETE FROM event_recurrences WHERE event_id = $1`, eventID); err != nil {
 		return serr.Wrap(err, "error deleting event recurrence")
 	}
 	return nil
@@ -84,12 +71,8 @@ func DeleteRecurrence(eventID int64) error {
 // allRecurrences returns every rule. The table is tiny at church scale (one
 // row per repeating event), so window expansion just loads them all rather
 // than pushing date logic into SQL.
-func allRecurrences() (recs []Recurrence, err error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, serr.Wrap(err)
-	}
-	rows, err := dbH.Query(`SELECT event_id, freq, weekday, week, until FROM event_recurrences`)
+func allRecurrences(exec db.Executor) (recs []Recurrence, err error) {
+	rows, err := exec.Query(`SELECT event_id, freq, weekday, week, until FROM event_recurrences`)
 	if err != nil {
 		return nil, serr.Wrap(err, "error loading event recurrences")
 	}

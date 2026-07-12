@@ -9,6 +9,7 @@ import (
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
 	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/logger"
@@ -72,7 +73,12 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		efs.Enabled = true
 	}
 
-	err = efs.UpsertUser()
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return err
+	}
+	err = efs.UpsertUser(dbH)
 	if err != nil {
 		logger.LogErr(err, "Error in user upsert", "user_presenter", fmt.Sprintf("%#v", efs))
 		return err
@@ -90,7 +96,12 @@ func DeleteUserRWeb(ctx rweb.Context) error {
 	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/users"); !ok {
 		return err
 	}
-	err := user.DeleteUserById(ctx.Request().PathParam("id"))
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return app.RedirectRWeb(ctx, "/admin/users", "Error deleting user")
+	}
+	err = user.DeleteUserById(dbH, ctx.Request().PathParam("id"))
 	msg := "User with id: " + ctx.Request().PathParam("id") + " deleted"
 	if err != nil {
 		msg = "Error attempting to delete user with id: " + ctx.Request().PathParam("id")

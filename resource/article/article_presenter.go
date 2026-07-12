@@ -1,15 +1,17 @@
 package article
 
 import (
-	"github.com/rohanthewiz/church/resource/content"
-	"strings"
-	"github.com/rohanthewiz/serr"
-	"github.com/rohanthewiz/church/models"
-	"fmt"
-	"github.com/rohanthewiz/church/config"
-	"gopkg.in/nullbio/null.v6"
 	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/resource/content"
 	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
+	"gopkg.in/nullbio/null.v6"
 )
 
 type Presenter struct {
@@ -19,8 +21,8 @@ type Presenter struct {
 }
 
 
-func presenterFromSlug(slug string) (pres Presenter, err error) {
-	model, err := findArticleBySlug(slug)
+func presenterFromSlug(exec db.Executor, slug string) (pres Presenter, err error) {
+	model, err := findArticleBySlug(exec, slug)
 	if err != nil {
 		return pres, serr.Wrap(err, "Error finding article by slug")
 	}
@@ -28,18 +30,18 @@ func presenterFromSlug(slug string) (pres Presenter, err error) {
 	return
 }
 
-func presenterFromId(id int64) (pres Presenter, err error) {
-	model, err := findArticleById(id)
+func presenterFromId(exec db.Executor, id int64) (pres Presenter, err error) {
+	model, err := findArticleById(exec, id)
 	if err != nil {
 		return pres, serr.Wrap(err, "Unable to obtain article", "when", "finding Article by Id")
 	}
 	return presenterFromModel(model), nil
 }
 
-func PresentersFromIds(ids []int64) (presenters []Presenter, err error) {
+func PresentersFromIds(exec db.Executor, ids []int64) (presenters []Presenter, err error) {
 	errs := []string{}
 	for _, id := range ids {
-		pres, er := presenterFromId(id)
+		pres, er := presenterFromId(exec, id)
 		if er != nil {
 			errs = append(errs, er.Error())
 			logger.LogErr(er, "Error in article presenterFromId")
@@ -78,8 +80,8 @@ func presenterFromModel(model *models.Article) (pres Presenter) {
 	return
 }
 
-func modelFromPresenter(pres Presenter) (model *models.Article, create_op bool, err error) {
-	model = findModelByIdOrCreate(pres.Id)
+func modelFromPresenter(exec db.Executor, pres Presenter) (model *models.Article, create_op bool, err error) {
+	model = findModelByIdOrCreate(exec, pres.Id)
 	if model.ID < 1 {
 		create_op = true
 	}

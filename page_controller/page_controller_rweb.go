@@ -9,6 +9,7 @@ import (
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
 	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/template"
@@ -23,7 +24,7 @@ import (
 // created yet), it falls back to a hardwired home page so the site remains
 // functional even without DB-seeded content.
 func HomePageRWeb(ctx rweb.Context) error {
-	pg, err := page.PageFromSlug("home")
+	pg, err := loadPageBySlug("home")
 	if err != nil {
 		logger.Log("Info", "Home page not found in DB, using hardwired fallback", "err", err.Error())
 		pg, err = page.Home()
@@ -40,11 +41,21 @@ func HomePageRWeb(ctx rweb.Context) error {
 
 // Non-Admin dynamic pages (the majority of the pages)
 func PageHandlerRWeb(ctx rweb.Context) error {
-	pg, err := page.PageFromSlug(strings.ToLower(ctx.Request().PathParam("slug")))
+	pg, err := loadPageBySlug(strings.ToLower(ctx.Request().PathParam("slug")))
 	if err != nil {
 		return serr.Wrap(err)
 	}
 	return ctx.WriteHTML(string(base.RenderPageSingleRWeb(pg, ctx)))
+}
+
+// loadPageBySlug is the controller-side boundary where the DB handle is
+// fetched and handed to the page query layer (see db/executor.go convention).
+func loadPageBySlug(slug string) (*page.Page, error) {
+	dbH, err := db.Db()
+	if err != nil {
+		return nil, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	return page.PageFromSlug(dbH, slug)
 }
 
 // Admin Pages
@@ -62,7 +73,12 @@ func NewPageRWeb(ctx rweb.Context) error {
 }
 
 func AdminShowPageRWeb(ctx rweb.Context) error {
-	pg, err := page.PageFromId(ctx.Request().PathParam("id"))
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return err
+	}
+	pg, err := page.PageFromId(dbH, ctx.Request().PathParam("id"))
 	if err != nil {
 		logger.LogErr(serr.Wrap(err))
 		return err
@@ -138,7 +154,12 @@ func UpsertPageRWeb(ctx rweb.Context) error {
 	}
 
 	logger.LogAsync("Debug", "Page Presenter from form", "page", fmt.Sprintf("%#v", pg))
-	pgUrl, err := page.UpsertPage(pg)
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return err
+	}
+	pgUrl, err := page.UpsertPage(dbH, pg)
 	if err != nil {
 		logger.LogErr(err, "Error in event upsert", "page presenter", fmt.Sprintf("%#v", pg))
 		return err
@@ -157,7 +178,12 @@ func DeletePageRWeb(ctx rweb.Context) error {
 	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/pages"); !ok {
 		return err
 	}
-	err := page.DeletePageById(ctx.Request().PathParam("id"))
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return app.RedirectRWeb(ctx, "/admin/pages", "Error deleting page")
+	}
+	err = page.DeletePageById(dbH, ctx.Request().PathParam("id"))
 	msg := "Page with id: " + ctx.Request().PathParam("id") + " deleted"
 	if err != nil {
 		msg = "Error attempting to delete page with id: " + ctx.Request().PathParam("id")

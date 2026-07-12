@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rohanthewiz/church/app"
+	theDB "github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
@@ -34,7 +35,11 @@ func NewModuleMenuForm(pres module.Presenter) (module.Module, error) {
 
 // Since this is only called from Render(), so safeties are in Render()
 func (m ModuleMenuForm) getData() (mdef MenuDef, err error) {
-	mnu, err := findModelById(m.Opts.ItemIds[0])
+	dbH, err := theDB.Db()
+	if err != nil {
+		return mdef, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	mnu, err := findModelById(dbH, m.Opts.ItemIds[0])
 	if err != nil {
 		return mdef, serr.Wrap(err, "Unable to obtain menu with id: "+fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 	}

@@ -29,6 +29,7 @@ import (
 
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/core/s3ops"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 )
@@ -91,11 +92,15 @@ func ScanEligibleForDeletion() (eligible []LocalSermonInfo, err error) {
 	}
 
 	// Pull all last-accessed timestamps once rather than per file.
-	lastAccessed, laErr := LastAccessedByRelSpec()
-	if laErr != nil {
-		// Non-fatal: the listing is still useful without the "last accessed" column.
+	// Failures are non-fatal: the listing is still useful without the
+	// "last accessed" column.
+	lastAccessed := map[string]time.Time{}
+	if dbH, dbErr := db.Db(); dbErr != nil {
+		logger.LogErr(dbErr, "sermon-cleanup: could not obtain DB handle for last-accessed times; continuing without them")
+	} else if la, laErr := LastAccessedByRelSpec(dbH); laErr != nil {
 		logger.LogErr(laErr, "sermon-cleanup: could not load last-accessed times; continuing without them")
-		lastAccessed = map[string]time.Time{}
+	} else {
+		lastAccessed = la
 	}
 
 	bucket := s3ops.BucketName()
@@ -236,6 +241,14 @@ func DeleteVerifiedLocalCopies(relFileSpecs []string) DeleteResult {
 	res := DeleteResult{Skipped: map[string]string{}}
 	root := config.Options.IDrive.LocalSermonsDir
 
+	// One handle for all the tracking-row deletes below. A failure here doesn't
+	// block file deletion — tracking rows are advisory (the hourly sweep
+	// tolerates both a missing local file and a stale row).
+	dbH, dbErr := db.Db()
+	if dbErr != nil {
+		logger.LogErr(dbErr, "sermon-cleanup: could not obtain DB handle; tracking rows will not be cleared")
+	}
+
 	for _, raw := range relFileSpecs {
 		spec := strings.TrimSpace(raw)
 		if spec == "" {
@@ -268,7 +281,9 @@ func DeleteVerifiedLocalCopies(relFileSpecs []string) DeleteResult {
 		if rmErr := os.Remove(localFileSpec); rmErr != nil {
 			if os.IsNotExist(rmErr) {
 				// Local file already gone — still clear any tracking row, report deleted.
-				_ = DeleteCacheRowByRelSpec(spec)
+				if dbErr == nil {
+					_ = DeleteCacheRowByRelSpec(dbH, spec)
+				}
 				res.Deleted = append(res.Deleted, spec)
 				continue
 			}
@@ -277,7 +292,9 @@ func DeleteVerifiedLocalCopies(relFileSpecs []string) DeleteResult {
 			continue
 		}
 
-		if rowErr := DeleteCacheRowByRelSpec(spec); rowErr != nil {
+		if rowErr := dbErr; rowErr != nil {
+			logger.LogErr(rowErr, "sermon-cleanup: no DB handle; tracking row not cleared", "spec", spec)
+		} else if rowErr := DeleteCacheRowByRelSpec(dbH, spec); rowErr != nil {
 			// The file is gone; a leftover tracking row is harmless (the hourly sweep
 			// tolerates a missing local file). Log but still count as deleted.
 			logger.LogErr(rowErr, "sermon-cleanup: deleted file but failed to clear tracking row", "spec", spec)

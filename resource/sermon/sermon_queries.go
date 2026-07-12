@@ -13,19 +13,18 @@ import (
 	. "github.com/vattle/sqlboiler/queries/qm"
 )
 
-func (p Presenter) Upsert() (slug string, err error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return slug, err
-	}
-	ser, create, err := modelFromPresenter(p)
+// Query functions take the executor first (db.Executor — see db/executor.go);
+// boundaries (modules, controllers, import jobs) fetch db.Db() and pass it down.
+
+func (p Presenter) Upsert(exec db.Executor) (slug string, err error) {
+	ser, create, err := modelFromPresenter(exec, p)
 	if err != nil {
 		LogErr(err, "Error in sermon from presenter")
 		return slug, err
 	}
 	fmt.Printf("In Upsert: sermon model (from presenter) %#v\n", ser)
 	if create {
-		err = ser.Insert(dbH)
+		err = ser.Insert(exec)
 		if err != nil {
 			LogErr(err, "Error inserting sermon into DB")
 			return slug, err
@@ -33,7 +32,7 @@ func (p Presenter) Upsert() (slug string, err error) {
 			Log("Info", "Successfully created sermon")
 		}
 	} else {
-		err = ser.Update(dbH)
+		err = ser.Update(exec)
 		if err != nil {
 			LogErr(err, "Error updating sermon in DB")
 		} else {
@@ -52,14 +51,14 @@ func (p Presenter) GetYear() (year string) {
 }
 
 // Returns a sermon model for id `id` or a new sermon model
-func findByIdOrCreate(id string) (model *models.Sermon) {
+func findByIdOrCreate(exec db.Executor, id string) (model *models.Sermon) {
 	if id != "" {
 		intId, err := strconv.ParseInt(id, 10, 64)
 		if err != nil {
 			LogErr(err, "Unable to convert Sermon id to integer", "Id", id)
 			return new(models.Sermon)
 		}
-		model, err = findSermonById(intId)
+		model, err = findSermonById(exec, intId)
 		if err != nil {
 			return new(models.Sermon)
 		}
@@ -70,12 +69,8 @@ func findByIdOrCreate(id string) (model *models.Sermon) {
 	return
 }
 
-func DeleteSermonById(id string) error {
+func DeleteSermonById(exec db.Executor, id string) error {
 	const when = "When deleting sermon by id"
-	dbH, err := db.Db()
-	if err != nil {
-		return err
-	}
 	if id == "" {
 		return serr.New("Id to delete is empty string", "when", when)
 	}
@@ -84,7 +79,7 @@ func DeleteSermonById(id string) error {
 	if err != nil {
 		return serr.Wrap(err, "unable to convert Sermon id to integer", "Id", id, "when", when)
 	}
-	err = models.Sermons(dbH, Where("id=?", intId)).DeleteAll()
+	err = models.Sermons(exec, Where("id=?", intId)).DeleteAll()
 	if err != nil {
 		return serr.Wrap(err, "Error when deleting sermon by id", "id", id, "when", when)
 	}
@@ -92,12 +87,8 @@ func DeleteSermonById(id string) error {
 }
 
 // Returns a sermon model for id `id` or error
-func findSermonById(id int64) (*models.Sermon, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, err
-	}
-	ser, err := models.Sermons(dbH, Where("id = ?", id)).One()
+func findSermonById(exec db.Executor, id int64) (*models.Sermon, error) {
+	ser, err := models.Sermons(exec, Where("id = ?", id)).One()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving sermon by id", "id", fmt.Sprintf("%d", id))
 	}
@@ -105,26 +96,16 @@ func findSermonById(id int64) (*models.Sermon, error) {
 }
 
 // Returns a sermon model slug or error
-func findSermonBySlug(slug string) (*models.Sermon, error) {
-	dbH, err := db.Db()
-	if err != nil {
-		return nil, serr.Wrap(err, "Error obtaining DB handle")
-	}
-	art, err := models.Sermons(dbH, Where("slug = ?", slug)).One()
+func findSermonBySlug(exec db.Executor, slug string) (*models.Sermon, error) {
+	art, err := models.Sermons(exec, Where("slug = ?", slug)).One()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error retrieving sermon by slug", "slug", slug)
 	}
 	return art, err
 }
 
-func QuerySermons(condition, order string, limit, offset int64) (presenters []Presenter, err error) {
-	// Log("Debug", "Sermon query", "condition:", condition, " order:", order,
-	//	" limit:", fmt.Sprintf("%d", limit), " offset:", fmt.Sprintf("%d", offset))
-	dbH, err := db.Db()
-	if err != nil {
-		return
-	}
-	sermons, err := models.Sermons(dbH, Where(condition), OrderBy(order), Limit(int(limit)),
+func QuerySermons(exec db.Executor, condition, order string, limit, offset int64) (presenters []Presenter, err error) {
+	sermons, err := models.Sermons(exec, Where(condition), OrderBy(order), Limit(int(limit)),
 		Offset(int(offset))).All()
 	if err != nil {
 		return nil, serr.Wrap(err, "Error querying sermons")
@@ -135,8 +116,8 @@ func QuerySermons(condition, order string, limit, offset int64) (presenters []Pr
 	return
 }
 
-func RecentSermons(limit int64) (presenters []Presenter, err error) {
+func RecentSermons(exec db.Executor, limit int64) (presenters []Presenter, err error) {
 	condition := "1 = 1"
 	order := "created_at DESC"
-	return QuerySermons(condition, order, limit, 0)
+	return QuerySermons(exec, condition, order, limit, 0)
 }

@@ -42,7 +42,12 @@ func Bootstrap() {
 // or config if no superadmin exists yet. Returns true if a superadmin was
 // created, false if one already exists or credentials were not provided.
 func bootstrapSuperAdmin() bool {
-	exists, err := user.SuperAdminsExist()
+	dbH, err := theDB.Db()
+	if err != nil {
+		logger.LogErr(err, "Bootstrap: error obtaining DB handle")
+		return false
+	}
+	exists, err := user.SuperAdminsExist(dbH)
 	if err != nil {
 		logger.LogErr(err, "Bootstrap: error checking for superadmin")
 		return false
@@ -273,7 +278,7 @@ func bootstrapWelcomeArticle() {
 		},
 	}
 
-	err = pres.UpsertArticle()
+	err = pres.UpsertArticle(dbH)
 	if err != nil {
 		logger.LogErr(serr.Wrap(err), "Bootstrap: error creating welcome article")
 		return

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/pack/packed"
 	"github.com/rohanthewiz/element"
@@ -34,7 +35,11 @@ func NewModulePageForm(pres module.Presenter) (module.Module, error) {
 }
 
 func (m ModulePageForm) getData() (Presenter, error) {
-	pg, err := findPageById(m.Opts.ItemIds[0])
+	dbH, err := db.Db()
+	if err != nil {
+		return Presenter{}, serr.Wrap(err, "Could not obtain DB handle")
+	}
+	pg, err := findPageById(dbH, m.Opts.ItemIds[0])
 	if err != nil {
 		return Presenter{}, serr.Wrap(err, "Unable to obtain page with id: "+fmt.Sprintf("%d", m.Opts.ItemIds[0]))
 	}

@@ -1,20 +1,22 @@
 package event
 
 import (
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	. "github.com/rohanthewiz/logger"
 	"gopkg.in/nullbio/null.v6"
-	"strings"
-	"time"
-	"errors"
-	"fmt"
-	"github.com/rohanthewiz/church/config"
 )
 
 // Fixup Received data for Presenter
-func modelFromPresenter(pres Presenter) (*models.Event, bool, error) {
+func modelFromPresenter(exec db.Executor, pres Presenter) (*models.Event, bool, error) {
 	var create_op bool  // inits to false
-	model := findModelByIdOrCreate(pres.Id)
+	model := findModelByIdOrCreate(exec, pres.Id)
 	if model.ID < 1 {
 		create_op = true
 	}

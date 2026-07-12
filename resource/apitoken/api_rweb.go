@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/resource/apiv1"
 	"github.com/rohanthewiz/church/resource/auth"
 	"github.com/rohanthewiz/church/resource/user"
@@ -150,7 +151,11 @@ func APILoginRWeb(ctx rweb.Context) error {
 			"Too many login attempts. Please try again later.")
 	}
 
-	au, found, err := user.AuthUserByUsername(req.Username)
+	dbH, err := db.Db()
+	if err != nil {
+		return apiv1.ServerError(ctx, err, "Could not process login")
+	}
+	au, found, err := user.AuthUserByUsername(dbH, req.Username)
 	if err != nil {
 		return apiv1.ServerError(ctx, err, "Could not process login")
 	}
@@ -163,7 +168,7 @@ func APILoginRWeb(ctx rweb.Context) error {
 	}
 	loginLimiter.clear(limiterKey)
 
-	token, expiresAt, err := Issue(au.ID, strings.TrimSpace(req.Device))
+	token, expiresAt, err := Issue(dbH, au.ID, strings.TrimSpace(req.Device))
 	if err != nil {
 		return apiv1.ServerError(ctx, err, "Could not process login")
 	}
@@ -203,7 +208,11 @@ func APIGuard(next rweb.Handler) rweb.Handler {
 		}
 		plain := strings.TrimSpace(authz[len(scheme):])
 
-		tu, found, err := LookupUser(plain)
+		dbH, err := db.Db()
+		if err != nil {
+			return apiv1.ServerError(ctx, err, "Could not verify credentials")
+		}
+		tu, found, err := LookupUser(dbH, plain)
 		if err != nil {
 			return apiv1.ServerError(ctx, err, "Could not verify credentials")
 		}
@@ -236,7 +245,11 @@ func APILogoutRWeb(ctx rweb.Context) error {
 	if !ok {
 		return apiv1.Error(ctx, http.StatusUnauthorized, "Authentication required")
 	}
-	if err := RevokeByHash(hash); err != nil {
+	dbH, err := db.Db()
+	if err != nil {
+		return apiv1.ServerError(ctx, err, "Could not log out")
+	}
+	if err := RevokeByHash(dbH, hash); err != nil {
 		return apiv1.ServerError(ctx, err, "Could not log out")
 	}
 	return ctx.WriteJSON(map[string]bool{"ok": true})

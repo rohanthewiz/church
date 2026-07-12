@@ -7,18 +7,19 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/serr"
 	"gopkg.in/nullbio/null.v6"
 )
 
-func PageFromId(id string) (*Page, error) {
+func PageFromId(exec db.Executor, id string) (*Page, error) {
 	intId, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		return nil, serr.Wrap(err, "Error converting page id to int")
 	}
-	model, err := findPageById(intId)
+	model, err := findPageById(exec, intId)
 	if err != nil {
 		return nil, err
 	}
@@ -29,17 +30,17 @@ func PageFromId(id string) (*Page, error) {
 	return pageFromPresenter(pres), nil
 }
 
-func PageFromSlug(slug string) (pg *Page, err error) {
+func PageFromSlug(exec db.Executor, slug string) (pg *Page, err error) {
 	// fmt.Printf("In PageFromSlug - slug: '%s'\n", slug)
-	pres, err := presenterFromSlug(slug)
+	pres, err := presenterFromSlug(exec, slug)
 	if err != nil {
 		return pg, err
 	}
 	return pageFromPresenter(pres), nil
 }
 
-func presenterFromSlug(slug string) (pres Presenter, err error) {
-	model, err := findPageBySlug(slug)
+func presenterFromSlug(exec db.Executor, slug string) (pres Presenter, err error) {
+	model, err := findPageBySlug(exec, slug)
 	if err != nil {
 		return pres, serr.Wrap(err, "Error finding page by slug")
 	}
@@ -79,8 +80,8 @@ func presenterFromModel(model *models.Page) (pres Presenter, err error) {
 	return
 }
 
-func modelFromPresenter(pres Presenter) (model *models.Page, create_op bool, err error) {
-	model = findPageByIdOrCreate(pres.Id)
+func modelFromPresenter(exec db.Executor, pres Presenter) (model *models.Page, create_op bool, err error) {
+	model = findPageByIdOrCreate(exec, pres.Id)
 	if model.ID < 1 {
 		create_op = true
 	}
