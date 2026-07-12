@@ -62,12 +62,12 @@ func APIArticlesRWeb(ctx rweb.Context) error {
 
 	dbH, err := db.Db()
 	if err != nil {
-		return serr.Wrap(err)
+		return apiv1.ServerError(ctx, err, "Could not load articles")
 	}
 	arts, err := models.Articles(dbH, qm.Where("published = true"),
 		qm.OrderBy("created_at DESC"), qm.Limit(limit), qm.Offset(offset)).All()
 	if err != nil {
-		return serr.Wrap(err, "Error obtaining articles")
+		return apiv1.ServerError(ctx, err, "Could not load articles")
 	}
 
 	articles := make([]ArticleAPI, 0, len(arts))
@@ -91,7 +91,7 @@ func APIArticleRWeb(ctx rweb.Context) error {
 
 	dbH, err := db.Db()
 	if err != nil {
-		return serr.Wrap(err)
+		return apiv1.ServerError(ctx, err, "Could not load article")
 	}
 	// Drafts 404 identically to nonexistent ids — no oracle for unpublished content
 	art, err := models.Articles(dbH, qm.Where("id = ? AND published = true", id)).One()

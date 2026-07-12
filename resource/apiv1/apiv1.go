@@ -13,8 +13,10 @@
 package apiv1
 
 import (
+	"net/http"
 	"strconv"
 
+	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
 )
 
@@ -40,4 +42,15 @@ func ParseLimitOffset(ctx rweb.Context, defaultLimit, maxLimit int) (limit, offs
 // message safe to show end users.
 func Error(ctx rweb.Context, status int, msg string) error {
 	return ctx.Status(status).WriteJSON(map[string]string{"error": msg})
+}
+
+// ServerError is Error for infrastructure failures (DB down, query error).
+// Handlers must route 500s through here rather than returning the raw error
+// to the framework: rweb's default error handler writes an HTML page, which
+// the mobile client can't parse — every /api/v1 response, including failures,
+// must be JSON. The underlying error is logged here so call sites stay one
+// line; msg is the client-safe message.
+func ServerError(ctx rweb.Context, err error, msg string) error {
+	logger.LogErr(err, msg)
+	return Error(ctx, http.StatusInternalServerError, msg)
 }

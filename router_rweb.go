@@ -1,7 +1,6 @@
 package church
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 
@@ -159,12 +158,15 @@ func ServeRWeb() {
 	s.Get("/sermon-audio/:year/:filename", func(ctx rweb.Context) error {
 		year := ctx.Request().Param("year")
 		filename := ctx.Request().Param("filename")
-		fmt.Println("**->> year:", year, "filename:", filename)
+		logger.Debug("Sermon audio requested", "year", year, "filename", filename)
 
 		byts, err := idrive.GetSermon(year, filename)
 		if err != nil {
 			logger.Err(err, "error getting sermon", "year", year, "sermon", filename)
-			return ctx.Status(http.StatusNotImplemented).WriteJSON(map[string]string{
+			// 404, not 501: a missing/unfetchable file is "not found" to the
+			// client. (501 told clients the server lacks the feature, which
+			// misleads mobile error handling and can be cached by proxies.)
+			return ctx.Status(http.StatusNotFound).WriteJSON(map[string]string{
 				"error_message":     "Sorry, we couldn't find the sermon you requested.",
 				"technical_details": err.Error(),
 			})

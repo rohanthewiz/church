@@ -106,11 +106,11 @@ func APISermonsRWeb(ctx rweb.Context) error {
 
 	dbH, err := db.Db()
 	if err != nil {
-		return serr.Wrap(err)
+		return apiv1.ServerError(ctx, err, "Could not load sermons")
 	}
 	sms, err := models.Sermons(dbH, mods...).All()
 	if err != nil {
-		return serr.Wrap(err, "Error obtaining sermons")
+		return apiv1.ServerError(ctx, err, "Could not load sermons")
 	}
 
 	sermons := make([]SermonAPI, 0, len(sms))
@@ -135,7 +135,7 @@ func APISermonRWeb(ctx rweb.Context) error {
 
 	dbH, err := db.Db()
 	if err != nil {
-		return serr.Wrap(err)
+		return apiv1.ServerError(ctx, err, "Could not load sermon")
 	}
 	// Published check in the query itself, so drafts 404 identically to
 	// nonexistent ids — no oracle for unpublished content.

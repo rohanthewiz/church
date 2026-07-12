@@ -19,6 +19,7 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 <html lang="en">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/assets/css/app.css">
     <link rel="stylesheet" href="/assets/css/bootstrap_scoped.css">
     <link rel="stylesheet" href="/assets/css/fullcalendar.min.css">

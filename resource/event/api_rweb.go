@@ -194,7 +194,7 @@ func APIEventsRWeb(ctx rweb.Context) error {
 
 	events, err := WindowedEvents(from, to)
 	if err != nil {
-		return err
+		return apiv1.ServerError(ctx, err, "Could not load events")
 	}
 
 	// Paging happens after expansion/merge — SQL-level offsets would count base
@@ -221,7 +221,7 @@ func APIEventRWeb(ctx rweb.Context) error {
 
 	dbH, err := db.Db()
 	if err != nil {
-		return serr.Wrap(err)
+		return apiv1.ServerError(ctx, err, "Could not load event")
 	}
 	// Drafts 404 identically to nonexistent ids — no oracle for unpublished content
 	evt, err := models.Events(dbH, qm.Where("id = ? AND published = true", id)).One()
