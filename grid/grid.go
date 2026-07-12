@@ -82,6 +82,13 @@ type Grid struct {
 	// mirroring Presenter.RenderPagination.
 	Limit  int64
 	Offset int64
+
+	// CSRFToken, when set, is stamped on the wrapper as data-csrf. Delete
+	// links then submit a POST form carrying it (see assets.go) instead of
+	// navigating — deletes must be POSTs so they can't be triggered by a bare
+	// GET (link prefetch, <img src>, CSRF). The token itself comes from the
+	// caller (app.GenerateFormToken) since grid stays free of app imports.
+	CSRFToken string
 }
 
 // yearRe extracts a 4-digit year from a date cell for grouping. A regexp (vs
@@ -114,6 +121,9 @@ func (g Grid) Render(b *element.Builder) (x any) {
 	wrapAttrs := []string{"data-page-size", strconv.Itoa(g.PageSize)}
 	if groupCol >= 0 {
 		wrapAttrs = append(wrapAttrs, "data-group-col", strconv.Itoa(groupCol))
+	}
+	if g.CSRFToken != "" {
+		wrapAttrs = append(wrapAttrs, "data-csrf", esc(g.CSRFToken))
 	}
 
 	cls := "ch-grid"

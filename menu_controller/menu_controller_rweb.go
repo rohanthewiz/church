@@ -129,6 +129,11 @@ func UpsertMenuRWeb(ctx rweb.Context) error {
 }
 
 func DeleteMenuRWeb(ctx rweb.Context) error {
+	// POST + token: the route rejects GET, and the token ties the request to a
+	// page we actually rendered (see grid CSRFToken / app.VerifyFormTokenRWeb).
+	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/menus"); !ok {
+		return err
+	}
 	err := menu.DeleteMenuById(ctx.Request().PathParam("id"))
 	msg := "Menu with id: " + ctx.Request().PathParam("id") + " deleted"
 	if err != nil {

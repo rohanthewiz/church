@@ -54,3 +54,22 @@ func RedirectRWebSev(ctx rweb.Context, url, fl_msg string, sev FlashSeverity) er
 func IsLoggedInRWeb(ctx rweb.Context) bool {
 	return cctx.IsAdminFromRWeb(ctx)
 }
+
+// VerifyFormTokenRWeb validates the posted "csrf" form token for state-changing
+// actions (deletes and other POSTs that aren't full forms). On failure it
+// issues the redirect itself so callers stay one line:
+//
+//	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/users"); !ok {
+//		return err
+//	}
+//
+// The failure is a warn-level flash, not an error page: the common cause is a
+// token aged out of the kvstore (1h TTL) on a long-idle admin tab, which a
+// page refresh fixes.
+func VerifyFormTokenRWeb(ctx rweb.Context, redirectTo string) (ok bool, err error) {
+	if VerifyFormToken(ctx.Request().FormValue("csrf")) {
+		return true, nil
+	}
+	return false, RedirectRWebWarn(ctx, redirectTo,
+		"Your page has expired. Please refresh the page and try again.")
+}

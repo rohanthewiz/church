@@ -152,6 +152,11 @@ func UpsertPageRWeb(ctx rweb.Context) error {
 }
 
 func DeletePageRWeb(ctx rweb.Context) error {
+	// POST + token: the route rejects GET, and the token ties the request to a
+	// page we actually rendered (see grid CSRFToken / app.VerifyFormTokenRWeb).
+	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/pages"); !ok {
+		return err
+	}
 	err := page.DeletePageById(ctx.Request().PathParam("id"))
 	msg := "Page with id: " + ctx.Request().PathParam("id") + " deleted"
 	if err != nil {

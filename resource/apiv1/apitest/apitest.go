@@ -17,6 +17,7 @@ package apitest
 
 import (
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 
@@ -52,13 +53,26 @@ func MockDB(t *testing.T) sqlmock.Sqlmock {
 // response, success or failure, parses as JSON.
 func GetJSON(t *testing.T, s *rweb.Server, url string) (status int, doc map[string]any) {
 	t.Helper()
-	resp := s.Request("GET", url, nil, nil)
+	return RequestJSON(t, s, "GET", url, nil, "")
+}
+
+// RequestJSON is GetJSON generalized over method, headers, and body — needed
+// by the auth contract tests (POST login bodies, Authorization headers). The
+// every-response-is-JSON check applies to all of them equally.
+func RequestJSON(t *testing.T, s *rweb.Server, method, url string, headers []rweb.Header,
+	body string) (status int, doc map[string]any) {
+	t.Helper()
+	var rdr io.Reader
+	if body != "" {
+		rdr = strings.NewReader(body)
+	}
+	resp := s.Request(method, url, headers, rdr)
 	if ct := resp.Header("Content-Type"); !strings.HasPrefix(ct, "application/json") {
-		t.Errorf("GET %s: Content-Type = %q, want application/json", url, ct)
+		t.Errorf("%s %s: Content-Type = %q, want application/json", method, url, ct)
 	}
 	doc = map[string]any{}
 	if err := json.Unmarshal(resp.Body(), &doc); err != nil {
-		t.Fatalf("GET %s: response is not JSON (status %d): %s", url, resp.Status(), resp.Body())
+		t.Fatalf("%s %s: response is not JSON (status %d): %s", method, url, resp.Status(), resp.Body())
 	}
 	return resp.Status(), doc
 }

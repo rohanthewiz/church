@@ -103,6 +103,40 @@ Server (`church`, in working tree):
 - NOT yet live-tested against Postgres (was down); smoke-test `/api/v1/feed` etc.
   when next running a site binary.
 
+## Phase 2 auth implementation notes (IMPLEMENTED 2026-07-11)
+
+- **`api_tokens` table** (migration `20260711150000`): SHA-256 hex of the token
+  (plaintext exists only in the login response), FK to users with CASCADE,
+  `device` label, `last_used_at` touch, fixed 30-day `expires_at`. Hand-written
+  SQL in `resource/apitoken` — no SQLBoiler regen, same precedent as
+  event_recurrences.
+- **Endpoints**: `POST /api/v1/auth/login` (JSON `{username,password,device?}`;
+  urlencoded fallback) → `{token, expires_at (RFC3339), user}`; `GET
+  /api/v1/auth/me` → `{user}`; `POST /api/v1/auth/logout` → `{"ok":true}`
+  (revokes only the presented token). The user DTO (`apitoken.APIUser`) is
+  credential-free: id, username, first_name, last_name, email, role, role_name.
+- **`APIGuard` is a per-handler decorator, not group middleware** —
+  rweb group middleware auto-continues into the handler when middleware returns
+  nil without calling Next(), so a 401-writing middleware would double-write the
+  body. `api.Get("/auth/me", apitoken.APIGuard(apitoken.APIMeRWeb))`.
+- Guard resolves token→user in one JOIN (expiry + `users.enabled` checked in the
+  query), stashes `TokenUser` + token hash in ctx; unknown/expired/disabled all
+  present as the same 401.
+- **Login throttle**: in-process sliding window, 10 failures / 15 min per
+  (client IP, username); success clears. Unknown-user and wrong-password answer
+  with the identical 401 message (no username oracle).
+- `user.AuthUserByUsername` (resource/user) is the login lookup — enabled users
+  only, no-rows = found=false, credentials never leave the resource layer except
+  into the scrypt comparison.
+- `apitoken.RevokeAllForUser` exists for password change / account disable /
+  "log out everywhere" (not yet wired to the admin user form).
+- Tests: `resource/apitoken/api_contract_test.go` (sqlmock; login shapes,
+  throttle, guard rejections, logout revocation targeting the exact hash) +
+  `apitest.RequestJSON` helper (method/headers/body). Live end-to-end:
+  `go run ./test_scripts/auth_live_check` (verified 2026-07-11 against local PG).
+- Flutter TODO: token store (`flutter_secure_storage`), login screen, attach
+  `Authorization: Bearer` in api_client.dart, re-login on 401.
+
 ## Event recurrence (IMPLEMENTED this session, 2026-07-07)
 
 Supports "every Sunday" (weekly) and "the Nth/last <weekday> of the month"

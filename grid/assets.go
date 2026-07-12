@@ -425,14 +425,28 @@ function chGridInit(root) {
     if (del) {
       e.preventDefault();
       var url = del.getAttribute('data-url');
+      // Deletes go over POST with the grid's CSRF token — the server routes
+      // reject GET, so a bare navigation (prefetch, forged link) cannot delete.
+      var doDelete = function() {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        var tok = document.createElement('input');
+        tok.type = 'hidden';
+        tok.name = 'csrf';
+        tok.value = root.getAttribute('data-csrf') || '';
+        form.appendChild(tok);
+        document.body.appendChild(form);
+        form.submit();
+      };
       if (typeof swal === 'function') { // SweetAlert2 when the page ships it
         swal({
           title: 'Are you sure?', text: "You won't be able to undo!", type: 'warning',
           showCancelButton: true, confirmButtonColor: '#3085d6', cancelButtonColor: '#d33',
           confirmButtonText: 'Yes, delete it!'
-        }).then(function(result) { if (result.value) window.location = url; });
+        }).then(function(result) { if (result.value) doDelete(); });
       } else if (window.confirm('Delete this item? This cannot be undone.')) {
-        window.location = url;
+        doDelete();
       }
       return;
     }

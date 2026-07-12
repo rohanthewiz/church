@@ -16,6 +16,7 @@ import (
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/page_controller"
 	"github.com/rohanthewiz/church/payment_controller"
+	"github.com/rohanthewiz/church/resource/apitoken"
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/calendar"
 	"github.com/rohanthewiz/church/resource/event"
@@ -78,22 +79,25 @@ func ServeRWeb() {
 	home := s.Group("", authctlr.UseCustomContextRWeb)
 	home.Get("/", page_controller.HomePageRWeb)
 
-	// Debug routes
-	s.Get("/debug/set", func(ctx rweb.Context) error {
+	// Debug routes — admin-only. These toggle process-wide element debug state
+	// and dump internal render diagnostics, so they must not be reachable by
+	// anonymous visitors (any GET could flip debug mode on a production site).
+	dbg := s.Group("/debug", authctlr.UseCustomContextRWeb, authctlr.AdminGuardRWeb)
+	dbg.Get("/set", func(ctx rweb.Context) error {
 		element.DebugSet()
 		return ctx.WriteHTML("<h3>Debug mode set.</h3> <a href='/'>Home</a>")
 	})
 
-	s.Get("/debug/show", func(ctx rweb.Context) error {
+	dbg.Get("/show", func(ctx rweb.Context) error {
 		return ctx.WriteHTML(element.DebugShow())
 	})
 
-	s.Get("/debug/clear", func(ctx rweb.Context) error {
+	dbg.Get("/clear", func(ctx rweb.Context) error {
 		element.DebugClear()
 		return ctx.WriteHTML("<h3>Debug mode is off.</h3> <a href='/'>Home</a>")
 	})
 
-	s.Get("/debug/clear-issues", func(ctx rweb.Context) error {
+	dbg.Get("/clear-issues", func(ctx rweb.Context) error {
 		element.DebugClearIssues()
 		return ctx.WriteHTML("<h3>Issues cleared (debug mode still active).</h3> <a href='/'>Home</a> | <a href='/debug/show'>View Debug</a>")
 	})
@@ -118,6 +122,15 @@ func ServeRWeb() {
 	api.Get("/events", event.APIEventsRWeb)
 	api.Get("/events/:id", event.APIEventRWeb)
 	api.Get("/feed", feed.APIFeedRWeb)
+
+	// Phase 2 mobile auth: DB-backed bearer tokens (survive deploys, last
+	// weeks — see resource/apitoken). Login is the one public auth route;
+	// everything else wraps in the Bearer guard, which is also how any future
+	// personalized endpoint (giving history, chat) gets protected. APIGuard is
+	// a per-handler decorator, not group middleware — see its doc comment.
+	api.Post("/auth/login", apitoken.APILoginRWeb)
+	api.Get("/auth/me", apitoken.APIGuard(apitoken.APIMeRWeb))
+	api.Post("/auth/logout", apitoken.APIGuard(apitoken.APILogoutRWeb))
 
 	// FullCalendar-shaped events JSON for the website's calendar widget
 	s.Get("/calendar", calendar.GetFullCalendarEventsRWeb)
@@ -187,7 +200,9 @@ func ServeRWeb() {
 	ad.Post("/users", user_controller.UpsertUserRWeb) // create
 	ad.Get("/users/edit/:id", user_controller.EditUserRWeb)
 	ad.Post("/users/update/:id", user_controller.UpsertUserRWeb) // update
-	ad.Get("/users/delete/:id", user_controller.DeleteUserRWeb)
+	// Deletes are POSTs (CSRF-token checked in the handlers): GET deletes are
+	// trivially forgeable via <img src>, and link prefetchers can fire them.
+	ad.Post("/users/delete/:id", user_controller.DeleteUserRWeb)
 
 	// Admin Articles
 	ad.Get("/articles", article_controller.AdminListArticlesRWeb)
@@ -195,7 +210,7 @@ func ServeRWeb() {
 	ad.Post("/articles", article_controller.UpsertArticleRWeb) // create
 	ad.Get("/articles/edit/:id", article_controller.EditArticleRWeb)
 	ad.Post("/articles/update/:id", article_controller.UpsertArticleRWeb) // update
-	ad.Get("/articles/delete/:id", article_controller.DeleteArticleRWeb)
+	ad.Post("/articles/delete/:id", article_controller.DeleteArticleRWeb)
 
 	// Admin Sermons
 	ad.Get("/sermons", sermon_controller.AdminListSermonsRWeb)
@@ -204,7 +219,7 @@ func ServeRWeb() {
 	ad.Post("/sermons", sermon_controller.UpsertSermonRWeb) // create
 	ad.Get("/sermons/edit/:id", sermon_controller.EditSermonRWeb)
 	ad.Post("/sermons/update/:id", sermon_controller.UpsertSermonRWeb) // update
-	ad.Get("/sermons/delete/:id", sermon_controller.DeleteSermonRWeb)
+	ad.Post("/sermons/delete/:id", sermon_controller.DeleteSermonRWeb)
 	// Local sermon-cache cleanup tool (lists copies safe to delete, batch-deletes them)
 	ad.Get("/sermons/cleanup", sermon_controller.AdminSermonCleanupRWeb)
 	ad.Post("/sermons/cleanup", sermon_controller.AdminSermonCleanupRunRWeb)
@@ -215,7 +230,7 @@ func ServeRWeb() {
 	ad.Post("/events", event_controller.UpsertEventRWeb) // create
 	ad.Get("/events/edit/:id", event_controller.EditEventRWeb)
 	ad.Post("/events/update/:id", event_controller.UpsertEventRWeb) // update
-	ad.Get("/events/delete/:id", event_controller.DeleteEventRWeb)
+	ad.Post("/events/delete/:id", event_controller.DeleteEventRWeb)
 
 	// Admin Pages
 	ad.Get("/pages", page_controller.AdminListPagesRWeb)
@@ -224,7 +239,7 @@ func ServeRWeb() {
 	ad.Get("/pages/:id", page_controller.AdminShowPageRWeb) // preview
 	ad.Get("/pages/edit/:id", page_controller.EditPageRWeb)
 	ad.Post("/pages/update/:id", page_controller.UpsertPageRWeb) // update
-	ad.Get("/pages/delete/:id", page_controller.DeletePageRWeb)
+	ad.Post("/pages/delete/:id", page_controller.DeletePageRWeb)
 
 	// Admin Menus
 	ad.Get("/menus", menu_controller.AdminListMenusRWeb)
@@ -232,7 +247,7 @@ func ServeRWeb() {
 	ad.Post("/menus", menu_controller.UpsertMenuRWeb) // create
 	ad.Get("/menus/edit/:id", menu_controller.EditMenuRWeb)
 	ad.Post("/menus/update/:id", menu_controller.UpsertMenuRWeb) // update
-	ad.Get("/menus/delete/:id", menu_controller.DeleteMenuRWeb)
+	ad.Post("/menus/delete/:id", menu_controller.DeleteMenuRWeb)
 
 	// Start the server
 	if err := s.Run(); err != nil {

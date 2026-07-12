@@ -1,22 +1,35 @@
 package user
 
 import (
+	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/serr"
 )
 
 const ModuleTypeUsersList = "users_list"
 
 type ModuleUsersList struct {
 	module.Presenter
+	csrf string // backs the grid's POSTed delete links (admin renders only)
 }
 
 func NewModuleUsersList(pres module.Presenter) (module.Module, error) {
 	mod := new(ModuleUsersList)
 	mod.Name = pres.Name
 	mod.Opts = pres.Opts
+
+	// Delete links POST with a CSRF token (same tokens the edit forms use).
+	// Only admins see delete links, so public renders skip the kvstore write.
+	if mod.Opts.IsAdmin {
+		csrf, err := app.GenerateFormToken()
+		if err != nil {
+			return nil, serr.Wrap(err, "Could not generate form token")
+		}
+		mod.csrf = csrf
+	}
 
 	// Work out local condition
 	cond := "1 = 1"
@@ -55,6 +68,7 @@ func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn b
 		EmptyMessage: "No users found",
 		Limit:        m.Opts.Limit,
 		Offset:       m.Opts.Offset,
+		CSRFToken:    m.csrf,
 	}
 	if m.Opts.IsAdmin {
 		g.Columns = append(g.Columns, grid.Column{Header: "Id", Type: grid.ColNum, Shrink: true})

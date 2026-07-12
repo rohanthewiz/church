@@ -85,6 +85,11 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 }
 
 func DeleteUserRWeb(ctx rweb.Context) error {
+	// POST + token: the route rejects GET, and the token ties the request to a
+	// page we actually rendered (see grid CSRFToken / app.VerifyFormTokenRWeb).
+	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/users"); !ok {
+		return err
+	}
 	err := user.DeleteUserById(ctx.Request().PathParam("id"))
 	msg := "User with id: " + ctx.Request().PathParam("id") + " deleted"
 	if err != nil {

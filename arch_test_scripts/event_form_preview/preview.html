@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html><head><title>Event Form Preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/summernote/0.8.18/summernote.min.js"></script>
+<style>body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; background: #eef1ec; margin: 0; padding: 1rem; }</style>
+</head><body><div class="ef-wrap"><style>
+.ef-wrap { max-width: 56rem; margin: 0.5rem auto 2rem; color: #2d3436;
+	font-size: 1rem; }
+.ef-wrap .ef-page-title { text-align: center; text-transform: capitalize; margin: 0.6rem 0 1rem; }
+.ef-card { background: #fff; border: 1px solid #dfe6e0; border-radius: 8px;
+	padding: 1rem 1.2rem 1.2rem; margin-bottom: 1.1rem;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.ef-card__title { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em;
+	text-transform: uppercase; color: #6b7c74; margin-bottom: 0.9rem;
+	border-bottom: 1px solid #eef2ee; padding-bottom: 0.45rem; }
+.ef-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem 1.4rem; }
+.ef-row--3 { grid-template-columns: 1fr 1fr 1fr; }
+@media (max-width: 640px) { .ef-row, .ef-row--3 { grid-template-columns: 1fr; } }
+.ef-field { display: flex; flex-direction: column; }
+.ef-field label { font-size: 0.82rem; font-weight: 600; color: #57606a;
+	margin-bottom: 0.28rem; }
+.ef-field .ef-opt { font-weight: 400; color: #98a1a8; }
+.ef-req { color: #d9534f; }
+.ef-field input, .ef-field select {
+	font-size: 0.95rem; color: #2d3436; background: #fbfdfb;
+	border: 1px solid #c9d3cc; border-radius: 5px; padding: 0.42rem 0.55rem;
+	line-height: 1.4; width: 100%; box-shadow: none;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.ef-field input:focus, .ef-field select:focus { outline: none;
+	border-color: #337ab7; box-shadow: 0 0 0 3px rgba(51,122,183,0.15); }
+/* Segmented control: the radios stay in the form (so recur_freq posts
+   unchanged) but are visually replaced by their labels */
+.ef-seg { display: inline-flex; border: 1px solid #c9d3cc; border-radius: 6px;
+	overflow: hidden; margin: 0.2rem 0 0.4rem; }
+.ef-seg input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
+.ef-seg label { padding: 0.4rem 1.15rem; font-size: 0.9rem; cursor: pointer;
+	background: #fbfdfb; color: #57606a; border-left: 1px solid #c9d3cc;
+	margin: 0; transition: background 0.15s ease, color 0.15s ease; }
+.ef-seg label:first-of-type { border-left: none; }
+.ef-seg input:checked + label { background: #337ab7; color: #fff; }
+.ef-seg input:focus-visible + label { box-shadow: inset 0 0 0 2px rgba(51,122,183,0.5); }
+.ef-recur-panel { display: none; background: #f4f8f4; border: 1px solid #e0e9e0;
+	border-radius: 6px; padding: 0.8rem 0.9rem; margin-top: 0.6rem; }
+.ef-recur-panel.ef-show { display: block; }
+.ef-recur-summary { margin: 0.7rem 0 0; font-size: 0.9rem; color: #33691e;
+	background: #f1f8e9; border-left: 3px solid #7cb342; padding: 0.45rem 0.7rem;
+	border-radius: 0 4px 4px 0; }
+.ef-help { font-size: 0.8rem; color: #98a1a8; margin: 0.45rem 0 0; }
+/* Publish toggle: a plain checkbox (posts "on" as before) drawn as a switch */
+.ef-switch { display: inline-flex; align-items: center; cursor: pointer; gap: 0.6rem; }
+.ef-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.ef-switch .ef-slider { width: 2.4rem; height: 1.3rem; background: #c9d3cc;
+	border-radius: 1rem; position: relative; transition: background 0.2s ease;
+	flex: none; }
+.ef-switch .ef-slider::before { content: ''; position: absolute; top: 0.15rem;
+	left: 0.15rem; width: 1rem; height: 1rem; background: #fff; border-radius: 50%;
+	transition: transform 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
+.ef-switch input:checked + .ef-slider { background: #7cb342; }
+.ef-switch input:checked + .ef-slider::before { transform: translateX(1.1rem); }
+.ef-switch .ef-switch-text { font-size: 0.95rem; font-weight: 600; color: #57606a; }
+.ef-footer { display: flex; align-items: center; justify-content: space-between;
+	padding: 0.4rem 0.2rem; }
+.ef-submit { background: #337ab7; color: #fff; border: 1px solid #2e6da4;
+	border-radius: 6px; font-size: 1rem; padding: 0.5rem 2.6rem; cursor: pointer;
+	transition: background 0.2s ease, box-shadow 0.2s ease;
+	box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+.ef-submit:hover { background: #286090; box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
+/* Summernote editors keep their own (scoped bootstrap) look; just space the labels */
+.ef-editor label { display: block; font-size: 0.82rem; font-weight: 600;
+	color: #57606a; margin-bottom: 0.28rem; }
+.ef-editor { margin-bottom: 1rem; }
+</style><h3 class="ef-page-title">Create event</h3><form method="post" action="/admin/events" onSubmit="return preSubmit();"><input type="hidden" name="event_id" value=""><input type="hidden" name="csrf" value="510da307f618b16917b5ea235a90df6d57d120fca2c918f0c25afe201c6083ca"><div class="ef-card"><div class="ef-card__title">Event Details</div><div class="ef-row"><div class="ef-field"><label for="event_title">Event Title <span class="ef-req">*</span></label><input type="text" required="required" value="" name="event_title" id="event_title"></div><div class="ef-field"><label for="event_location">Location <span class="ef-req">*</span></label><input value="" name="event_location" id="event_location" type="text" required="required"></div></div></div><div class="ef-card"><div class="ef-card__title">Date & Recurrence</div><div class="ef-row"><div class="ef-field"><label for="event_date">Event Date</label><input type="date" value="" name="event_date" id="event_date"></div><div class="ef-field"><label for="event_time">Event Time</label><input name="event_time" id="event_time" type="time" value=""></div></div><div class="ef-seg" role="radiogroup" aria-label="Repeats"><input type="radio" name="recur_freq" id="recur_freq_0" value="" checked="checked"><label for="recur_freq_0">One-time</label><input type="radio" name="recur_freq" id="recur_freq_1" value="weekly"><label for="recur_freq_1">Weekly</label><input type="radio" name="recur_freq" id="recur_freq_2" value="monthly"><label for="recur_freq_2">Monthly</label></div><div id="recur_panel" class="ef-recur-panel"><div class="ef-row ef-row--3"><div id="recur_week_field" class="ef-field"><label for="recur_week">Week of Month</label><select id="recur_week" name="recur_week"><option value="1">First</option><option value="2">Second</option><option value="3">Third</option><option value="4">Fourth</option><option value="-1">Last</option></select></div><div class="ef-field"><label for="recur_weekday">Day of Week</label><select name="recur_weekday" id="recur_weekday"><option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option></select></div><div class="ef-field"><label for="recur_until">Repeat Until <span class="ef-opt">(optional)</span></label><input name="recur_until" id="recur_until" type="date" value=""></div></div></div><p id="recur_summary" class="ef-recur-summary"></p></div><div class="ef-card"><div class="ef-card__title">Contact (optional)</div><div class="ef-row ef-row--3"><div class="ef-field"><label for="contact_person">Contact Person</label><input type="text" value="" name="contact_person" id="contact_person"></div><div class="ef-field"><label for="contact_email">Contact Email</label><input name="contact_email" id="contact_email" type="text" value=""></div><div class="ef-field"><label for="contact_phone">Contact Phone</label><input name="contact_phone" id="contact_phone" type="text" value=""></div></div></div><div class="ef-card"><div class="ef-card__title">Content</div><div class="ef-field"><label for="categories">Tags (comma separated)</label><input type="text" value="" name="categories" id="categories"></div><div class="ef-editor bootstrap-wrapper" style="margin-top:1rem"><label for="event_summary">Summary</label><div id="summer1"></div><textarea id="event_summary" name="event_summary" type="text" value="" style="display:none"></textarea></div><div class="ef-editor bootstrap-wrapper"><label for="event_body">Event Body</label><div id="summer2"></div><textarea type="text" value="" style="display:none" id="event_body" name="event_body"></textarea></div></div><div class="ef-footer"><label class="ef-switch"><input type="checkbox" name="published"><span class="ef-slider"></span><span class="ef-switch-text">Published</span></label><input class="ef-submit" value="Create" type="submit"></div></form><script type="text/javascript">$(document).ready(function(){$('#summer1').summernote(); $('#summer2').summernote();});
+			function preSubmit() {  // todo validate fields here
+				var s1 = $("#summer1");
+				var s2 = $("#summer2");
+				var summary = document.getElementById("event_summary");
+				var body = document.getElementById("event_body");
+				if (s1 && summary) {
+					summary.innerHTML = s1.summernote('code');
+				}
+				if (s2 && body) {
+					body.innerHTML = s2.summernote('code');
+				}
+				return true;
+			}
+			var EF_HAS_RULE = false;
+			var EF_WEEK_SET = false;
+			
+(function () {
+	var freqRadios = document.querySelectorAll('input[name="recur_freq"]');
+	var panel = document.getElementById('recur_panel');
+	var weekField = document.getElementById('recur_week_field');
+	var weekSel = document.getElementById('recur_week');
+	var weekdaySel = document.getElementById('recur_weekday');
+	var untilInput = document.getElementById('recur_until');
+	var dateInput = document.querySelector('input[name="event_date"]');
+	var summaryEl = document.getElementById('recur_summary');
+	// An existing rule's weekday/week are deliberate choices - never auto-overwrite
+	// them. Seeded per field: a weekly rule has no saved week-of-month, so that
+	// select may still sync from the date if the admin switches to Monthly.
+	var weekdayTouched = EF_HAS_RULE;
+	var weekTouched = EF_WEEK_SET;
+
+	var dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+	var ordinals = { '1': 'First', '2': 'Second', '3': 'Third', '4': 'Fourth', '-1': 'Last' };
+
+	function freq() {
+		for (var i = 0; i < freqRadios.length; i++) {
+			if (freqRadios[i].checked) { return freqRadios[i].value; }
+		}
+		return '';
+	}
+
+	function dateParts() {
+		if (!dateInput || !dateInput.value) { return null; }
+		var p = dateInput.value.split('-');
+		if (p.length !== 3) { return null; }
+		return { y: +p[0], m: +p[1], d: +p[2] };
+	}
+
+	function syncFromDate() {
+		var dp = dateParts();
+		if (!dp) { return; }
+		var weekday = new Date(Date.UTC(dp.y, dp.m - 1, dp.d)).getUTCDay();
+		if (!weekdayTouched) { weekdaySel.value = String(weekday); }
+		// Day 1-7 is the first such weekday of the month, 8-14 the second, ...
+		// capped at fourth since a fifth occurrence is better expressed as "last"
+		if (!weekTouched) { weekSel.value = String(Math.min(4, Math.ceil(dp.d / 7))); }
+	}
+
+	function updateSummary() {
+		var f = freq();
+		if (!f) {
+			summaryEl.textContent = 'This event occurs once, on the date above.';
+			return;
+		}
+		var day = dayNames[+weekdaySel.value] || '';
+		var txt = (f === 'weekly')
+			? 'Every ' + day
+			: (ordinals[weekSel.value] || '') + ' ' + day + ' of each month';
+		if (untilInput.value) { txt += ', until ' + untilInput.value; }
+		summaryEl.textContent = 'Repeats: ' + txt +
+			'. The event date above is the first occurrence.';
+	}
+
+	function syncUI() {
+		var f = freq();
+		panel.className = f ? 'ef-recur-panel ef-show' : 'ef-recur-panel';
+		weekField.style.display = (f === 'monthly') ? '' : 'none';
+		updateSummary();
+	}
+
+	for (var i = 0; i < freqRadios.length; i++) {
+		freqRadios[i].addEventListener('change', function () { syncFromDate(); syncUI(); });
+	}
+	weekdaySel.addEventListener('change', function () { weekdayTouched = true; updateSummary(); });
+	weekSel.addEventListener('change', function () { weekTouched = true; updateSummary(); });
+	untilInput.addEventListener('change', updateSummary);
+	if (dateInput) {
+		dateInput.addEventListener('change', function () { syncFromDate(); updateSummary(); });
+	}
+
+	if (!EF_HAS_RULE) { syncFromDate(); }
+	syncUI();
+})();
+</script></div></body></html>

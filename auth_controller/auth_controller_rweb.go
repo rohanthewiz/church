@@ -42,8 +42,11 @@ func AuthHandlerRWeb(ctx rweb.Context) error {
 		return app.RedirectRWeb(ctx, "/login", "Invalid username and/or password")
 	}
 	if auth.PasswordHash(password, stored_salt) != stored_pass_hash {
+		// Log the username only — never the submitted password. A failed attempt
+		// is often a typo of the real password, so logging it would put live
+		// credentials in the log stream (and in any log aggregator downstream).
 		logger.Log("warn", "Login attempt failed", "reason", "Invalid username or password",
-			"Username", username, "password", password)
+			"Username", username)
 		return app.RedirectRWeb(ctx, "/login", "Invalid username and/or password.")
 	}
 	// At this point login is successful

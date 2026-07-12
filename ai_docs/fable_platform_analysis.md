@@ -158,9 +158,17 @@ variants/resizing for mobile bandwidth (article/sermon images currently ship at 
    `db.SetHandleForTesting`) in `resource/{sermon,article,event,feed}/api_contract_test.go`
    and `resource/apiv1/apiv1_test.go`; shared plumbing in `resource/apiv1/apitest`.
 3. Phase 2 auth: token table, Bearer guard, `/api/v1/auth/*` — unblocks everything
-   personalized on mobile.
+   personalized on mobile. — **DONE 2026-07-11**: `api_tokens` table (migration
+   `20260711150000`, SHA-256-hashed tokens, 30-day TTL), `resource/apitoken`
+   (hand-written SQL per the recurrence precedent), `POST /api/v1/auth/login`
+   (JSON + form fallback, per-IP+username failed-login throttle),
+   `GET /auth/me`, `POST /auth/logout`, `APIGuard` Bearer decorator, contract
+   tests + live smoke (`test_scripts/auth_live_check`).
 4. The security quartet: plaintext-password log, `/debug/*` guard, POST-based deletes,
-   `connect2.go` swallowed error.
+   `connect2.go` swallowed error. — **DONE 2026-07-11**: password removed from the
+   failed-login log; `/debug/*` behind AdminGuard; all six admin deletes are POST +
+   CSRF form token (grid delete links now submit a POST form via `data-csrf`);
+   `InitDB2` returns its error.
 5. Responsive pass: media queries for the 3-column layout and grid, using the event form as
    the pattern.
 6. Executor-injection refactor for queries, then auth/payment tests.

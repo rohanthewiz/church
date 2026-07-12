@@ -16,7 +16,10 @@ func InitDB2(opts DBOpts) error {
 	dbOpts2 = &opts
 	err := openDB2()
 	if err != nil {
-		serr.Wrap(err, "Error initializing database")
+		// Previously the wrapped error was discarded (`serr.Wrap(...)` on its own
+		// line) so a failed init reported success and callers only found out at
+		// first query time. Return it so startup can fail loudly instead.
+		return serr.Wrap(err, "Error initializing database")
 	}
 	return nil
 }
