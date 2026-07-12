@@ -10,6 +10,7 @@ import (
 	"github.com/rohanthewiz/church/config"
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/payment"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
 	"github.com/rohanthewiz/serr"
@@ -17,9 +18,9 @@ import (
 	"github.com/stripe/stripe-go/v86/paymentintent"
 )
 
-// Stripe's documented minimum charge for USD, in cents. Validated server-side
-// because the form's min attribute is client-side only.
-const minChargeCents = 50
+// Minimum-charge and description helpers moved to resource/payment (giving.go)
+// when the mobile API endpoint needed to share them — controllers may import
+// resources but never the reverse.
 
 func NewPaymentRWeb(ctx rweb.Context) error {
 	pg, err := page.PaymentForm()
@@ -65,7 +66,7 @@ func CreatePaymentIntentRWeb(ctx rweb.Context) error {
 	// math.Round, not a bare cast: int64(32.57 * 100) truncates 3256.9999... to 3256,
 	// silently shorting the gift by a cent.
 	amtCents := int64(math.Round(amt * 100.0))
-	if amtCents < minChargeCents {
+	if amtCents < payment.MinChargeCents {
 		return ctx.WriteJSON(map[string]string{"error": "The minimum giving amount is $0.50"})
 	}
 
@@ -74,7 +75,7 @@ func CreatePaymentIntentRWeb(ctx rweb.Context) error {
 	params := &stripe.PaymentIntentParams{
 		Amount:      stripe.Int64(amtCents),
 		Currency:    stripe.String(string(stripe.CurrencyUSD)),
-		Description: stripe.String(txDescription()),
+		Description: stripe.String(payment.TxDescription()),
 		// Let Stripe offer whatever methods are enabled on the account
 		// (cards, Apple/Google Pay, Link, ...) through the single Payment Element.
 		AutomaticPaymentMethods: &stripe.PaymentIntentAutomaticPaymentMethodsParams{

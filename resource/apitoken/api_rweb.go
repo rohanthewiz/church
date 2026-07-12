@@ -228,10 +228,20 @@ func APIGuard(next rweb.Handler) rweb.Handler {
 	}
 }
 
+// CurrentUser returns the TokenUser that APIGuard resolved for this request.
+// This is the sanctioned way for handlers in other resource packages (e.g.
+// payment history) to learn who the bearer is — the context key stays
+// unexported so nothing outside this package can spoof or bypass the guard's
+// stash. ok=false means the route was wired without APIGuard, a wiring bug.
+func CurrentUser(ctx rweb.Context) (tu TokenUser, ok bool) {
+	tu, ok = ctx.Get(ctxKeyAPIUser).(TokenUser)
+	return tu, ok
+}
+
 // APIMeRWeb handles GET /api/v1/auth/me — the signed-in identity, enveloped
 // as {"user": {...}} to match the login response.
 func APIMeRWeb(ctx rweb.Context) error {
-	tu, ok := ctx.Get(ctxKeyAPIUser).(TokenUser)
+	tu, ok := CurrentUser(ctx)
 	if !ok { // only reachable if routed without APIGuard — a wiring bug
 		return apiv1.Error(ctx, http.StatusUnauthorized, "Authentication required")
 	}

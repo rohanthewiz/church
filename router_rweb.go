@@ -17,6 +17,7 @@ import (
 	"github.com/rohanthewiz/church/page_controller"
 	"github.com/rohanthewiz/church/payment_controller"
 	"github.com/rohanthewiz/church/resource/apitoken"
+	"github.com/rohanthewiz/church/resource/payment"
 	"github.com/rohanthewiz/church/resource/apiv1"
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/calendar"
@@ -135,6 +136,12 @@ func ServeRWeb() {
 	api.Post("/auth/login", apitoken.APILoginRWeb)
 	api.Get("/auth/me", apitoken.APIGuard(apitoken.APIMeRWeb))
 	api.Post("/auth/logout", apitoken.APIGuard(apitoken.APILogoutRWeb))
+
+	// Phase 2 payments: create-intent is public like the web giving form
+	// (guest giving needs no account; abuse-limited per IP, not CSRF — see
+	// resource/payment/api_rweb.go). History is personal → Bearer guard.
+	api.Post("/payments/create-intent", payment.APICreateIntentRWeb)
+	api.Get("/payments/history", apitoken.APIGuard(payment.APIPaymentHistoryRWeb))
 
 	// FullCalendar-shaped events JSON for the website's calendar widget
 	s.Get("/calendar", calendar.GetFullCalendarEventsRWeb)

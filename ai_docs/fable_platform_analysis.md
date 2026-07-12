@@ -194,3 +194,19 @@ resource/apiv1/appconfig.go returns church_name, theme, stripe_publishable_key,
 giving_contacts (never null), features {giving: both Stripe keys present,
 sermon_audio: idrive enabled}, server_version; DB-free by design; contract tests in
 resource/apiv1/appconfig_test.go. Remaining for milestone (b): JSON create-intent.
+
+Milestone (b) COMPLETED 2026-07-12: JSON giving endpoints in resource/payment/api_rweb.go.
+`POST /api/v1/payments/create-intent` (public, like the web giving form — guest giving
+needs no account; per-IP sliding-window rate limit instead of CSRF, which doesn't apply
+to a cookie-free API) takes `{amount_cents (int), fullname, email?, comment?}`, creates
+the PaymentIntent with the same metadata contract recordPaymentIntent reads
+(customer_name/customer_email/comment, plus source=mobile_app), returns
+`{client_secret, payment_intent_id, amount_cents}`. Completion is recorded by the
+existing Stripe webhook — no mobile receipt-redirect leg. `GET /api/v1/payments/history`
+(Bearer-guarded via apitoken.APIGuard + new exported apitoken.CurrentUser) returns
+`{payments: [...], has_more}` — charges matched case-insensitively on the account email
+(charges has no user_id column; guests give without accounts), limit+1 probe for
+has_more (first endpoint with the has_more pagination shape). TxDescription and
+MinChargeCents moved from payment_controller to resource/payment (giving.go) for
+sharing. Contract tests in resource/payment/api_rweb_test.go include a stubbed Stripe
+backend (httptest + stripe.SetBackend) exercising the real stripe-go pipeline.

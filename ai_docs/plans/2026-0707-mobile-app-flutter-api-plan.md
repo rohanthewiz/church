@@ -67,6 +67,16 @@ Everything renders HTML except:
   true only when BOTH Stripe keys are configured. Contract tests in
   `resource/apiv1/appconfig_test.go`.
 - JSON variant of create-intent + `GET /api/v1/payments/history` (charges table).
+  — **IMPLEMENTED 2026-07-12** (`resource/payment/api_rweb.go`):
+  `POST /api/v1/payments/create-intent` — public (guest giving), per-IP rate limit,
+  JSON body `{amount_cents (int), fullname, email?, comment?}` →
+  `{client_secret, payment_intent_id, amount_cents}`; same metadata contract as the
+  web flow so the webhook records completion identically (plus `source=mobile_app`).
+  `GET /api/v1/payments/history` — Bearer-guarded, charges matched case-insensitively
+  on the account email, `{payments: [{id, created_at, amount_cents, description,
+  comment, paid, refunded, amount_refunded_cents, receipt_number, receipt_url}],
+  has_more}` with limit/offset + limit+1 has_more probe. Contract tests incl. a
+  stubbed Stripe backend in `resource/payment/api_rweb_test.go`.
 
 ### Phase 3 — chat + push
 - New subsystem; nothing exists server-side. `chat_messages` table (+ channels later).

@@ -18,20 +18,6 @@ import (
 	stripe "github.com/stripe/stripe-go/v86"
 )
 
-// txDescription labels the charge in Stripe's dashboard and on receipts.
-// Resolved at call time (not a package const) because this framework serves
-// multiple church sites from one binary family -- the old hardcoded
-// "CCSWM Donation" const was branding every site's gifts with one church's name.
-func txDescription() string {
-	if desc := strings.TrimSpace(config.Options.Stripe.TxDescription); desc != "" {
-		return desc
-	}
-	if owner := strings.TrimSpace(config.Options.CopyrightOwner); owner != "" {
-		return owner + " Donation"
-	}
-	return "Donation"
-}
-
 // chargeMeta is what we persist in the charges.meta JSON column.
 // The Stripe charge id lives here (not in receipt_number, which previously and
 // incorrectly held the charge id) so refunds/disputes can be reconciled against Stripe.
