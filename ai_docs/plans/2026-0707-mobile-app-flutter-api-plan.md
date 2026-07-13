@@ -152,6 +152,50 @@ Server (`church`, in working tree):
   `go run ./test_scripts/auth_live_check` (verified 2026-07-11 against local PG).
 - Flutter TODO: token store (`flutter_secure_storage`), login screen, attach
   `Authorization: Bearer` in api_client.dart, re-login on 401.
+  → DONE 2026-07-12; see "Flutter screens" section below.
+
+## Flutter screens (IMPLEMENTED 2026-07-12, church_mobile)
+
+Full screen set landed in `church_mobile` — the app now covers Phases 1+2
+end-to-end against the server API:
+
+- **Shell** (`lib/src/screens/shell.dart`): bottom-nav Home / Sermons /
+  Events / Give / More on an IndexedStack (tabs stay alive so sermon audio
+  keeps playing across tab switches). Articles live inside Home ("See all")
+  rather than a sixth tab.
+- **Services** (`lib/src/app_services.dart`): plain InheritedWidget
+  (`AppScope`) carrying ApiClient + SessionController + a
+  `ValueNotifier<AppConfig?>` — deliberately no provider/riverpod.
+- **Session** (`lib/src/session/session.dart`): flutter_secure_storage for
+  the bearer token (Keychain/EncryptedSharedPreferences) with the user DTO
+  cached alongside; login persists *before* activating the token; restore
+  trusts the cache instantly then revalidates via /auth/me in the background
+  (only a definitive 401 logs out — offline never does); guarded screens
+  call `handleUnauthorized()` on 401 so the whole app flips at once.
+- **ApiClient** extended: appConfig/login/me/logout/createPaymentIntent/
+  paymentsHistory, Bearer header when a token is set, `_postJson`, 401 →
+  `ApiException.isUnauthorized`.
+- **Screens**: Home (one /feed call, three sections), Sermons
+  (infinite-scroll offset paging + year chips), SermonDetail (just_audio
+  inline player: Range-seek slider, ±10/30s, 1x-2x speed cycler; scripture
+  chips deep-link BlueLetterBible), Articles/ArticleDetail + Events/
+  EventDetail (flutter_html bodies, tel/mailto links, month grouping,
+  recurring badges), Login (autofill hints, device label), Giving
+  (flutter_stripe PaymentSheet: create-intent → initPaymentSheet →
+  presentPaymentSheet; guest-friendly, session prefill, quick-amount chips,
+  dollars→integer-cents parser, feature-flag fallback showing
+  giving_contacts), History (has_more paging, receipt links, 401 teardown),
+  More (account, sign in/out, about w/ server_version).
+- **Stripe native config**: MainActivity → FlutterFragmentActivity;
+  both `styles.xml` themes → Theme.MaterialComponents (stripe_android
+  requirement). Publishable key set from app-config at boot (and re-checked
+  on the Give tab, which owns the config retry path).
+- **Tests**: `test/api_client_test.dart` — MockClient contract tests
+  (login shape + JSON body, Bearer-header presence, 401 mapping,
+  create-intent integer-cents + omitted empty optionals, has_more envelope,
+  app-config parse). `flutter analyze` clean; all tests green.
+- Deferred: audio_service (background/lock-screen playback), per-device
+  session management UI, calendar month view, push (Phase 3).
 
 ## Event recurrence (IMPLEMENTED this session, 2026-07-07)
 
