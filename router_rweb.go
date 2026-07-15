@@ -21,8 +21,10 @@ import (
 	"github.com/rohanthewiz/church/resource/apiv1"
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/calendar"
+	"github.com/rohanthewiz/church/resource/chat"
 	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/resource/feed"
+	"github.com/rohanthewiz/church/resource/prayerwall"
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/sermon_controller"
 	"github.com/rohanthewiz/church/user_controller"
@@ -47,6 +49,10 @@ func ServeRWeb() {
 	if config.Options.IDrive.Enabled && config.Options.IDrive.AutoCleanup {
 		idrive.StartCacheCleanup()
 	}
+
+	// Background retention for live chat: messages older than a day are
+	// deleted unless an editor marked them keep (see resource/chat).
+	chat.StartRetentionSweep()
 
 	// TLS (see tls_rweb.go): autocert (in-process Let's Encrypt) or hot-reloaded
 	// cert files. Also starts the HTTP challenge/redirect listener when enabled.
@@ -144,6 +150,19 @@ func ServeRWeb() {
 	api.Post("/payments/create-intent", payment.APICreateIntentRWeb)
 	api.Get("/payments/history", apitoken.APIGuard(payment.APIPaymentHistoryRWeb))
 
+	// Mobile chat + prayer wall. Reads are public (a placed chat/wall is
+	// visible like article comments); writes ride the Bearer guard. Live
+	// updates: the app may use the same /chat/stream SSE endpoint as the web
+	// widget, or poll the list endpoint with after_id.
+	api.Get("/chat/messages", chat.APIChatMessagesRWeb)
+	api.Post("/chat/messages", apitoken.APIGuard(chat.APIChatPostRWeb))
+	api.Post("/chat/messages/:id/keep", apitoken.APIGuard(chat.APIChatKeepRWeb))
+	api.Delete("/chat/messages/:id", apitoken.APIGuard(chat.APIChatDeleteRWeb))
+	api.Get("/prayer-requests", prayerwall.APIPrayerRequestsRWeb)
+	api.Post("/prayer-requests", apitoken.APIGuard(prayerwall.APIPrayerPostRWeb))
+	api.Post("/prayer-requests/:id/answered", apitoken.APIGuard(prayerwall.APIPrayerAnsweredRWeb))
+	api.Delete("/prayer-requests/:id", apitoken.APIGuard(prayerwall.APIPrayerDeleteRWeb))
+
 	// FullCalendar-shaped events JSON for the website's calendar widget
 	s.Get("/calendar", calendar.GetFullCalendarEventsRWeb)
 
@@ -174,6 +193,42 @@ func ServeRWeb() {
 	// Stripe server-to-server events (payment_intent.succeeded). Deliberately outside
 	// the session middleware: the caller is Stripe, authenticated by signature, not cookie.
 	s.Post("/webhooks/stripe", payment_controller.StripeWebhookRWeb)
+
+	// Live chat (web widget endpoints — JSON over the session cookie).
+	// The SSE stream stays outside the session group: it needs no identity
+	// (reads are public) and a long-lived stream shouldn't hold session
+	// bookkeeping per connect.
+	s.Get("/chat/stream", chat.StreamHandler(s))
+	cht := s.Group("/chat", authctlr.UseCustomContextRWeb)
+	cht.Get("/messages", chat.ListMessagesRWeb)
+	cht.Post("/messages", chat.PostMessageRWeb)
+	cht.Post("/keep/:id", chat.KeepMessageRWeb)     // editor+: exempt from the daily sweep
+	cht.Post("/delete/:id", chat.DeleteMessageRWeb) // editor+: moderation removal
+
+	// Prayer wall — prebuilt page plus form-post handlers (deletes/updates
+	// are POSTs with CSRF tokens, matching the site's web convention).
+	pwall := s.Group("/prayer-wall", authctlr.UseCustomContextRWeb)
+	pwall.Get("", func(ctx rweb.Context) error {
+		pg, err := page.PrayerWall()
+		if err != nil {
+			return err
+		}
+		return ctx.WriteHTML(string(basectlr.RenderPageNewRWeb(pg, ctx)))
+	})
+	preq := s.Group("/prayer-requests", authctlr.UseCustomContextRWeb)
+	preq.Post("", prayerwall.PostRequestRWeb)
+	preq.Post("/answered/:id", prayerwall.MarkAnsweredRWeb)
+	preq.Post("/delete/:id", prayerwall.DeleteRequestRWeb)
+
+	// Community chat — the chat module in its standalone, top-level role
+	cchat := s.Group("/community-chat", authctlr.UseCustomContextRWeb)
+	cchat.Get("", func(ctx rweb.Context) error {
+		pg, err := page.CommunityChat()
+		if err != nil {
+			return err
+		}
+		return ctx.WriteHTML(string(basectlr.RenderPageNewRWeb(pg, ctx)))
+	})
 
 	// Sermons
 	ser := s.Group("/sermons", authctlr.UseCustomContextRWeb)

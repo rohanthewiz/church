@@ -23,7 +23,7 @@ func RenderPageNewRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 	}()
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
-		"_global": {"user_agent": ctx.UserAgent()},
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx)},
 	}, IsLoggedInRWeb(ctx))
 	out = buf.Bytes()
 	return
@@ -44,7 +44,7 @@ func RenderPageListRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 		map[string]map[string]string{
 			pg.MainModuleSlug(): {
 				"offset": ctx.Request().QueryParam("offset"), "limit": ctx.Request().QueryParam("limit")},
-			"_global": {"user_agent": ctx.UserAgent()},
+			"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx)},
 		}, IsLoggedInRWeb(ctx),
 	)
 	out = buf.Bytes()
@@ -69,7 +69,12 @@ func RenderPageSingleRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
 		pg.MainModuleSlug(): {"id": ctx.Request().PathParam("id"), "loggedIn": loggedIn},
-		"_global":           {"user_agent": ctx.UserAgent()},
+		// item_id rides _global (not just the main module's params) so
+		// secondary modules can key off the displayed item — the chat
+		// discussion strip derives its per-article channel from it.
+		// username likewise lets modules tailor controls to the viewer.
+		"_global": {"user_agent": ctx.UserAgent(), "item_id": ctx.Request().PathParam("id"),
+			"username": cctx.GetUsernameFromRWeb(ctx)},
 	}, IsLoggedInRWeb(ctx))
 	out = buf.Bytes()
 	return

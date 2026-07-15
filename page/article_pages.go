@@ -1,8 +1,9 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/resource/chat"
 	"github.com/rohanthewiz/church/util/stringops"
 )
 
@@ -32,8 +33,21 @@ func ArticleShow() (*Page, error) {
 			Limit: 10,
 		},
 	}
-	pgdef.Modules = []module.Presenter{modPres, modPres2}
-	return  pageFromPresenter(pgdef), nil
+	// Comments: the chat discussion strip under the article. ItemSlug is the
+	// channel PREFIX — combined with the article id (via the _global item_id
+	// param, see basectlr.RenderPageSingleRWeb) it yields a per-article
+	// channel like "article-42". Comments share chat's lifecycle: gone after
+	// a day unless an editor keeps them.
+	modPres3 := module.Presenter{
+		Opts: module.Opts{
+			ModuleType: chat.ModuleTypeChatDiscussion,
+			Title:      "Discussion",
+			ItemSlug:   "article",
+			Published:  true,
+		},
+	}
+	pgdef.Modules = []module.Presenter{modPres, modPres2, modPres3}
+	return pageFromPresenter(pgdef), nil
 }
 
 func ArticlesList() (*Page, error) {

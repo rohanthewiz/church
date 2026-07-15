@@ -41,6 +41,12 @@ type AppFeatures struct {
 	// SermonAudio tracks whether the site has media storage (IDrive e2)
 	// configured — without it /sermon-audio/* cannot serve files.
 	SermonAudio bool `json:"sermon_audio"`
+	// Chat and PrayerWall ship with the server and need only the login the
+	// app already has, so they are advertised unconditionally — the flags
+	// exist so a future per-site opt-out is a config change, not an API
+	// contract change.
+	Chat       bool `json:"chat"`
+	PrayerWall bool `json:"prayer_wall"`
 }
 
 // APIAppConfigRWeb handles GET /api/v1/app-config.
@@ -64,6 +70,8 @@ func APIAppConfigRWeb(ctx rweb.Context) error {
 		Features: AppFeatures{
 			Giving:      opts.Stripe.PubKey != "" && opts.Stripe.PrivKey != "",
 			SermonAudio: opts.IDrive.Enabled,
+			Chat:        true,
+			PrayerWall:  true,
 		},
 		ServerVersion: config.Version,
 	})

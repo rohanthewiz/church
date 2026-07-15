@@ -4,10 +4,12 @@ import (
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/calendar"
+	"github.com/rohanthewiz/church/resource/chat"
 	"github.com/rohanthewiz/church/resource/content"
 	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/resource/menu"
 	"github.com/rohanthewiz/church/resource/payment"
+	"github.com/rohanthewiz/church/resource/prayerwall"
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/resource/sermoncleanup"
 	"github.com/rohanthewiz/church/resource/user"
@@ -104,6 +106,17 @@ func RegisterModules() {
 	moduleContentBy[payment.ModuleTypePaymentForm] = content.ModuleContentByForm
 	addToRegistry(payment.ModuleTypePaymentReceipt, "payment-receipt", payment.NewModulePaymentReceipt)
 	moduleContentBy[payment.ModuleTypePaymentReceipt] = content.ModuleContentBySingleId
+
+	// Community modules. The chat module works standalone (main content of a
+	// page) or as the compact discussion strip under another module; the
+	// prayer wall embeds the latter itself. No moduleContentBy entries: like
+	// the calendar these need no id/pagination options in the page form —
+	// their placement options (channel via item slug) suffice.
+	singularToPlural["chat"] = "chats"
+	addToRegistry(chat.ModuleTypeChat, "chat", chat.NewModuleChat)
+	addToRegistry(chat.ModuleTypeChatDiscussion, "chat", chat.NewModuleChatDiscussion)
+	singularToPlural["prayer-request"] = "prayer-requests"
+	addToRegistry(prayerwall.ModuleTypePrayerWall, "prayer-request", prayerwall.NewModulePrayerWall)
 }
 
 // List Available Modules for dynamic pages
