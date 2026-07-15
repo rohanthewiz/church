@@ -91,6 +91,22 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 		b.T(`<script src="/assets/js/jquery.serialize-object.min.js"></script>
 	    <script src="/assets/js/bootstrap.js"></script>
 	    <script src="/assets/js/summernote.min.js"></script>`)
+	} else {
+		// Blue Letter Bible ScriptTagger: scans the rendered page for verse
+		// references (e.g. "John 3:16", "Rom 1:16-18"), links them, and shows a
+		// hover tooltip with the verse text plus deep links into BLB's study
+		// tools. Public pages only — on admin pages it would rewrite references
+		// inside the Summernote editor's DOM and corrupt content on save.
+		// The script defines the BLB global and applies settings at DOM-ready,
+		// so config assignments go after the include (before it, BLB is
+		// undefined and the assignments would throw). Loaded at the end of
+		// <body> so page content exists when it scans.
+		b.T(`<script src="https://www.blueletterbible.org/assets/scripts/blbToolTip/BLB_ScriptTagger-min.js" type="text/javascript"></script>
+	    <script type="text/javascript">
+	    BLB.Tagger.Translation = 'NKJV';
+	    BLB.Tagger.HyperLinks = 'all';
+	    BLB.Tagger.TargetNewWindow = true;
+	    </script>`)
 	}
 
 	b.T(`</body></html>`)
