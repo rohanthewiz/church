@@ -11,6 +11,7 @@ import (
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/apitoken"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
@@ -86,6 +87,22 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 	msg := "Created"
 	if efs.Id != "0" && efs.Id != "" {
 		msg = "Updated"
+		// Security sweep: a password change or account disable must also kill
+		// every mobile API session — the old credential/permission must not
+		// live on in phones for up to the 30-day token TTL. Unconditional on
+		// disable (we don't load the prior enabled state; re-revoking an
+		// already-disabled user's zero tokens is a harmless no-op). Lives here
+		// rather than in resource/user because apitoken imports resource/user
+		// — calling the other way would be an import cycle.
+		if efs.Password != "" || !efs.Enabled {
+			if userID, convErr := strconv.ParseInt(efs.Id, 10, 64); convErr == nil {
+				if revErr := apitoken.RevokeAllForUser(dbH, userID); revErr != nil {
+					// The upsert itself succeeded — log loudly but don't fail
+					// the admin's save over the token sweep.
+					logger.LogErr(revErr, "Error revoking user's api tokens after update", "user_id", efs.Id)
+				}
+			}
+		}
 	}
 	return app.RedirectRWeb(ctx, "/admin/users", "User "+msg)
 }

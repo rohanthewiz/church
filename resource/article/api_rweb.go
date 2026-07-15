@@ -7,6 +7,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/resource/apiv1"
+	"github.com/rohanthewiz/church/resource/bibleref"
 	"github.com/rohanthewiz/church/util/timeutil"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
@@ -20,15 +21,21 @@ import (
 // body is Summernote-produced HTML. The mobile app renders it with
 // flutter_html (webview fallback if markup proves too rich), so it is only
 // sent on the detail endpoint to keep list payloads small.
+//
+// summary_refs are Bible references found in summary, with BLB deep links and
+// byte offsets for tappable spans (see resource/bibleref). Summary only —
+// body is HTML, where byte offsets would index markup, not rendered text; the
+// website's ScriptTagger covers rendered HTML instead.
 type ArticleAPI struct {
-	ID         int64    `json:"id"`
-	Title      string   `json:"title"`
-	Slug       string   `json:"slug"`
-	Summary    string   `json:"summary"`
-	Categories []string `json:"categories"`
-	CreatedAt  string   `json:"created_at"`
-	UpdatedAt  string   `json:"updated_at"`
-	Body       string   `json:"body,omitempty"`
+	ID          int64             `json:"id"`
+	Title       string            `json:"title"`
+	Slug        string            `json:"slug"`
+	Summary     string            `json:"summary"`
+	SummaryRefs []bibleref.APIRef `json:"summary_refs"`
+	Categories  []string          `json:"categories"`
+	CreatedAt   string            `json:"created_at"`
+	UpdatedAt   string            `json:"updated_at"`
+	Body        string            `json:"body,omitempty"`
 }
 
 func articleToAPI(art *models.Article, includeBody bool) ArticleAPI {
@@ -42,6 +49,8 @@ func articleToAPI(art *models.Article, includeBody bool) ArticleAPI {
 	if a.Categories == nil {
 		a.Categories = []string{}
 	}
+	// Empty translation = NKJV, matching the website's ScriptTagger.
+	a.SummaryRefs = bibleref.FindAllAPI(a.Summary, "")
 	// created/updated are nullable in the schema; empty string means unknown
 	if art.CreatedAt.Valid {
 		a.CreatedAt = art.CreatedAt.Time.Format(timeutil.ISO8601DateTime)

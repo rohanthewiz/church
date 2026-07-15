@@ -55,8 +55,13 @@ func TestAPIArticlesListContract(t *testing.T) {
 		t.Fatalf("want 1 article, got %d", len(arts))
 	}
 	art := arts[0].(map[string]any)
-	apitest.WantKeys(t, art, "id", "title", "slug", "summary", "categories",
-		"created_at", "updated_at")
+	apitest.WantKeys(t, art, "id", "title", "slug", "summary", "summary_refs",
+		"categories", "created_at", "updated_at")
+	// A ref-free summary must still yield [], never null — the app iterates blindly
+	if refs, ok := art["summary_refs"].([]any); !ok || len(refs) != 0 {
+		t.Errorf("summary_refs must be [] for a ref-free summary, got %T %v",
+			art["summary_refs"], art["summary_refs"])
+	}
 	if id, ok := art["id"].(float64); !ok || id != 7 {
 		t.Errorf("id must be numeric 7, got %T %v", art["id"], art["id"])
 	}

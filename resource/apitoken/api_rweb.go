@@ -264,3 +264,24 @@ func APILogoutRWeb(ctx rweb.Context) error {
 	}
 	return ctx.WriteJSON(map[string]bool{"ok": true})
 }
+
+// APILogoutAllRWeb handles POST /api/v1/auth/logout-all — "log out
+// everywhere": revokes every token the bearer's account holds, including the
+// one presented. The remedy for a lost or stolen phone; the same sweep also
+// fires server-side on password change and account disable (see
+// user_controller.UpsertUserRWeb).
+func APILogoutAllRWeb(ctx rweb.Context) error {
+	tu, ok := CurrentUser(ctx)
+	if !ok { // only reachable if routed without APIGuard — a wiring bug
+		return apiv1.Error(ctx, http.StatusUnauthorized, "Authentication required")
+	}
+	dbH, err := db.Db()
+	if err != nil {
+		return apiv1.ServerError(ctx, err, "Could not log out")
+	}
+	if err := RevokeAllForUser(dbH, tu.UserID); err != nil {
+		return apiv1.ServerError(ctx, err, "Could not log out")
+	}
+	logger.Info("API logout-all", "username", tu.Username)
+	return ctx.WriteJSON(map[string]bool{"ok": true})
+}

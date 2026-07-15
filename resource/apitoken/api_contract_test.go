@@ -28,6 +28,7 @@ func newAuthAPIServer() *rweb.Server {
 	api.Post("/auth/login", APILoginRWeb)
 	api.Get("/auth/me", APIGuard(APIMeRWeb))
 	api.Post("/auth/logout", APIGuard(APILogoutRWeb))
+	api.Post("/auth/logout-all", APIGuard(APILogoutAllRWeb))
 	return s
 }
 
@@ -245,4 +246,35 @@ func TestAPILogout(t *testing.T) {
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Error(err)
 	}
+}
+
+// logout-all must sweep by the *user id* the guard resolved (every device),
+// not by the presented token's hash (just this device).
+func TestAPILogoutAll(t *testing.T) {
+	mock := apitest.MockDB(t)
+	mock.ExpectQuery(regexp.QuoteMeta("FROM api_tokens t")).
+		WillReturnRows(sqlmock.NewRows(tokenUserCols).
+			AddRow(int64(7), "kim", "Kim", "Lee", "kim@example.com", 9))
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE api_tokens SET last_used_at")).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta("DELETE FROM api_tokens WHERE user_id")).
+		WithArgs(int64(7)).
+		WillReturnResult(sqlmock.NewResult(0, 3)) // three devices, all gone
+
+	status, doc := apitest.RequestJSON(t, newAuthAPIServer(),
+		"POST", "/api/v1/auth/logout-all", bearer("livetoken"), "")
+	if status != 200 {
+		t.Fatalf("status = %d, want 200 (doc: %v)", status, doc)
+	}
+	if ok, _ := doc["ok"].(bool); !ok {
+		t.Errorf(`logout-all should answer {"ok": true}, got %v`, doc)
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+
+	// And like every guarded route, no bearer → 401 before any DB touch.
+	status, doc = apitest.RequestJSON(t, newAuthAPIServer(),
+		"POST", "/api/v1/auth/logout-all", nil, "")
+	apitest.WantError(t, status, 401, doc)
 }

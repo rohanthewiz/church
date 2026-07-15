@@ -32,7 +32,9 @@ var sermonCols = []string{
 
 func sermonRow(rows *sqlmock.Rows) *sqlmock.Rows {
 	return rows.AddRow(
-		int64(42), "On Grace", "on-grace", true, "A study in grace", "<p>notes</p>",
+		// Summary deliberately contains a reference: summary_refs offsets are
+		// asserted against it below ("Grace in " is 9 bytes).
+		int64(42), "On Grace", "on-grace", true, "Grace in Eph 2:8-9 explained", "<p>notes</p>",
 		"/sermon-audio/2026/on-grace.mp3",
 		time.Date(2026, 7, 5, 0, 0, 0, 0, time.UTC), "Main Hall", "Pastor A",
 		// Postgres array literals — types.StringArray scans this wire form
@@ -60,7 +62,8 @@ func TestAPISermonsListContract(t *testing.T) {
 	}
 	ser := sermons[0].(map[string]any)
 	apitest.WantKeys(t, ser, "id", "title", "summary", "teacher", "place_taught",
-		"date_taught", "scripture_refs", "categories", "audio_url")
+		"date_taught", "scripture_refs", "scripture_ref_urls", "summary_refs",
+		"categories", "audio_url")
 
 	// id must be numeric — the Dart model does `json['id'] as int`
 	if id, ok := ser["id"].(float64); !ok || id != 42 {
@@ -71,6 +74,29 @@ func TestAPISermonsListContract(t *testing.T) {
 	}
 	if refs := ser["scripture_refs"].([]any); len(refs) != 2 || refs[0] != "John 3:16" {
 		t.Errorf("scripture_refs should be a real array, got %v", refs)
+	}
+	// scripture_ref_urls is index-aligned with scripture_refs — the app makes
+	// each ref chip tappable by position, so alignment is contract.
+	urls, _ := ser["scripture_ref_urls"].([]any)
+	if len(urls) != 2 ||
+		urls[0] != "https://www.blueletterbible.org/nkjv/jhn/3/16/" ||
+		urls[1] != "https://www.blueletterbible.org/nkjv/rom/8/1/" {
+		t.Errorf("scripture_ref_urls should carry aligned BLB links, got %v", urls)
+	}
+	// summary_refs carries byte offsets into summary — the app splices
+	// tappable spans by start/end, so these values are contract.
+	sRefs, _ := ser["summary_refs"].([]any)
+	if len(sRefs) != 1 {
+		t.Fatalf("want 1 summary ref, got %v", ser["summary_refs"])
+	}
+	sr := sRefs[0].(map[string]any)
+	apitest.WantKeys(t, sr, "book", "slug", "chapter", "verseStart", "verseEnd",
+		"raw", "start", "end", "url")
+	if sr["raw"] != "Eph 2:8-9" || sr["start"].(float64) != 9 || sr["end"].(float64) != 18 {
+		t.Errorf("summary ref offsets wrong: %v", sr)
+	}
+	if sr["url"] != "https://www.blueletterbible.org/nkjv/eph/2/8-9/" {
+		t.Errorf("summary ref url wrong: %v", sr["url"])
 	}
 	// empty DB array must serialize as [], never null — the app iterates blindly
 	if cats, ok := ser["categories"].([]any); !ok || len(cats) != 0 {

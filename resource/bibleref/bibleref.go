@@ -73,6 +73,39 @@ func (r Ref) BLBURL(translation string) string {
 	return fmt.Sprintf("%s%d/", base, r.VerseStart)
 }
 
+// APIRef is a Ref plus its resolved BLB deep link — the JSON shape the
+// mobile API embeds in responses. The URL is precomputed server-side so every
+// client agrees on translation and URL shape (the Flutter app must never
+// re-implement the slug table; its early client-side guesser produced links
+// like /kjv/john/3/16 where BLB wants /nkjv/jhn/3/16/).
+type APIRef struct {
+	Ref
+	URL string `json:"url"`
+}
+
+// FindAllAPI is FindAll plus BLB links. Always returns a non-nil slice so it
+// JSON-encodes as [] rather than null — API clients iterate blindly.
+// translation "" defaults to NKJV (matches the web ScriptTagger config).
+func FindAllAPI(text, translation string) []APIRef {
+	refs := FindAll(text)
+	out := make([]APIRef, 0, len(refs))
+	for _, r := range refs {
+		out = append(out, APIRef{Ref: r, URL: r.BLBURL(translation)})
+	}
+	return out
+}
+
+// FirstURL resolves a string that should itself be a reference (e.g. one
+// entry of a sermon's scripture_refs array) to its BLB link, or "" when it
+// doesn't parse (topical notes, whole-book refs). Only the first reference
+// counts — such entries conventionally hold exactly one.
+func FirstURL(refText, translation string) string {
+	if refs := FindAll(refText); len(refs) > 0 {
+		return refs[0].BLBURL(translation)
+	}
+	return ""
+}
+
 // String renders the canonical human-readable form, e.g. "1 Samuel 7:12-16".
 func (r Ref) String() string {
 	s := fmt.Sprintf("%s %d", r.Book, r.Chapter)

@@ -7,6 +7,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/resource/apiv1"
+	"github.com/rohanthewiz/church/resource/bibleref"
 	"github.com/rohanthewiz/church/util/timeutil"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
@@ -26,17 +27,27 @@ import (
 //     API base — the server can't reliably know its public scheme/host
 //     behind proxies, so it doesn't try.
 //   - body is only populated on the detail endpoint; list payloads stay lean.
+//   - scripture_ref_urls is index-aligned with scripture_refs: entry i is the
+//     BlueLetterBible deep link for ref i, "" when the ref doesn't parse
+//     (topical notes). Precomputed server-side so link/translation rules live
+//     in exactly one place (resource/bibleref).
+//   - summary_refs are references found inside summary, with byte offsets
+//     (start/end) so the app can splice tappable spans without re-parsing.
+//     The offsets index the UTF-8 bytes of summary — a Dart client must
+//     slice the utf8-encoded bytes, not the UTF-16 string.
 type SermonAPI struct {
-	ID            int64    `json:"id"`
-	Title         string   `json:"title"`
-	Summary       string   `json:"summary"`
-	Teacher       string   `json:"teacher"`
-	PlaceTaught   string   `json:"place_taught"`
-	DateTaught    string   `json:"date_taught"`
-	ScriptureRefs []string `json:"scripture_refs"`
-	Categories    []string `json:"categories"`
-	AudioURL      string   `json:"audio_url"`
-	Body          string   `json:"body,omitempty"`
+	ID               int64             `json:"id"`
+	Title            string            `json:"title"`
+	Summary          string            `json:"summary"`
+	Teacher          string            `json:"teacher"`
+	PlaceTaught      string            `json:"place_taught"`
+	DateTaught       string            `json:"date_taught"`
+	ScriptureRefs    []string          `json:"scripture_refs"`
+	ScriptureRefURLs []string          `json:"scripture_ref_urls"`
+	SummaryRefs      []bibleref.APIRef `json:"summary_refs"`
+	Categories       []string          `json:"categories"`
+	AudioURL         string            `json:"audio_url"`
+	Body             string            `json:"body,omitempty"`
 }
 
 // SermonsResp was the original thin list DTO (title/date/refs-as-string/audio_link).
@@ -67,6 +78,15 @@ func sermonToAPI(ser *models.Sermon, includeBody bool) SermonAPI {
 	if s.Categories == nil {
 		s.Categories = []string{}
 	}
+	// Parsed BLB links: one per scripture_refs entry (aligned by index), plus
+	// offset-carrying refs found in the summary. Empty translation = NKJV,
+	// matching the website's ScriptTagger. make(len) not nil-check: a zero-len
+	// make still marshals as [].
+	s.ScriptureRefURLs = make([]string, len(s.ScriptureRefs))
+	for i, raw := range s.ScriptureRefs {
+		s.ScriptureRefURLs[i] = bibleref.FirstURL(raw, "")
+	}
+	s.SummaryRefs = bibleref.FindAllAPI(s.Summary, "")
 	if includeBody {
 		s.Body = ser.Body.String
 	}
