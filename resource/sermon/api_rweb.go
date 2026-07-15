@@ -95,15 +95,19 @@ func sermonToAPI(ser *models.Sermon, includeBody bool) SermonAPI {
 
 // GET /api/v1/sermons?limit&offset&year&teacher&ref
 // Published sermons, newest first.
+// 200 → {"sermons": [...], "limit", "offset", "has_more"} — has_more means
+// another page exists at offset+limit under the same filters, so the app's
+// infinite scroll can stop fetching without a sentinel empty page.
 func APISermonsRWeb(ctx rweb.Context) error {
 	limit, offset := apiv1.ParseLimitOffset(ctx, 50, 200)
 
 	// All filters are bound parameters — never concatenate user input into SQL
 	// (the calendar endpoint was bitten by exactly that; see commit cb80039).
+	// limit+1 probe: one spare row answers has_more without a COUNT(*) query.
 	mods := []qm.QueryMod{
 		qm.Where("published = true"),
 		qm.OrderBy("date_taught DESC"),
-		qm.Limit(limit),
+		qm.Limit(limit + 1),
 		qm.Offset(offset),
 	}
 
@@ -133,6 +137,11 @@ func APISermonsRWeb(ctx rweb.Context) error {
 		return apiv1.ServerError(ctx, err, "Could not load sermons")
 	}
 
+	hasMore := false
+	if len(sms) > limit {
+		hasMore = true
+		sms = sms[:limit]
+	}
 	sermons := make([]SermonAPI, 0, len(sms))
 	for _, ser := range sms {
 		sermons = append(sermons, sermonToAPI(ser, false))
@@ -140,9 +149,10 @@ func APISermonsRWeb(ctx rweb.Context) error {
 
 	// Enveloped so count/paging metadata can be added without breaking clients
 	return ctx.WriteJSON(map[string]any{
-		"sermons": sermons,
-		"limit":   limit,
-		"offset":  offset,
+		"sermons":  sermons,
+		"limit":    limit,
+		"offset":   offset,
+		"has_more": hasMore,
 	})
 }
 

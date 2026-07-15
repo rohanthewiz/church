@@ -45,9 +45,12 @@ func TestAPIArticlesListContract(t *testing.T) {
 	if status != 200 {
 		t.Fatalf("status = %d, want 200", status)
 	}
-	apitest.WantKeys(t, doc, "articles", "limit", "offset")
+	apitest.WantKeys(t, doc, "articles", "limit", "offset", "has_more")
 	if doc["limit"].(float64) != 20 {
 		t.Errorf("articles default limit is 20, got %v", doc["limit"])
+	}
+	if hasMore, _ := doc["has_more"].(bool); hasMore {
+		t.Error("has_more must be false when the page wasn't filled")
 	}
 
 	arts := doc["articles"].([]any)
@@ -73,6 +76,28 @@ func TestAPIArticlesListContract(t *testing.T) {
 		t.Errorf("created_at should be ISO8601, got %v", art["created_at"])
 	}
 
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+// has_more is answered by a limit+1 probe row: ask for limit=1, return two
+// rows, and the envelope must trim to one article with has_more=true.
+func TestAPIArticlesHasMoreProbe(t *testing.T) {
+	mock := apitest.MockDB(t)
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "articles"`)).
+		WillReturnRows(articleRow(articleRow(sqlmock.NewRows(articleCols))))
+
+	status, doc := apitest.GetJSON(t, newArticleAPIServer(), "/api/v1/articles?limit=1")
+	if status != 200 {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	if hasMore, _ := doc["has_more"].(bool); !hasMore {
+		t.Error("has_more must be true when the probe row came back")
+	}
+	if arts := doc["articles"].([]any); len(arts) != 1 {
+		t.Errorf("probe row must be trimmed from the page, got %d articles", len(arts))
+	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Error(err)
 	}

@@ -66,6 +66,9 @@ func articleToAPI(art *models.Article, includeBody bool) ArticleAPI {
 
 // GET /api/v1/articles?limit&offset
 // Published articles, newest first (by creation — "newest articles" feed).
+// 200 → {"articles": [...], "limit", "offset", "has_more"} — has_more means
+// another page exists at offset+limit, so the app's infinite scroll can stop
+// fetching without a sentinel empty page.
 func APIArticlesRWeb(ctx rweb.Context) error {
 	limit, offset := apiv1.ParseLimitOffset(ctx, 20, 100)
 
@@ -73,12 +76,18 @@ func APIArticlesRWeb(ctx rweb.Context) error {
 	if err != nil {
 		return apiv1.ServerError(ctx, err, "Could not load articles")
 	}
+	// limit+1 probe: one spare row answers has_more without a COUNT(*) query
 	arts, err := models.Articles(dbH, qm.Where("published = true"),
-		qm.OrderBy("created_at DESC"), qm.Limit(limit), qm.Offset(offset)).All()
+		qm.OrderBy("created_at DESC"), qm.Limit(limit+1), qm.Offset(offset)).All()
 	if err != nil {
 		return apiv1.ServerError(ctx, err, "Could not load articles")
 	}
 
+	hasMore := false
+	if len(arts) > limit {
+		hasMore = true
+		arts = arts[:limit]
+	}
 	articles := make([]ArticleAPI, 0, len(arts))
 	for _, art := range arts {
 		articles = append(articles, articleToAPI(art, false))
@@ -88,6 +97,7 @@ func APIArticlesRWeb(ctx rweb.Context) error {
 		"articles": articles,
 		"limit":    limit,
 		"offset":   offset,
+		"has_more": hasMore,
 	})
 }
 

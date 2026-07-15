@@ -54,7 +54,10 @@ func TestAPIEventsListContract(t *testing.T) {
 	if status != 200 {
 		t.Fatalf("status = %d, want 200", status)
 	}
-	apitest.WantKeys(t, doc, "events", "limit", "offset")
+	apitest.WantKeys(t, doc, "events", "limit", "offset", "has_more")
+	if hasMore, _ := doc["has_more"].(bool); hasMore {
+		t.Error("has_more must be false when the window fit in one page")
+	}
 
 	events := doc["events"].([]any)
 	if len(events) != 1 {
@@ -78,6 +81,32 @@ func TestAPIEventsListContract(t *testing.T) {
 		t.Error("list DTOs must omit body")
 	}
 
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+// Events page in memory over the expanded window (no SQL probe), so has_more
+// is simply "occurrences remain past this page": two rows at limit=1 must
+// yield one event and has_more=true.
+func TestAPIEventsHasMore(t *testing.T) {
+	mock := apitest.MockDB(t)
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "events"`)).
+		WillReturnRows(eventRow(eventRow(sqlmock.NewRows(eventCols))))
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT event_id, freq, weekday, week, until FROM event_recurrences`)).
+		WillReturnRows(sqlmock.NewRows(recurrenceCols))
+
+	status, doc := apitest.GetJSON(t, newEventAPIServer(),
+		"/api/v1/events?from=2026-08-01&to=2026-08-31&limit=1")
+	if status != 200 {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	if hasMore, _ := doc["has_more"].(bool); !hasMore {
+		t.Error("has_more must be true when occurrences remain past the page")
+	}
+	if events := doc["events"].([]any); len(events) != 1 {
+		t.Errorf("page must honor limit=1, got %d events", len(events))
+	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Error(err)
 	}

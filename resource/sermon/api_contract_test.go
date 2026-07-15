@@ -51,9 +51,12 @@ func TestAPISermonsListContract(t *testing.T) {
 	if status != 200 {
 		t.Fatalf("status = %d, want 200", status)
 	}
-	apitest.WantKeys(t, doc, "sermons", "limit", "offset")
+	apitest.WantKeys(t, doc, "sermons", "limit", "offset", "has_more")
 	if doc["limit"].(float64) != 50 || doc["offset"].(float64) != 0 {
 		t.Errorf("default paging should be limit=50 offset=0, got %v/%v", doc["limit"], doc["offset"])
+	}
+	if hasMore, _ := doc["has_more"].(bool); hasMore {
+		t.Error("has_more must be false when the page wasn't filled")
 	}
 
 	sermons := doc["sermons"].([]any)
@@ -106,6 +109,28 @@ func TestAPISermonsListContract(t *testing.T) {
 		t.Errorf("audio_url should pass through as stored, got %v", ser["audio_url"])
 	}
 
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+// has_more is answered by a limit+1 probe row: ask for limit=1, return two
+// rows, and the envelope must trim to one sermon with has_more=true.
+func TestAPISermonsHasMoreProbe(t *testing.T) {
+	mock := apitest.MockDB(t)
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "sermons"`)).
+		WillReturnRows(sermonRow(sermonRow(sqlmock.NewRows(sermonCols))))
+
+	status, doc := apitest.GetJSON(t, newSermonAPIServer(), "/api/v1/sermons?limit=1")
+	if status != 200 {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	if hasMore, _ := doc["has_more"].(bool); !hasMore {
+		t.Error("has_more must be true when the probe row came back")
+	}
+	if sermons := doc["sermons"].([]any); len(sermons) != 1 {
+		t.Errorf("probe row must be trimmed from the page, got %d sermons", len(sermons))
+	}
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Error(err)
 	}

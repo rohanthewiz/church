@@ -171,6 +171,9 @@ func WindowedEvents(from, to time.Time) ([]EventAPI, error) {
 // Published events including recurring occurrences, soonest first. With no
 // date params, defaults to the upcoming quarter; from/to (YYYY-MM-DD) shift
 // the window, e.g. for a month-view calendar.
+// 200 → {"events": [...], "limit", "offset", "has_more"} — has_more only
+// speaks for the requested window; a further page of *time* may exist beyond
+// `to` even when it is false.
 func APIEventsRWeb(ctx rweb.Context) error {
 	limit, offset := apiv1.ParseLimitOffset(ctx, 50, 200)
 
@@ -198,7 +201,9 @@ func APIEventsRWeb(ctx rweb.Context) error {
 	}
 
 	// Paging happens after expansion/merge — SQL-level offsets would count base
-	// rows, not occurrences, and skip or double events at page boundaries
+	// rows, not occurrences, and skip or double events at page boundaries.
+	// The full window is already in memory, so has_more is a plain length
+	// check — no limit+1 probe needed here (contrast sermons/articles).
 	pageEnd := min(offset+limit, len(events))
 	page := []EventAPI{}
 	if offset < len(events) {
@@ -206,9 +211,10 @@ func APIEventsRWeb(ctx rweb.Context) error {
 	}
 
 	return ctx.WriteJSON(map[string]any{
-		"events": page,
-		"limit":  limit,
-		"offset": offset,
+		"events":   page,
+		"limit":    limit,
+		"offset":   offset,
+		"has_more": pageEnd < len(events),
 	})
 }
 
