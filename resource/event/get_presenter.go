@@ -16,12 +16,20 @@ type Presenter struct {
 	EventDate             string
 	EventDateDisplayLong  string
 	EventDateDisplayShort string
-	EventTime             string
-	Location              string
-	ContactPerson         string
-	ContactPhone          string
-	ContactEmail          string
-	ContactURL            string
+	// Pre-split date parts for display structure (e.g. the classic calendar
+	// "date badge" on the single-event page). We split here rather than in the
+	// view because the presenter is the one place that already knows the
+	// event's local time; views should only arrange strings, never parse them.
+	EventDateISO    string // RFC3339 — feeds <time datetime="..."> for SEO/calendar tooling
+	EventMonthShort string // "Jul"
+	EventDayOfMonth string // "17"
+	EventWeekday    string // "Friday"
+	EventTime       string
+	Location        string
+	ContactPerson   string
+	ContactPhone    string
+	ContactEmail    string
+	ContactURL      string
 	// Recurrence rule as it travels through the admin form (string form
 	// values; parsed and validated in UpsertEvent). Empty RecurFreq means a
 	// one-time event. Populated from event_recurrences by LoadRecurrence —
@@ -114,6 +122,13 @@ func presenterFromModel(evt *models.Event, params ...PresenterParams) Presenter 
 			pres.EventTime = localEventDate.Format(timeDisplayFormat)                         // Admin form requires this format
 			pres.EventDateDisplayLong = localEventDate.Format(dateDisplayLongFormat)          // For non-admin
 			pres.EventDateDisplayShort = localEventDate.Format(config.DisplayShortDateFormat) // For non-admin
+			// Date parts for themed display (date badge, <time> tag). Formats are
+			// fixed, not configurable — these are structural tokens a theme
+			// arranges, unlike the site-configurable display formats above.
+			pres.EventDateISO = localEventDate.Format(time.RFC3339)
+			pres.EventMonthShort = localEventDate.Format("Jan")
+			pres.EventDayOfMonth = localEventDate.Format("2")
+			pres.EventWeekday = localEventDate.Format("Monday")
 		}
 	}
 	pres.Location = evt.EventLocation.String
