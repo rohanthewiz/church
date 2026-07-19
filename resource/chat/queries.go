@@ -2,6 +2,7 @@ package chat
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/rohanthewiz/church/db"
@@ -40,16 +41,18 @@ func InsertMessage(exec db.Executor, msg Message) (Message, error) {
 //     oldest first, which is exactly the append order a poller wants
 func RecentMessages(exec db.Executor, channel string, afterId int64, limit int) (msgs []Message, err error) {
 	var rows *sql.Rows
+	// LIMIT is interpolated, not bound: bytdb rejects placeholders in LIMIT,
+	// and a typed int can't carry injection. Postgres accepts either form.
 	if afterId > 0 {
-		rows, err = exec.Query(`
+		rows, err = exec.Query(fmt.Sprintf(`
 			SELECT id, channel, user_id, username, display_name, body, keep, created_at
 			FROM chat_messages WHERE channel = $1 AND id > $2
-			ORDER BY id ASC LIMIT $3`, channel, afterId, limit)
+			ORDER BY id ASC LIMIT %d`, limit), channel, afterId)
 	} else {
-		rows, err = exec.Query(`
+		rows, err = exec.Query(fmt.Sprintf(`
 			SELECT id, channel, user_id, username, display_name, body, keep, created_at
 			FROM chat_messages WHERE channel = $1
-			ORDER BY id DESC LIMIT $2`, channel, limit)
+			ORDER BY id DESC LIMIT %d`, limit), channel)
 	}
 	if err != nil {
 		return nil, serr.Wrap(err, "error querying chat messages", "channel", channel)

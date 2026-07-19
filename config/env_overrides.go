@@ -13,6 +13,17 @@ func envOverride(envCfg *EnvConfig) *EnvConfig {
 	if logFormat := strings.TrimSpace(os.Getenv("LOG_FORMAT")); len(logFormat) > 0 {
 		envCfg.Log.Format = logFormat
 	}
+	// DB backend selection — env overrides let a k8s manifest flip a site
+	// between bytdb and the Postgres fallback without editing options.yml.
+	if dbType := strings.TrimSpace(os.Getenv("DB_TYPE")); len(dbType) > 0 {
+		envCfg.DB.Type = dbType
+	}
+	if dbFile := strings.TrimSpace(os.Getenv("DB_FILE")); len(dbFile) > 0 {
+		envCfg.DB.File = dbFile
+	}
+	if dbListen := strings.TrimSpace(os.Getenv("DB_LISTEN")); len(dbListen) > 0 {
+		envCfg.DB.Listen = dbListen
+	}
 	if pgUser := strings.TrimSpace(os.Getenv("PG_USER")); len(pgUser) > 0 {
 		envCfg.PG.User = pgUser
 	}

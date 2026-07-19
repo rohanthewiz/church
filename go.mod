@@ -1,6 +1,6 @@
 module github.com/rohanthewiz/church
 
-go 1.25.0
+go 1.26.1
 
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
@@ -15,6 +15,8 @@ require (
 	github.com/lib/pq v1.12.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
+	github.com/rohanthewiz/bytdb v0.6.1
+	github.com/rohanthewiz/bytdb/pgwire v0.6.1
 	github.com/rohanthewiz/element v0.5.6
 	github.com/rohanthewiz/gmail_send v1.0.0
 	github.com/rohanthewiz/logger v1.3.0
@@ -48,7 +50,9 @@ require (
 	github.com/onsi/ginkgo v1.16.5 // indirect
 	github.com/onsi/gomega v1.33.1 // indirect
 	github.com/relistan/rubberneck v1.3.0 // indirect
+	github.com/rohanthewiz/btypedb v0.6.0 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
+	github.com/tidwall/btype v0.3.0 // indirect
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect

@@ -84,6 +84,23 @@ type EnvConfig struct {
 		ErrorPath string `yaml:"error_path"`
 		// SlackAPICfg logger.SlackAPICfg `yaml:"slack_api_cfg"`
 	} `yaml:"log"`
+	// DB selects the storage backend. bytdb (embedded, in-process, served to the
+	// app over a loopback Postgres wire connection) is the default so each site
+	// runs as a single self-contained binary — the target deployment is one pod
+	// per site with the data file on a block-storage volume. Postgres remains a
+	// fallback for deployments that already run it; set type: postgres and fill
+	// the pg: block below.
+	DB struct {
+		Type string `yaml:"type"` // "bytdb" (default when empty) or "postgres"
+		// File is the bytdb data file (WAL-backed single file). Default "data/church.db".
+		// Must live on a real filesystem (block storage in k8s) — never object storage,
+		// which cannot honor the WAL's fsync-before-ack durability contract.
+		File string `yaml:"file"`
+		// Listen is the loopback address pgwire serves on. Default "127.0.0.1:0"
+		// (ephemeral port) so multiple sites coexist on one host without clashing;
+		// pin a port (e.g. "127.0.0.1:5433") to inspect the live DB with psql.
+		Listen string `yaml:"listen"`
+	} `yaml:"db"`
 	PG struct {
 		Host     string `yaml:"host"`
 		Port     string `yaml:"port"`
