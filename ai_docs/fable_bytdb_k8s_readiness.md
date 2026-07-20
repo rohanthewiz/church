@@ -236,7 +236,12 @@ child tables; JOIN + windowed selects.
    endpoint `POST /api/admin/db/backup` (`resource/dbbackup`: Engine.BackupTo
    → timestamped S3 upload → latest/ rotation → retention pruning; contract
    tests + snapshot-restorability test). See `deploy/k8s/README.md`.
-4. Design `bytdb/replicate` — WAL shipping to S3-compatible storage; `Engine.ReadLogRange`
-   and `LogState` already exist as primitives.
+4. ~~Design `bytdb/replicate` — WAL shipping to S3-compatible storage.~~ Done in two
+   parts 2026-07-19: the package itself shipped upstream in bytdb v0.6.0 (litestream-style
+   generations/epochs + stdlib SigV4 `replicate/s3` client; included in the v0.6.2 we pin),
+   and the church-side integration is designed in
+   `ai_docs/wal_shipping_integration_design.md` (config, db wiring, in-app cold-start
+   restore replacing the initContainer, status endpoint, manifest changes). RPO on volume
+   loss drops 1 h → ~5 s once implemented.
 5. ~~Upstream: BETWEEN-in-CHECK and LIMIT/OFFSET placeholder support in bytdb.~~
    Done — both shipped in bytdb v0.6.2 (adopted 2026-07-19).
