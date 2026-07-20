@@ -15,8 +15,8 @@ require (
 	github.com/lib/pq v1.12.0
 	github.com/pierrec/xxHash v0.1.1
 	github.com/pkg/errors v0.8.0
-	github.com/rohanthewiz/bytdb v0.6.1
-	github.com/rohanthewiz/bytdb/pgwire v0.6.1
+	github.com/rohanthewiz/bytdb v0.6.2
+	github.com/rohanthewiz/bytdb/pgwire v0.6.2
 	github.com/rohanthewiz/element v0.5.6
 	github.com/rohanthewiz/gmail_send v1.0.0
 	github.com/rohanthewiz/logger v1.3.0

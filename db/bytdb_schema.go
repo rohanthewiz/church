@@ -20,9 +20,6 @@ import (
 //     indexes the Postgres schema lacks: bytdb's ON DELETE CASCADE
 //     probes child tables per deleted parent key, which is a full scan
 //     without an index on the child column.
-//   - the event_recurrences CHECKs use explicit >= / <= comparisons:
-//     bytdb (as of v0.6.1) does not parse BETWEEN inside a CHECK
-//     expression. Same semantics as the goose original.
 //
 // Future schema changes on the bytdb path: append a new tableDef (new
 // table) or a guarded ALTER here. Note bytdb executes DDL outside
@@ -214,10 +211,10 @@ var bytdbTables = []tableDef{
 			created_at timestamptz,
 			updated_at timestamptz,
 			CONSTRAINT chk_recur_freq CHECK (freq IN ('weekly', 'monthly')),
-			CONSTRAINT chk_recur_weekday CHECK (weekday >= 0 AND weekday <= 6),
+			CONSTRAINT chk_recur_weekday CHECK (weekday BETWEEN 0 AND 6),
 			CONSTRAINT chk_recur_week CHECK (
 				(freq = 'weekly' AND week = 0) OR
-				(freq = 'monthly' AND ((week >= 1 AND week <= 4) OR week = -1))
+				(freq = 'monthly' AND (week BETWEEN 1 AND 4 OR week = -1))
 			)
 		)`,
 	}},

@@ -200,7 +200,7 @@ for the bytdb path — the schema ships as an in-code, idempotent bootstrap.
   sites share a host without port coordination).
 - `cema/main.go`, `ccswm/main.go` — build DBOpts from the new block; PG fallback wired;
   dead `roredis.InitRedis` in cema commented out.
-- Dependencies: `bytdb v0.6.1`, `bytdb/pgwire v0.6.1`; church module now `go 1.26.1`
+- Dependencies: `bytdb v0.6.2`, `bytdb/pgwire v0.6.2`; church module now `go 1.26.1`
   (go.work files bumped; a local Go ≥1.26 install stops gopls complaining).
 
 ### Wire proof: `test_scripts/bytdb_wire_check` — ALL 35 CHECKS PASS
@@ -212,12 +212,12 @@ storage + `->>`; `RETURNING id`; `ON CONFLICT DO UPDATE`; UNIQUE enforcement;
 child tables; JOIN + windowed selects.
 
 ### New bytdb findings from this phase
-1. **`BETWEEN` doesn't parse inside CHECK constraints** (v0.6.1) — worked around with
-   explicit `>=`/`<=` in the event_recurrences CHECKs; candidate upstream fix.
-2. **Placeholders are rejected in LIMIT/OFFSET** (`pq: XX000`) — three raw queries
-   (chat ×2, prayerwall ×1) now interpolate typed ints instead; injection-safe and
-   Postgres-compatible. Candidate upstream fix; note SQLBoiler is unaffected (its
-   generated SQL emits LIMIT/OFFSET as literals).
+1. ~~**`BETWEEN` doesn't parse inside CHECK constraints**~~ — **RESOLVED 2026-07-19**:
+   fixed upstream in bytdb v0.6.2; the event_recurrences CHECKs use `BETWEEN` again,
+   matching the goose originals.
+2. ~~**Placeholders are rejected in LIMIT/OFFSET**~~ (`pq: XX000`) — **RESOLVED
+   2026-07-19**: fixed upstream in bytdb v0.6.2; the three raw queries (chat ×2,
+   prayerwall ×1) bind `$n` placeholders again.
 3. **Every table requires a PRIMARY KEY** — fine, the schema always had them.
 
 ## 7. Next Steps
@@ -229,4 +229,5 @@ child tables; JOIN + windowed selects.
    CronJob (engine already exposes `Backup`/`BackupTo`).
 4. Design `bytdb/replicate` — WAL shipping to S3-compatible storage; `Engine.ReadLogRange`
    and `LogState` already exist as primitives.
-5. Upstream: BETWEEN-in-CHECK and LIMIT/OFFSET placeholder support in bytdb.
+5. ~~Upstream: BETWEEN-in-CHECK and LIMIT/OFFSET placeholder support in bytdb.~~
+   Done — both shipped in bytdb v0.6.2 (adopted 2026-07-19).

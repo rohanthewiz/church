@@ -15,7 +15,6 @@ package prayerwall
 
 import (
 	"database/sql"
-	"fmt"
 	"strings"
 	"time"
 
@@ -91,13 +90,11 @@ func InsertRequest(exec db.Executor, req Request) (Request, error) {
 // ListRequests returns published requests, newest first (the wall reads like
 // a feed). limit/offset page it; callers use the limit+1 probe for has_more.
 func ListRequests(exec db.Executor, limit, offset int) (reqs []Request, err error) {
-	// LIMIT/OFFSET are interpolated, not bound: bytdb rejects placeholders
-	// there, and typed ints can't carry injection. Postgres accepts either form.
-	rows, err := exec.Query(fmt.Sprintf(`
+	rows, err := exec.Query(`
 		SELECT id, user_id, username, display_name, title, body,
 			answered, answered_note, published, created_at, updated_at
 		FROM prayer_requests WHERE published = true
-		ORDER BY created_at DESC LIMIT %d OFFSET %d`, limit, offset))
+		ORDER BY created_at DESC LIMIT $1 OFFSET $2`, limit, offset)
 	if err != nil {
 		return nil, serr.Wrap(err, "error querying prayer requests")
 	}
