@@ -224,9 +224,18 @@ child tables; JOIN + windowed selects.
 
 1. Smoke-test a SQLBoiler resource end-to-end (boot a site on bytdb, exercise
    article/page/menu admin flows), then the rest of the legacy surface.
-2. `pg_dump --data-only` → bytdb import script for cutover of existing sites.
-3. Per-site k8s manifest: Deployment (Recreate) + PVC (linode-block-storage) + backup
-   CronJob (engine already exposes `Backup`/`BackupTo`).
+2. ~~Import script for cutover of existing sites.~~ Done 2026-07-19:
+   `test_scripts/pg_to_bytdb` copies PG → bytdb directly (no pg_dump
+   intermediary), FK order, ids preserved, per-table count verification.
+   No sequence fix-up needed — bytdb identity counters self-heal on
+   explicit-id inserts (verified upstream + on-file via
+   `test_scripts/selfheal_probe`). Validated against church_development.
+3. ~~Per-site k8s manifest + backup CronJob.~~ Done 2026-07-19: `deploy/k8s/`
+   (per-site Deployment/PVC/Service/Ingress/CronJob, ingress-nginx +
+   cert-manager, restore-if-empty initContainer) plus the in-app backup
+   endpoint `POST /api/admin/db/backup` (`resource/dbbackup`: Engine.BackupTo
+   → timestamped S3 upload → latest/ rotation → retention pruning; contract
+   tests + snapshot-restorability test). See `deploy/k8s/README.md`.
 4. Design `bytdb/replicate` — WAL shipping to S3-compatible storage; `Engine.ReadLogRange`
    and `LogState` already exist as primitives.
 5. ~~Upstream: BETWEEN-in-CHECK and LIMIT/OFFSET placeholder support in bytdb.~~

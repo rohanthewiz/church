@@ -31,6 +31,18 @@ type tableDef struct {
 	ddl  []string // CREATE TABLE first, then its indexes
 }
 
+// BytDBTableNames returns the bootstrap tables in FK-dependency order
+// (parents before children). The pg_to_bytdb importer keys off this list so
+// its copy order can never drift from the schema it targets — a table added
+// to the bootstrap is automatically a table the importer copies, in a
+// position that satisfies its FKs.
+func BytDBTableNames() (names []string) {
+	for _, t := range bytdbTables {
+		names = append(names, t.name)
+	}
+	return names
+}
+
 // Creation order respects FK dependencies: users and events must exist
 // before the tables that reference them.
 var bytdbTables = []tableDef{

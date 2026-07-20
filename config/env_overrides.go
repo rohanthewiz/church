@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -29,6 +30,37 @@ func envOverride(envCfg *EnvConfig) *EnvConfig {
 	}
 	if pgWord := strings.TrimSpace(os.Getenv("PG_WORD")); len(pgWord) > 0 {
 		envCfg.PG.Word = pgWord
+	}
+	// Database backup destination + trigger token. Names match the k8s secret
+	// the manifests mount (deploy/k8s/sites/*.yaml, secret <site>-backup) so
+	// one secret feeds both the app pod and the backup CronJob. OBJ_* because
+	// the destination is generic S3-compatible object storage, not tied to a
+	// provider.
+	if v := strings.TrimSpace(os.Getenv("OBJ_ENDPOINT")); len(v) > 0 {
+		envCfg.Backup.Endpoint = v
+	}
+	if v := strings.TrimSpace(os.Getenv("OBJ_REGION")); len(v) > 0 {
+		envCfg.Backup.Region = v
+	}
+	if v := strings.TrimSpace(os.Getenv("OBJ_BUCKET")); len(v) > 0 {
+		envCfg.Backup.Bucket = v
+	}
+	if v := strings.TrimSpace(os.Getenv("OBJ_ACCESS_KEY")); len(v) > 0 {
+		envCfg.Backup.AccessKey = v
+	}
+	if v := strings.TrimSpace(os.Getenv("OBJ_SECRET_KEY")); len(v) > 0 {
+		envCfg.Backup.SecretKey = v
+	}
+	if v := strings.TrimSpace(os.Getenv("BACKUP_PREFIX")); len(v) > 0 {
+		envCfg.Backup.Prefix = v
+	}
+	if v := strings.TrimSpace(os.Getenv("BACKUP_TOKEN")); len(v) > 0 {
+		envCfg.Backup.Token = v
+	}
+	if v := strings.TrimSpace(os.Getenv("BACKUP_RETAIN")); len(v) > 0 {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			envCfg.Backup.Retain = n
+		}
 	}
 	// Bootstrap superadmin credentials — allows automated first-run setup
 	if adminUser := strings.TrimSpace(os.Getenv("BOOTSTRAP_ADMIN_USER")); len(adminUser) > 0 {

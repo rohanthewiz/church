@@ -22,6 +22,7 @@ import (
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/calendar"
 	"github.com/rohanthewiz/church/resource/chat"
+	"github.com/rohanthewiz/church/resource/dbbackup"
 	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/resource/feed"
 	"github.com/rohanthewiz/church/resource/prayerwall"
@@ -162,6 +163,12 @@ func ServeRWeb() {
 	api.Post("/prayer-requests", apitoken.APIGuard(prayerwall.APIPrayerPostRWeb))
 	api.Post("/prayer-requests/:id/answered", apitoken.APIGuard(prayerwall.APIPrayerAnsweredRWeb))
 	api.Delete("/prayer-requests/:id", apitoken.APIGuard(prayerwall.APIPrayerDeleteRWeb))
+
+	// Ops endpoint, not part of /api/v1 (it isn't a mobile-app contract):
+	// triggers a consistent DB snapshot to object storage. Normally invoked
+	// by the per-site k8s backup CronJob (deploy/k8s/sites/*.yaml); auth is
+	// its own static bearer token — see the handler doc for why not APIGuard.
+	s.Post("/api/admin/db/backup", dbbackup.APIBackupRWeb)
 
 	// FullCalendar-shaped events JSON for the website's calendar widget
 	s.Get("/calendar", calendar.GetFullCalendarEventsRWeb)

@@ -101,6 +101,30 @@ type EnvConfig struct {
 		// pin a port (e.g. "127.0.0.1:5433") to inspect the live DB with psql.
 		Listen string `yaml:"listen"`
 	} `yaml:"db"`
+	// Backup configures consistent database snapshots to S3-compatible object
+	// storage (Linode Object Storage in the target deployment). Deliberately a
+	// separate credential set from IDrive: media serving and disaster-recovery
+	// backups have different blast radii — leaked media creds must not grant
+	// access to database contents. The feature is off until endpoint, bucket,
+	// and token are all set; the trigger is POST /api/admin/db/backup (bearer
+	// Token), normally called by a k8s CronJob. bytdb backend only — Postgres
+	// installs already have pg_dump-based tooling.
+	Backup struct {
+		Endpoint  string `yaml:"endpoint"` // S3-compatible endpoint, e.g. us-east-1.linodeobjects.com (https assumed if no scheme)
+		Region    string `yaml:"region"`   // default "us-east-1"; most S3-compatibles accept any non-empty value
+		Bucket    string `yaml:"bucket"`
+		AccessKey string `yaml:"access_key"`
+		SecretKey string `yaml:"secret_key"`
+		// Prefix namespaces this site's backups within the shared bucket
+		// (e.g. "ccswm" → ccswm/<timestamp>/church.db + ccswm/latest/church.db).
+		Prefix string `yaml:"prefix"`
+		// Token authenticates the backup trigger endpoint (Authorization: Bearer).
+		// Long and random (openssl rand -hex 32); empty disables the endpoint.
+		Token string `yaml:"token"`
+		// Retain is how many timestamped snapshots to keep (latest/ excluded).
+		// Default 72 — three days of hourly backups.
+		Retain int `yaml:"retain"`
+	} `yaml:"backup"`
 	PG struct {
 		Host     string `yaml:"host"`
 		Port     string `yaml:"port"`

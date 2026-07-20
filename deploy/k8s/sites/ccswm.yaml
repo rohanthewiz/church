@@ -1,0 +1,197 @@
+# ccswm.org — complete per-site stack: PVC, Deployment, Service, Ingress,
+# backup CronJob.
+#
+# The load-bearing constraint throughout: bytdb is an EMBEDDED engine — the
+# site process is the one and only writer of /data/church.db. That forces:
+#   - replicas: 1 (two pods would corrupt the file)
+#   - strategy: Recreate (RollingUpdate would briefly run old+new pods, and
+#     the RWO block-storage volume can't attach to two nodes anyway)
+#   - ReadWriteOnce block storage for the live file. Never object storage:
+#     the WAL needs honest fsync, which S3-compatible stores can't give.
+#     Object storage is the BACKUP target only (see the CronJob).
+#
+# Secrets expected in the `churches` namespace (created out-of-band, never
+# committed — see README):
+#   ccswm-config   key `options.yml`  — full site config file
+#   ccswm-backup   keys OBJ_ENDPOINT, OBJ_BUCKET, OBJ_ACCESS_KEY,
+#                  OBJ_SECRET_KEY, BACKUP_TOKEN
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ccswm-data
+  namespace: churches
+spec:
+  # `-retain` variant: deleting the PVC (or the whole site stack) leaves the
+  # underlying Linode volume — and the database in it — intact. Recovery from
+  # a fat-fingered `kubectl delete` is reattachment, not backup restore.
+  storageClassName: linode-block-storage-retain
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi # Linode block storage minimum; church DBs are MBs, so this never grows
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ccswm
+  namespace: churches
+  labels: {app: ccswm}
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: {app: ccswm}
+  template:
+    metadata:
+      labels: {app: ccswm}
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000 # block-storage volumes mount root-owned; fsGroup makes /data writable by the app user
+      initContainers:
+        # Seed-or-restore: if the volume has no database yet, pull the latest
+        # backup from object storage. This one mechanism covers three cases:
+        #   1. first deploy after PG migration (the migrated file is uploaded
+        #      to backups/latest/ — see README runbook)
+        #   2. disaster recovery onto a fresh volume
+        #   3. genuinely fresh site — no backup exists, the copy fails
+        #      harmlessly, and the app's schema bootstrap creates empty tables
+        - name: restore-if-empty
+          image: minio/mc:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              if [ -f /data/church.db ]; then
+                echo "database present - skipping restore"
+                exit 0
+              fi
+              mc alias set obj "https://${OBJ_ENDPOINT}" "${OBJ_ACCESS_KEY}" "${OBJ_SECRET_KEY}"
+              mc cp "obj/${OBJ_BUCKET}/ccswm/latest/church.db" /data/church.db \
+                && echo "restored from object storage" \
+                || echo "no backup found - starting fresh (schema bootstrap will run)"
+          envFrom:
+            - secretRef: {name: ccswm-backup}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+      containers:
+        - name: ccswm
+          image: ghcr.io/rohanthewiz/ccswm:latest # pin a tag/digest for real deploys
+          workingDir: /app # config loads from CWD-relative cfg/options.yml
+          env:
+            # Env overrides (config/env_overrides.go) beat options.yml, so the
+            # DB location is pinned here where the volume mount is defined,
+            # keeping the two in one file. bytdb is already the default type.
+            - {name: DB_TYPE, value: bytdb}
+            - {name: DB_FILE, value: /data/church.db}
+            # Site's key prefix in the shared backup bucket (→ ccswm/<ts>/church.db)
+            - {name: BACKUP_PREFIX, value: ccswm}
+          # OBJ_* destination + BACKUP_TOKEN: the app performs the backup
+          # (resource/dbbackup), so it needs the same secret the CronJob and
+          # the restore initContainer use — one secret, three consumers.
+          envFrom:
+            - secretRef: {name: ccswm-backup}
+          ports:
+            - {name: http, containerPort: 4000}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+            - {name: config, mountPath: /app/cfg/options.yml, subPath: options.yml, readOnly: true}
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /, port: http}
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {memory: 512Mi} # no CPU limit: avoid throttling bursts (page builds); memory bounds the embedded engine
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: ccswm-data}
+        - name: config
+          secret: {secretName: ccswm-config}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ccswm
+  namespace: churches
+spec:
+  selector: {app: ccswm}
+  ports:
+    - {name: http, port: 4000, targetPort: http}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ccswm
+  namespace: churches
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Admin uploads (images via the editor) exceed nginx's 1m default
+    nginx.ingress.kubernetes.io/proxy-body-size: 64m
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [ccswm.org, www.ccswm.org]
+      secretName: ccswm-tls # cert-manager materializes this
+  rules:
+    # Host-based routing is what makes multi-domain work: every site shares
+    # the one ingress-nginx NodeBalancer, and nginx fans out by Host header.
+    - host: ccswm.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: ccswm, port: {name: http}}
+    - host: www.ccswm.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service: {name: ccswm, port: {name: http}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ccswm-backup
+  namespace: churches
+spec:
+  # Hourly full backup. The DB is small enough (MBs) that full-snapshot
+  # frequency IS the replication story for now: RPO = 1h. Streaming WAL
+  # shipping (bytdb/replicate) will tighten that later without changing
+  # this manifest's shape.
+  schedule: "7 * * * *" # :07 offset — stagger sites so backups don't stampede
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 300
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            # The CronJob cannot copy the live file itself — only the engine
+            # can produce a consistent snapshot (Engine.BackupTo). So it asks
+            # the app to do it: POST to the in-app backup endpoint, which
+            # snapshots and uploads to object storage, then rotates `latest`.
+            # NOTE: this endpoint is the one code prerequisite — see README.
+            - name: trigger-backup
+              image: curlimages/curl:8.10.1
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  curl --fail-with-body -sS -X POST \
+                    -H "Authorization: Bearer ${BACKUP_TOKEN}" \
+                    http://ccswm.churches.svc.cluster.local:4000/api/admin/db/backup
+              env:
+                - name: BACKUP_TOKEN
+                  valueFrom:
+                    secretKeyRef: {name: ccswm-backup, key: BACKUP_TOKEN}

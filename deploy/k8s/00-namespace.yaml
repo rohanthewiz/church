@@ -1,0 +1,9 @@
+# All church sites share one namespace. Isolation between sites is by
+# resource naming (ccswm-*, cema-*), not namespace — the sites are all
+# operated by the same person, so per-site namespaces would only add
+# ceremony (duplicated secrets plumbing, cross-namespace ingress rules)
+# without a trust boundary anyone needs.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: churches

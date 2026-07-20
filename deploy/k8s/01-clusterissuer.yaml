@@ -1,0 +1,20 @@
+# Let's Encrypt issuer, cluster-scoped so every site Ingress can reference
+# it by name. HTTP-01 is the right challenge type here: the domains already
+# point at the ingress NodeBalancer, and it avoids per-domain DNS API creds
+# that DNS-01 would require.
+#
+# Prerequisite: cert-manager installed (see README install order).
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: rohanthewiz@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            ingressClassName: nginx
