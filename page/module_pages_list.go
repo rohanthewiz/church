@@ -82,7 +82,7 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 		{Header: "Page URL"},
 		{Header: "Published"},
 		{Header: "Updated By"},
-		{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // edit
+		{Header: "Actions", NoSort: true, NoFilter: true, Shrink: true}, // edit
 		{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // delete
 	}
 
@@ -98,8 +98,8 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 			grid.Link("/pages/"+pg.Slug, "/pages/"+pg.Slug),
 			grid.Text(published),
 			grid.Text(pg.UpdatedBy),
-			grid.EditLink(m.GetEditURL() + pg.Id),
-			grid.DeleteLink(m.GetDeleteURL() + pg.Id),
+			grid.EditLinkNamed(m.GetEditURL()+pg.Id, pg.Title),
+			grid.DeleteLinkNamed(m.GetDeleteURL()+pg.Id, pg.Title),
 		})
 	}
 

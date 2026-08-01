@@ -91,7 +91,8 @@ func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn b
 			grid.Column{Header: "Email Address", Popup: true},
 			grid.Column{Header: "Role", Popup: true},
 			grid.Column{Header: "Updated By", Popup: true},
-			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // delete
+			grid.Column{Header: "Actions", NoSort: true, NoFilter: true, Shrink: true}, // edit
+			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true},        // delete
 		)
 	}
 
@@ -115,7 +116,10 @@ func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn b
 				grid.Text(usr.EmailAddress),
 				grid.Text(RoleToString[usr.Role]),
 				grid.Text(usr.UpdatedBy),
-				grid.DeleteLink(m.GetDeleteURL()+usr.Id),
+				// An explicit edit action: the first-name link alone was too
+				// easy to miss as the only way into the editor
+				grid.EditLinkNamed(m.GetEditURL()+usr.Id, usr.Username),
+				grid.DeleteLinkNamed(m.GetDeleteURL()+usr.Id, usr.Username),
 			)
 		}
 		g.Rows = append(g.Rows, row)

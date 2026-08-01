@@ -3,6 +3,7 @@ package flash
 import (
 	"encoding/base64"
 	"encoding/json"
+	"html"
 
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/rweb"
@@ -62,7 +63,12 @@ func (f Flash) Render() string {
 
 	b := element.NewBuilder()
 
-	b.Div("id", "flash", "onclick", "this.style.display = 'none';", "title", "Click to close").R(
+	// role=status + aria-live announces saves/errors to screen readers; the
+	// close control is a real focusable button (the whole banner stays
+	// clickable for mouse users as before). Messages are escaped — they can
+	// embed request-path data and element writes strings through raw.
+	b.Div("id", "flash", "role", "status", "aria-live", "polite",
+		"onclick", "this.style.display = 'none';", "title", "Click to close").R(
 		b.Wrap(func() {
 			flashMessages := []struct {
 				message   string
@@ -76,8 +82,9 @@ func (f Flash) Render() string {
 			for _, flash := range flashMessages {
 				if flash.message != "" {
 					b.DivClass(flash.flashType).R(
-						b.T(flash.message),
-						b.DivClass("flash-close").R(
+						b.T(html.EscapeString(flash.message)),
+						b.Button("class", "flash-close", "type", "button", "aria-label", "Dismiss message",
+							"onclick", "document.getElementById('flash').style.display='none';").R(
 							b.B().T("X"),
 						),
 					)

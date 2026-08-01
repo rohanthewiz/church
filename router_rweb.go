@@ -291,7 +291,8 @@ func ServeRWeb() {
 	// Admin Sermons
 	ad.Get("/sermons", sermon_controller.AdminListSermonsRWeb)
 	ad.Get("/sermons/new", sermon_controller.NewSermonRWeb)
-	ad.Get("/sermons/import", sermon_controller.ImportRWeb)
+	ad.Get("/sermons/import", sermon_controller.ImportRWeb)      // confirmation screen
+	ad.Post("/sermons/import", sermon_controller.ImportRunRWeb) // runs the import (CSRF checked)
 	ad.Post("/sermons", sermon_controller.UpsertSermonRWeb) // create
 	ad.Get("/sermons/edit/:id", sermon_controller.EditSermonRWeb)
 	ad.Post("/sermons/update/:id", sermon_controller.UpsertSermonRWeb) // update

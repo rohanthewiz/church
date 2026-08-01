@@ -65,105 +65,121 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 
 	b := element.NewBuilder()
 
-	b.DivClass("wrapper-material-form").R(
-		b.H3Class("page-title").T(operation+" "+m.Name.Singular),
+	b.DivClass("af-wrap").R(
+		b.H3Class("af-page-title").T(operation+" "+m.Name.Singular),
 		b.Form("method", "post", "enctype", "multipart/form-data", "action",
 			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			b.Input("type", "hidden", "name", "sermon_id", "value", ser.Id),
 			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
-			b.DivClass("form-inline").R(
-				b.DivClass("form-group").R(
-					b.Input("name", "sermon_title", "type", "text",
-						"required", "required", "value", ser.Title), // we are using 'required' here to drive `input:valid` selector
-					b.LabelClass("control-label", "for", "sermon_title").T("Sermon Title"),
-					b.IClass("bar").R(),
-				),
-				b.DivClass("form-group").R(
-					b.Input("name", "sermon_date", "type", "date", "value", ser.DateTaught), // todo - maual validation
-					b.LabelClass("control-label", "for", "sermon_date").T("Sermon Date"),
-					// b.I("class", "bar"),
-				),
-			),
-			b.DivClass("form-group bootstrap-wrapper").R(
-				b.Div("id", "summer1").T(ser.Summary),
-				b.TextArea("id", "sermon_summary", "name", "sermon_summary", "type", "text", "value", "",
-					"style", "display:none").R(),
-				b.LabelClass("control-label", "for", "sermon_summary").T("Summary"),
-			),
-			b.DivClass("form-group bootstrap-wrapper").R(
-				b.Div("id", "summer2").T(ser.Body),
-				b.TextArea("id", "sermon_body", "name", "sermon_body", "type", "text", "value", "",
-					"style", "display:none").R(),
-				b.LabelClass("control-label", "for", "sermon_body").T("Sermon Body"),
-			),
-			b.DivClass("form-inline").R(
-				b.DivClass("form-group").R(
-					b.Input("name", "pastor-teacher", "type", "text",
-						"required", "required", "value", ser.Teacher),
-					b.LabelClass("control-label", "for", "pastor-teacher").T("Pastor / Teacher"),
-					b.IClass("bar").R(),
-				),
-				b.DivClass("form-group").R(
-					b.Input("name", "sermon_place", "type", "text", "placeholder", "(optional)", "value",
-						ser.PlaceTaught),
-					b.LabelClass("control-label", "for", "sermon_place").T("Place Taught"),
-					b.IClass("bar").R(),
-				),
-			),
-			b.DivClass("form-inline").R(
-				b.DivClass("form-group").R(
-					b.Input("name", "sermon_audio", "type", "file", "value", ""),
-					b.LabelClass("control-label", "for", "sermon_audio").T("Upload Audio File"),
-					b.IClass("bar").R(),
-				),
-				b.DivClass("form-group").R( // todo - autogenerate this link
-					b.Input("name", "audio_link", "type", "text", "placeholder", "(automatically generated)",
-						"value", ser.AudioLink),
-					b.LabelClass("control-label", "for", "audio_link").T("Link to Sermon"),
-					b.IClass("bar").R(),
-				),
-			),
-			b.DivClass("form-inline").R(
-				b.DivClass("form-group").R(
-					b.Input("name", "categories", "type", "text", "value", strings.Join(ser.Categories, ", "),
-						"placeholder", "(optional)"),
-					b.LabelClass("control-label", "for", "categories").T("Tags (comma separated)"),
-					b.IClass("bar").R(),
-				),
-				b.DivClass("form-group").R(
-					b.Input("name", "scripture_refs", "type", "text", "value", strings.Join(ser.ScriptureRefs, ", "),
-						"placeholder", "(optional)"),
-					b.LabelClass("control-label", "for", "scripture_refs").T("Scripture references (comma separated)"),
-					b.IClass("bar").R(),
-				),
-			),
-			b.DivClass("form-inline").R(
-				b.DivClass("checkbox").R(
-					b.Label().R(
-						b.Wrap(func() {
-							if ser.Published || operation == "Create" {
-								b.Input("type", "checkbox", "name", "published", "checked", "checked")
-							} else {
-								b.Input("type", "checkbox", "name", "published")
-							}
-						}),
-						b.IClass("helper").R(),
-						b.T("Published"),
+
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Sermon Details"),
+				b.DivClass("af-row").R(
+					b.DivClass("af-field").R(
+						b.Label("for", "sermon_title").R(
+							b.T("Sermon Title "), b.SpanClass("af-req").T("*"),
+						),
+						b.Input("name", "sermon_title", "id", "sermon_title", "type", "text",
+							"required", "required", "value", ser.Title),
 					),
-					b.IClass("bar").R(),
-				),
-				b.DivClass("checkbox").R(
-					b.Label().R(
-						b.Input("type", "checkbox", "name", "audio-link-ovrd"),
-						b.IClass("helper").R(),
-						b.T("Audio Link Override (webmaster only)"),
+					b.DivClass("af-field").R(
+						b.Label("for", "sermon_date").R(
+							b.T("Sermon Date "), b.SpanClass("af-req").T("*"),
+						),
+						// required is real validation here: an empty date used to
+						// reach time.Parse server-side and blow away the whole form
+						b.Input("name", "sermon_date", "id", "sermon_date", "type", "date",
+							"required", "required", "value", ser.DateTaught),
 					),
-					b.IClass("bar").R(),
+				),
+				b.DivClass("af-row", "style", "margin-top:0.9rem").R(
+					b.DivClass("af-field").R(
+						b.Label("for", "pastor-teacher").R(
+							b.T("Pastor / Teacher "), b.SpanClass("af-req").T("*"),
+						),
+						b.Input("name", "pastor-teacher", "id", "pastor-teacher", "type", "text",
+							"required", "required", "value", ser.Teacher),
+					),
+					b.DivClass("af-field").R(
+						b.Label("for", "sermon_place").R(
+							b.T("Place Taught "), b.SpanClass("af-opt").T("(optional)"),
+						),
+						b.Input("name", "sermon_place", "id", "sermon_place", "type", "text",
+							"value", ser.PlaceTaught),
+					),
 				),
 			),
 
-			b.DivClass("form-group").R(
-				b.InputClass("button", "type", "submit", "value", operation),
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Audio"),
+				b.DivClass("af-row").R(
+					b.DivClass("af-field").R(
+						b.Label("for", "sermon_audio").T("Upload Audio File"),
+						b.Input("name", "sermon_audio", "id", "sermon_audio", "type", "file",
+							"accept", "audio/*", "value", ""),
+						b.PClass("af-help").T("After saving, the recording uploads to cloud storage in the background — it can take a minute to become playable."),
+					),
+					b.DivClass("af-field").R(
+						b.Label("for", "audio_link").T("Link to Sermon"),
+						b.Input("name", "audio_link", "id", "audio_link", "type", "text",
+							"placeholder", "(automatically generated)", "value", ser.AudioLink),
+						b.PClass("af-help").T("Generated from the upload. Edits here are ignored unless \"Use custom audio link\" below is on."),
+					),
+				),
+				b.LabelClass("af-switch", "style", "margin-top:0.8rem").R(
+					b.Input("type", "checkbox", "name", "audio-link-ovrd"),
+					b.SpanClass("af-slider").T(""),
+					b.SpanClass("af-switch-text").T("Use custom audio link (webmaster only)"),
+				),
+			),
+
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Content"),
+				b.DivClass("af-editor bootstrap-wrapper").R(
+					b.Label("for", "sermon_summary").T("Summary"),
+					b.Div("id", "summer1").T(ser.Summary),
+					b.TextArea("id", "sermon_summary", "name", "sermon_summary", "type", "text", "value", "",
+						"style", "display:none").R(),
+				),
+				b.DivClass("af-editor bootstrap-wrapper").R(
+					b.Label("for", "sermon_body").T("Sermon Body"),
+					b.Div("id", "summer2").T(ser.Body),
+					b.TextArea("id", "sermon_body", "name", "sermon_body", "type", "text", "value", "",
+						"style", "display:none").R(),
+				),
+				b.DivClass("af-row").R(
+					b.DivClass("af-field").R(
+						b.Label("for", "categories").R(
+							b.T("Tags "), b.SpanClass("af-opt").T("(comma separated, optional)"),
+						),
+						b.Input("name", "categories", "id", "categories", "type", "text",
+							"value", strings.Join(ser.Categories, ", "),
+							"placeholder", "e.g. faith, prayer"),
+					),
+					b.DivClass("af-field").R(
+						b.Label("for", "scripture_refs").R(
+							b.T("Scripture References "), b.SpanClass("af-opt").T("(comma separated, optional)"),
+						),
+						b.Input("name", "scripture_refs", "id", "scripture_refs", "type", "text",
+							"value", strings.Join(ser.ScriptureRefs, ", "),
+							"placeholder", "e.g. John 3:16, Rom 8:28-30"),
+					),
+				),
+			),
+
+			b.DivClass("af-footer").R(
+				b.LabelClass("af-switch").R(
+					b.Wrap(func() {
+						if ser.Published || operation == "Create" {
+							b.Input("type", "checkbox", "name", "published", "checked", "checked")
+						} else {
+							b.Input("type", "checkbox", "name", "published")
+						}
+					}),
+					b.SpanClass("af-slider").T(""),
+					b.SpanClass("af-switch-text").T("Published"),
+				),
+				b.InputClass("af-submit", "type", "submit", "value", operation),
 			),
 		),
 

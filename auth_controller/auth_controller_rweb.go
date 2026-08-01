@@ -32,6 +32,12 @@ func LoginHandlerRWeb(ctx rweb.Context) error {
 // POST /auth  // Authentication
 // Todo: test that disabled user cannot login
 func AuthHandlerRWeb(ctx rweb.Context) error {
+	// The login form carries a CSRF token like every other form (login CSRF
+	// would let an attacker silently sign a victim into an account they
+	// control). Expiry redirects back to a fresh form rather than erroring.
+	if !app.VerifyFormToken(ctx.Request().FormValue("csrf")) {
+		return app.RedirectRWeb(ctx, "/login", "Your login form expired. Please try again.")
+	}
 	username := ctx.Request().FormValue("username")
 	password := ctx.Request().FormValue("password")
 	if len(username) < 1 || len(password) < 1 {

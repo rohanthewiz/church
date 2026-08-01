@@ -65,10 +65,11 @@ func selectOptions(b *element.Builder, opts [][2]string, current string) {
 	}
 }
 
-// The form is fully self-styled: every rule is scoped under .ef-wrap so it
-// cannot leak into other admin modules, and the page needs no site CSS
-// rebuild (each church site compiles its own app.css, so shipping styles
-// with the module is the only zero-deploy-coordination option).
+// Shared chrome (cards/fields/segmented control/switch/footer) now comes from
+// the framework-wide admin stylesheet (template/admin_css.go, af-* classes,
+// themeable via --af-* custom properties). Only genuinely event-specific
+// styling remains here: the recurrence reveal panel and the plain-English
+// recurrence summary strip.
 // Field layout:
 //
 //	┌ Event Details ─────────────────────────┐
@@ -82,71 +83,11 @@ func selectOptions(b *element.Builder, opts [][2]string, current string) {
 //	└─────────────────────────────────────────┘
 //	... Contact / Content / footer (publish + submit)
 const eventFormCSS = `
-.ef-wrap { max-width: 56rem; margin: 0.5rem auto 2rem; color: #2d3436;
-	font-size: 1rem; }
-.ef-wrap .ef-page-title { text-align: center; text-transform: capitalize; margin: 0.6rem 0 1rem; }
-.ef-card { background: #fff; border: 1px solid #dfe6e0; border-radius: 8px;
-	padding: 1rem 1.2rem 1.2rem; margin-bottom: 1.1rem;
-	box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-.ef-card__title { font-size: 0.8rem; font-weight: 600; letter-spacing: 0.08em;
-	text-transform: uppercase; color: #6b7c74; margin-bottom: 0.9rem;
-	border-bottom: 1px solid #eef2ee; padding-bottom: 0.45rem; }
-.ef-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem 1.4rem; }
-.ef-row--3 { grid-template-columns: 1fr 1fr 1fr; }
-@media (max-width: 640px) { .ef-row, .ef-row--3 { grid-template-columns: 1fr; } }
-.ef-field { display: flex; flex-direction: column; }
-.ef-field label { font-size: 0.82rem; font-weight: 600; color: #57606a;
-	margin-bottom: 0.28rem; }
-.ef-field .ef-opt { font-weight: 400; color: #98a1a8; }
-.ef-req { color: #d9534f; }
-.ef-field input, .ef-field select {
-	font-size: 0.95rem; color: #2d3436; background: #fbfdfb;
-	border: 1px solid #c9d3cc; border-radius: 5px; padding: 0.42rem 0.55rem;
-	line-height: 1.4; width: 100%; box-shadow: none;
-	transition: border-color 0.2s ease, box-shadow 0.2s ease; }
-.ef-field input:focus, .ef-field select:focus { outline: none;
-	border-color: #337ab7; box-shadow: 0 0 0 3px rgba(51,122,183,0.15); }
-/* Segmented control: the radios stay in the form (so recur_freq posts
-   unchanged) but are visually replaced by their labels */
-.ef-seg { display: inline-flex; border: 1px solid #c9d3cc; border-radius: 6px;
-	overflow: hidden; margin: 0.2rem 0 0.4rem; }
-.ef-seg input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
-.ef-seg label { padding: 0.4rem 1.15rem; font-size: 0.9rem; cursor: pointer;
-	background: #fbfdfb; color: #57606a; border-left: 1px solid #c9d3cc;
-	margin: 0; transition: background 0.15s ease, color 0.15s ease; }
-.ef-seg label:first-of-type { border-left: none; }
-.ef-seg input:checked + label { background: #337ab7; color: #fff; }
-.ef-seg input:focus-visible + label { box-shadow: inset 0 0 0 2px rgba(51,122,183,0.5); }
-.ef-recur-panel { display: none; background: #f4f8f4; border: 1px solid #e0e9e0;
-	border-radius: 6px; padding: 0.8rem 0.9rem; margin-top: 0.6rem; }
+.ef-recur-panel { display: none; }
 .ef-recur-panel.ef-show { display: block; }
 .ef-recur-summary { margin: 0.7rem 0 0; font-size: 0.9rem; color: #33691e;
-	background: #f1f8e9; border-left: 3px solid #7cb342; padding: 0.45rem 0.7rem;
+	background: #f1f8e9; border-left: 3px solid var(--af-ok); padding: 0.45rem 0.7rem;
 	border-radius: 0 4px 4px 0; }
-.ef-help { font-size: 0.8rem; color: #98a1a8; margin: 0.45rem 0 0; }
-/* Publish toggle: a plain checkbox (posts "on" as before) drawn as a switch */
-.ef-switch { display: inline-flex; align-items: center; cursor: pointer; gap: 0.6rem; }
-.ef-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-.ef-switch .ef-slider { width: 2.4rem; height: 1.3rem; background: #c9d3cc;
-	border-radius: 1rem; position: relative; transition: background 0.2s ease;
-	flex: none; }
-.ef-switch .ef-slider::before { content: ''; position: absolute; top: 0.15rem;
-	left: 0.15rem; width: 1rem; height: 1rem; background: #fff; border-radius: 50%;
-	transition: transform 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.25); }
-.ef-switch input:checked + .ef-slider { background: #7cb342; }
-.ef-switch input:checked + .ef-slider::before { transform: translateX(1.1rem); }
-.ef-switch .ef-switch-text { font-size: 0.95rem; font-weight: 600; color: #57606a; }
-.ef-footer { display: flex; align-items: center; justify-content: space-between;
-	padding: 0.4rem 0.2rem; }
-.ef-submit { background: #337ab7; color: #fff; border: 1px solid #2e6da4;
-	border-radius: 6px; font-size: 1rem; padding: 0.5rem 2.6rem; cursor: pointer;
-	transition: background 0.2s ease, box-shadow 0.2s ease;
-	box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
-.ef-submit:hover { background: #286090; box-shadow: 0 3px 8px rgba(0,0,0,0.2); }
-/* Summernote editors keep their own (scoped bootstrap) look; just space the labels */
-.ef-editor label { display: block; font-size: 0.82rem; font-weight: 600;
-	color: #57606a; margin-bottom: 0.28rem; }
-.ef-editor { margin-bottom: 1rem; }
 `
 
 // Client-side recurrence behavior. Kept in vanilla JS (jQuery is only needed
@@ -220,7 +161,7 @@ const eventFormJS = `
 
 	function syncUI() {
 		var f = freq();
-		panel.className = f ? 'ef-recur-panel ef-show' : 'ef-recur-panel';
+		panel.className = f ? 'af-inset ef-recur-panel ef-show' : 'af-inset ef-recur-panel';
 		weekField.style.display = (f === 'monthly') ? '' : 'none';
 		updateSummary();
 	}
@@ -274,26 +215,26 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 
 	b := element.NewBuilder()
 
-	b.DivClass("ef-wrap").R(
+	b.DivClass("af-wrap").R(
 		b.Style().T(eventFormCSS),
-		b.H3("class", "ef-page-title").T(operation+" "+m.Name.Singular),
+		b.H3("class", "af-page-title").T(operation+" "+m.Name.Singular),
 		b.Form("method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			b.Input("type", "hidden", "name", "event_id", "value", evt.Id),
 			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
 
-			b.DivClass("ef-card").R(
-				b.DivClass("ef-card__title").T("Event Details"),
-				b.DivClass("ef-row").R(
-					b.DivClass("ef-field").R(
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Event Details"),
+				b.DivClass("af-row").R(
+					b.DivClass("af-field").R(
 						b.Label("for", "event_title").R(
-							b.T("Event Title "), b.SpanClass("ef-req").T("*"),
+							b.T("Event Title "), b.SpanClass("af-req").T("*"),
 						),
 						b.Input("name", "event_title", "id", "event_title", "type", "text",
 							"required", "required", "value", evt.Title),
 					),
-					b.DivClass("ef-field").R(
+					b.DivClass("af-field").R(
 						b.Label("for", "event_location").R(
-							b.T("Location "), b.SpanClass("ef-req").T("*"),
+							b.T("Location "), b.SpanClass("af-req").T("*"),
 						),
 						b.Input("name", "event_location", "id", "event_location", "type", "text",
 							"required", "required", "value", evt.Location),
@@ -301,21 +242,21 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 				),
 			),
 
-			b.DivClass("ef-card").R(
-				b.DivClass("ef-card__title").T("Date & Recurrence"),
-				b.DivClass("ef-row").R(
-					b.DivClass("ef-field").R(
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Date & Recurrence"),
+				b.DivClass("af-row").R(
+					b.DivClass("af-field").R(
 						b.Label("for", "event_date").T("Event Date"),
 						b.Input("name", "event_date", "id", "event_date", "type", "date",
 							"value", evt.EventDate),
 					),
-					b.DivClass("ef-field").R(
+					b.DivClass("af-field").R(
 						b.Label("for", "event_time").T("Event Time"),
 						b.Input("name", "event_time", "id", "event_time", "type", "time",
 							"value", evt.EventTime),
 					),
 				),
-				b.DivClass("ef-seg", "role", "radiogroup", "aria-label", "Repeats").R(
+				b.DivClass("af-seg", "role", "radiogroup", "aria-label", "Repeats").R(
 					b.Wrap(func() {
 						for i, choice := range freqChoices {
 							radioID := "recur_freq_" + strconv.Itoa(i)
@@ -332,9 +273,9 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 				// Weekday/week/until only make sense for a repeating event; JS
 				// reveals this panel for weekly/monthly. Hidden fields still post,
 				// which is fine: the server ignores them when recur_freq is empty
-				b.Div("id", "recur_panel", "class", "ef-recur-panel").R(
-					b.DivClass("ef-row ef-row--3").R(
-						b.Div("id", "recur_week_field", "class", "ef-field").R(
+				b.Div("id", "recur_panel", "class", "af-inset ef-recur-panel").R(
+					b.DivClass("af-row af-row--3").R(
+						b.Div("id", "recur_week_field", "class", "af-field").R(
 							b.Label("for", "recur_week").T("Week of Month"),
 							b.Select("name", "recur_week", "id", "recur_week").R(
 								b.Wrap(func() {
@@ -345,7 +286,7 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 								}),
 							),
 						),
-						b.DivClass("ef-field").R(
+						b.DivClass("af-field").R(
 							b.Label("for", "recur_weekday").T("Day of Week"),
 							b.Select("name", "recur_weekday", "id", "recur_weekday").R(
 								b.Wrap(func() {
@@ -357,9 +298,9 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 								}),
 							),
 						),
-						b.DivClass("ef-field").R(
+						b.DivClass("af-field").R(
 							b.Label("for", "recur_until").R(
-								b.T("Repeat Until "), b.SpanClass("ef-opt").T("(optional)"),
+								b.T("Repeat Until "), b.SpanClass("af-opt").T("(optional)"),
 							),
 							b.Input("name", "recur_until", "id", "recur_until", "type", "date",
 								"value", evt.RecurUntil),
@@ -369,46 +310,46 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 				b.P("id", "recur_summary", "class", "ef-recur-summary").T(""),
 			),
 
-			b.DivClass("ef-card").R(
-				b.DivClass("ef-card__title").T("Contact (optional)"),
-				b.DivClass("ef-row ef-row--3").R(
-					b.DivClass("ef-field").R(
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Contact (optional)"),
+				b.DivClass("af-row af-row--3").R(
+					b.DivClass("af-field").R(
 						b.Label("for", "contact_person").T("Contact Person"),
 						b.Input("name", "contact_person", "id", "contact_person", "type", "text",
 							"value", evt.ContactPerson),
 					),
-					b.DivClass("ef-field").R(
+					b.DivClass("af-field").R(
 						b.Label("for", "contact_email").T("Contact Email"),
 						b.Input("name", "contact_email", "id", "contact_email", "type", "text",
 							"value", evt.ContactEmail),
 					),
-					b.DivClass("ef-field").R(
+					b.DivClass("af-field").R(
 						b.Label("for", "contact_phone").T("Contact Phone"),
 						b.Input("name", "contact_phone", "id", "contact_phone", "type", "text",
 							"value", evt.ContactPhone),
 					),
 				),
-				// b.DivClass("ef-field").R(
+				// b.DivClass("af-field").R(
 				// 	b.Label("for", "contact_url").T("Contact URL"),
 				// 	b.Input("name", "contact_url", "id", "contact_url", "type", "text",
 				// 		"value", evt.ContactURL),
 				// ),
 			),
 
-			b.DivClass("ef-card").R(
-				b.DivClass("ef-card__title").T("Content"),
-				b.DivClass("ef-field").R(
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Content"),
+				b.DivClass("af-field").R(
 					b.Label("for", "categories").T("Tags (comma separated)"),
 					b.Input("name", "categories", "id", "categories", "type", "text",
 						"value", strings.Join(evt.Categories, ", ")),
 				),
-				b.DivClass("ef-editor bootstrap-wrapper", "style", "margin-top:1rem").R(
+				b.DivClass("af-editor bootstrap-wrapper", "style", "margin-top:1rem").R(
 					b.Label("for", "event_summary").T("Summary"),
 					b.Div("id", "summer1").T(evt.Summary),
 					b.TextArea("id", "event_summary", "name", "event_summary", "type", "text", "value", "",
 						"style", "display:none").T(""),
 				),
-				b.DivClass("ef-editor bootstrap-wrapper").R(
+				b.DivClass("af-editor bootstrap-wrapper").R(
 					b.Label("for", "event_body").T("Event Body"),
 					b.Div("id", "summer2").T(evt.Body),
 					b.TextArea("id", "event_body", "name", "event_body", "type", "text", "value", "",
@@ -416,8 +357,8 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 				),
 			),
 
-			b.DivClass("ef-footer").R(
-				b.Label("class", "ef-switch").R(
+			b.DivClass("af-footer").R(
+				b.Label("class", "af-switch").R(
 					b.Wrap(func() {
 						if evt.Published {
 							b.Input("type", "checkbox", "name", "published", "checked", "checked")
@@ -425,10 +366,10 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 							b.Input("type", "checkbox", "name", "published")
 						}
 					}),
-					b.SpanClass("ef-slider").T(""),
-					b.SpanClass("ef-switch-text").T("Published"),
+					b.SpanClass("af-slider").T(""),
+					b.SpanClass("af-switch-text").T("Published"),
 				),
-				b.Input("type", "submit", "class", "ef-submit", "value", operation),
+				b.Input("type", "submit", "class", "af-submit", "value", operation),
 			),
 		),
 

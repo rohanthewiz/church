@@ -91,8 +91,8 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 			grid.Column{Header: "Categories", Popup: true},
 			grid.Column{Header: "Updated By"},
 			grid.Column{Header: "Published"},
-			grid.Column{Header: "Edit", NoSort: true, NoFilter: true, Shrink: true},
-			grid.Column{Header: "Del", NoSort: true, NoFilter: true, Shrink: true},
+			grid.Column{Header: "Actions", NoSort: true, NoFilter: true, Shrink: true}, // edit
+			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true},        // delete
 		)
 	}
 
@@ -116,8 +116,8 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 				grid.Text(strings.Join(art.Categories, ", ")),
 				grid.Text(art.UpdatedBy),
 				grid.Text(published),
-				grid.EditLink(m.GetEditURL()+art.Id),
-				grid.DeleteLink(m.GetDeleteURL()+art.Id),
+				grid.EditLinkNamed(m.GetEditURL()+art.Id, art.Title),
+				grid.DeleteLinkNamed(m.GetDeleteURL()+art.Id, art.Title),
 			)
 		}
 		g.Rows = append(g.Rows, row)

@@ -77,6 +77,7 @@ func RegisterModules() {
 
 	singularToPlural["page"] = "pages"
 	addToRegistry(ModuleTypeLoginForm, "", NewModuleLoginForm)
+	addToRegistry(ModuleTypeAdminDashboard, "", NewModuleAdminDashboard)
 	addToRegistry(ModuleTypePagesList, "page", NewModulePagesList)
 	moduleContentBy[ModuleTypePagesList] = content.ModuleContentByPagination
 	addToRegistry(ModuleTypePageForm, "page", NewModulePageForm)
@@ -128,7 +129,8 @@ func availableModuleTypes() (types []string) {
 			strings.Contains(lwrModType, "user") ||
 			strings.Contains(lwrModType, "page") ||
 			strings.Contains(lwrModType, "menu") ||
-			strings.Contains(lwrModType, "cleanup") {
+			strings.Contains(lwrModType, "cleanup") ||
+			strings.Contains(lwrModType, "dashboard") {
 			continue
 		}
 		types = append(types, k)

@@ -114,10 +114,12 @@ func bootstrapMenus() {
 			isAdmin: true,
 			items: []bootstrapMenuItem{
 				{Label: "Dashboard", Url: "/admin/home"},
-				{Label: "Users", Url: "/admin/users"},
-				{Label: "Articles", Url: "/admin/articles"},
 				{Label: "Pages", Url: "/admin/pages"},
 				{Label: "Menus", Url: "/admin/menus"},
+				{Label: "Articles", Url: "/admin/articles"},
+				{Label: "Sermons", Url: "/admin/sermons"},
+				{Label: "Events", Url: "/admin/events"},
+				{Label: "Users", Url: "/admin/users"},
 				{Label: "Logout", Url: "/admin/logout"},
 			},
 		},
@@ -139,12 +141,28 @@ func bootstrapMenus() {
 	}
 
 	for _, m := range menus {
-		exists, err := models.MenuDefs(dbH, qm.Where("slug = ?", m.slug)).Exists()
-		if err != nil {
-			logger.LogErr(serr.Wrap(err), "Bootstrap: error checking menu existence", "slug", m.slug)
-			continue
-		}
-		if exists {
+		existing, err := models.MenuDefs(dbH, qm.Where("slug = ?", m.slug)).One()
+		if err == nil && existing != nil {
+			// The menu exists. If it is still exactly as bootstrap left it
+			// (updated_by tells us no admin has customized it), refresh its
+			// items so nav entries added in newer framework versions (e.g.
+			// admin Sermons/Events) appear on existing installs too. A menu
+			// touched by any human is never overwritten.
+			if existing.UpdatedBy == "bootstrap" {
+				itemsJSON, jerr := json.Marshal(m.items)
+				if jerr != nil {
+					logger.LogErr(serr.Wrap(jerr), "Bootstrap: error marshaling menu items", "slug", m.slug)
+					continue
+				}
+				if string(existing.Items.JSON) != string(itemsJSON) {
+					existing.Items = null.NewJSON(itemsJSON, true)
+					if uerr := existing.Update(dbH); uerr != nil {
+						logger.LogErr(serr.Wrap(uerr), "Bootstrap: error refreshing menu items", "slug", m.slug)
+					} else {
+						logger.Log("Info", "Bootstrap: refreshed uncustomized menu", "slug", m.slug)
+					}
+				}
+			}
 			continue
 		}
 

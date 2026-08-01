@@ -86,7 +86,7 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 		g.Columns = append(g.Columns,
 			grid.Column{Header: "Published"},
 			grid.Column{Header: "Updated By"},
-			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // edit
+			grid.Column{Header: "Actions", NoSort: true, NoFilter: true, Shrink: true}, // edit
 			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // delete
 		)
 	}
@@ -111,8 +111,8 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 			row = append(row,
 				grid.Text(published),
 				grid.Text(mnu.UpdatedBy),
-				grid.EditLink(m.GetEditURL()+mnu.Id),
-				grid.DeleteLink(m.GetDeleteURL()+mnu.Id),
+				grid.EditLinkNamed(m.GetEditURL()+mnu.Id, mnu.Title),
+				grid.DeleteLinkNamed(m.GetDeleteURL()+mnu.Id, mnu.Title),
 			)
 		}
 		g.Rows = append(g.Rows, row)

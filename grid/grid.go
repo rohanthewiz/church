@@ -56,15 +56,24 @@ type Cell struct {
 	HTML    string // trusted raw HTML content
 	Confirm bool   // link asks for confirmation before navigating (deletes)
 	SortVal string // optional sort key override; defaults to the cell text
+	Name    string // human name of the row's item; personalizes confirms/aria-labels
 }
 
 // Convenience constructors — these encode the few cell shapes the list modules
 // need, replacing the old AG Grid "label|href" string convention.
 func Text(s string) Cell           { return Cell{Text: s} }
 func Link(label, href string) Cell { return Cell{Text: label, Href: href} }
-func EditLink(href string) Cell    { return Cell{Text: "edit", Href: href} }
-func DeleteLink(href string) Cell  { return Cell{Text: "del", Href: href, Confirm: true} }
+func EditLink(href string) Cell    { return Cell{Text: "Edit", Href: href} }
+func DeleteLink(href string) Cell  { return Cell{Text: "Delete", Href: href, Confirm: true} }
 func HTML(raw string) Cell         { return Cell{HTML: raw} }
+
+// Named variants carry the item's title so the delete dialog can say what is
+// being deleted ("Delete \"Easter Service\"?" beats "Delete this item?") and
+// screen readers hear which row an action belongs to.
+func EditLinkNamed(href, name string) Cell { return Cell{Text: "Edit", Href: href, Name: name} }
+func DeleteLinkNamed(href, name string) Cell {
+	return Cell{Text: "Delete", Href: href, Confirm: true, Name: name}
+}
 
 // Grid is the renderable component. It satisfies element's Component interface
 // via Render(b) so it can be composed inside any element tree.
@@ -125,6 +134,12 @@ func (g Grid) Render(b *element.Builder) (x any) {
 	if g.CSRFToken != "" {
 		wrapAttrs = append(wrapAttrs, "data-csrf", esc(g.CSRFToken))
 	}
+	// With server-side paging the client pager is meaningless (it would paginate
+	// just this server page while a second pager sits below it); flag it so the
+	// JS suppresses the client pager and labels counts as per-page.
+	if g.Limit > 0 {
+		wrapAttrs = append(wrapAttrs, "data-server-paged", "1")
+	}
 
 	cls := "ch-grid"
 	if g.Class != "" {
@@ -184,7 +199,13 @@ func (g Grid) renderHead(b *element.Builder) (x any) {
 					if colType == "" {
 						colType = ColText
 					}
-					attrs := []string{"data-idx", strconv.Itoa(i), "data-type", colType}
+					attrs := []string{"data-idx", strconv.Itoa(i), "data-type", colType, "scope", "col"}
+					if !col.NoSort {
+						// Sortable headers are keyboard-operable (JS handles
+						// Enter/Space) and announce their sort state via
+						// aria-sort, which the JS keeps current.
+						attrs = append(attrs, "tabindex", "0", "aria-sort", "none")
+					}
 					if col.Width > 0 {
 						attrs = append(attrs, "style", "min-width: "+strconv.Itoa(col.Width)+"px")
 					}
@@ -290,9 +311,18 @@ func (g Grid) renderCell(b *element.Builder, col Column, cl Cell) {
 			case cl.Href != "" && cl.Confirm:
 				// Deletes navigate via JS after a confirm dialog; href stays
 				// inert so a stray click without JS cannot delete anything.
-				b.AClass("ch-grid-del", "href", "#", "data-url", esc(cl.Href)).T(esc(cl.Text))
+				delAttrs := []string{"href", "#", "data-url", esc(cl.Href)}
+				if cl.Name != "" {
+					delAttrs = append(delAttrs, "data-name", esc(cl.Name),
+						"aria-label", esc(cl.Text+" "+cl.Name))
+				}
+				b.AClass("ch-grid-del", delAttrs...).T(esc(cl.Text))
 			case cl.Href != "":
-				b.A("href", esc(cl.Href)).T(esc(cl.Text))
+				linkAttrs := []string{"href", esc(cl.Href)}
+				if cl.Name != "" {
+					linkAttrs = append(linkAttrs, "aria-label", esc(cl.Text+" "+cl.Name))
+				}
+				b.A(linkAttrs...).T(esc(cl.Text))
 			default:
 				b.T(esc(cl.Text))
 			}

@@ -128,7 +128,7 @@ const CSS = `
 
 /* HTML cells (e.g. article summaries) are clamped in the row; the popup shows
    the full content. */
-.ch-grid .ch-grid-html { max-height: 4.5em; overflow: hidden; max-width: 32rem; }
+.ch-grid .ch-grid-html { max-height: 4.5em; overflow: hidden; max-width: min(32rem, 78vw); }
 
 /* Year group header rows (client-side grouping) */
 .ch-grid tr.ch-grid-year-row td {
@@ -177,6 +177,8 @@ const CSS = `
   .ch-grid .ch-grid-groupbtn { padding: 0.55rem 1rem; min-height: 44px; }
   .ch-grid .ch-grid-pager select { min-height: 44px; padding: 0.3rem 0.4rem; }
   .ch-grid tr.ch-grid-year-row td { padding: 0.7rem 0.6rem; }
+  /* Row action links (Edit/Delete) get a real tap area on touch screens */
+  .ch-grid .ch-grid-table td a { display: inline-block; padding: 0.5rem 0.45rem; margin: -0.35rem 0; }
 }
 `
 
@@ -200,6 +202,10 @@ function chGridInit(root) {
     return !tr.classList.contains('ch-grid-empty-row');
   });
   var groupCol = root.hasAttribute('data-group-col') ? parseInt(root.getAttribute('data-group-col'), 10) : -1;
+  // Server paging active: the client pager is suppressed (it would page just
+  // this server slice next to the working server pager) and counts are
+  // labeled per-page so "20 rows" can't read as "20 records total".
+  var serverPaged = root.hasAttribute('data-server-paged');
 
   var state = {
     sorts: [],          // [{idx, dir}] in priority order; dir 1 = asc, -1 = desc
@@ -292,6 +298,9 @@ function chGridInit(root) {
         if (!collapsed) groups[y].forEach(function(tr) { frag.appendChild(tr); });
       });
       label = rows.length + ' rows in ' + order.length + ' year group(s)';
+    } else if (serverPaged) {
+      rows.forEach(function(tr) { frag.appendChild(tr); });
+      label = rows.length + ' rows on this page';
     } else {
       var total = rows.length;
       var pages = Math.max(1, Math.ceil(total / state.pageSize));
@@ -327,7 +336,7 @@ function chGridInit(root) {
   function renderPager(total) {
     var pager = root.querySelector('.ch-grid-pager');
     if (!pager) return;
-    if (state.grouped) { // grouping owns the layout; paging is suspended
+    if (state.grouped || serverPaged) { // grouping/server paging own the layout
       pager.innerHTML = '';
       return;
     }
@@ -348,14 +357,17 @@ function chGridInit(root) {
       var ind = th.querySelector('.ch-grid-sort-ind');
       if (!ind) return;
       var text = '';
+      var aria = 'none';
       for (var i = 0; i < state.sorts.length; i++) {
         if (state.sorts[i].idx === idx) {
           text = state.sorts[i].dir === 1 ? '▲' : '▼';
+          aria = state.sorts[i].dir === 1 ? 'ascending' : 'descending';
           if (state.sorts.length > 1) text += (i + 1); // priority no. for multi-sort
           break;
         }
       }
       ind.textContent = text;
+      if (th.classList.contains('ch-grid-sortable')) th.setAttribute('aria-sort', aria);
     });
   }
 
@@ -363,6 +375,13 @@ function chGridInit(root) {
   // column as a secondary sort instead of replacing the existing spec.
   headerCells.forEach(function(th, idx) {
     if (!th.classList.contains('ch-grid-sortable')) return;
+    // Keyboard parity for the click-to-sort headers (they carry tabindex=0)
+    th.addEventListener('keydown', function(ev) {
+      if (ev.key === 'Enter' || ev.key === ' ') {
+        ev.preventDefault();
+        th.click();
+      }
+    });
     th.addEventListener('click', function(ev) {
       var existing = null;
       for (var i = 0; i < state.sorts.length; i++) {
@@ -460,13 +479,19 @@ function chGridInit(root) {
         document.body.appendChild(form);
         form.submit();
       };
+      // Name the item in the dialog when the module provided it, and take the
+      // destructive-button color from the grid's own theme variable rather
+      // than a hardcoded palette.
+      var itemName = del.getAttribute('data-name') || '';
+      var confirmTitle = itemName ? 'Delete "' + itemName + '"?' : 'Delete this item?';
+      var dangerColor = (getComputedStyle(root).getPropertyValue('--chg-danger') || '').trim() || '#c0392b';
       if (typeof swal === 'function') { // SweetAlert2 when the page ships it
         swal({
-          title: 'Are you sure?', text: "You won't be able to undo!", type: 'warning',
-          showCancelButton: true, confirmButtonColor: '#3085d6', cancelButtonColor: '#d33',
-          confirmButtonText: 'Yes, delete it!'
+          title: confirmTitle, text: "This cannot be undone.", type: 'warning',
+          showCancelButton: true, confirmButtonColor: dangerColor,
+          confirmButtonText: 'Yes, delete it'
         }).then(function(result) { if (result.value) doDelete(); });
-      } else if (window.confirm('Delete this item? This cannot be undone.')) {
+      } else if (window.confirm(confirmTitle + ' This cannot be undone.')) {
         doDelete();
       }
       return;

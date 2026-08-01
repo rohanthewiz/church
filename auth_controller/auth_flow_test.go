@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/resource/apiv1/apitest"
 	"github.com/rohanthewiz/church/resource/auth"
 	"github.com/rohanthewiz/church/resource/session"
@@ -45,6 +46,17 @@ func newWebAuthServer() *rweb.Server {
 
 var formHdr = []rweb.Header{{Key: "Content-Type", Value: "application/x-www-form-urlencoded"}}
 
+// withCSRF appends a freshly minted form token, mirroring what the login form
+// module embeds. Minted per call — tokens are one-shot.
+func withCSRF(t *testing.T, form string) string {
+	t.Helper()
+	tok, err := app.GenerateFormToken()
+	if err != nil {
+		t.Fatalf("could not generate form token: %v", err)
+	}
+	return form + "&csrf=" + tok
+}
+
 // expectCredsQuery arms the mock for user.UserCreds' SELECT (enabled-only,
 // credential columns) with one matching row.
 func expectCredsQuery(mock sqlmock.Sqlmock) {
@@ -71,7 +83,7 @@ func TestWebLoginSuccessGrantsAdminSession(t *testing.T) {
 	expectCredsQuery(mock)
 
 	s := newWebAuthServer()
-	resp := s.Request("POST", "/auth", formHdr, strings.NewReader("username=kim&password=secret"))
+	resp := s.Request("POST", "/auth", formHdr, strings.NewReader(withCSRF(t, "username=kim&password=secret")))
 
 	if resp.Status() != http.StatusSeeOther {
 		t.Fatalf("login status = %d, want 303 (body: %s)", resp.Status(), resp.Body())
@@ -97,7 +109,7 @@ func TestWebLoginWrongPasswordRedirectsToLogin(t *testing.T) {
 	expectCredsQuery(mock) // creds load fine; the scrypt comparison is what fails
 
 	resp := newWebAuthServer().Request("POST", "/auth", formHdr,
-		strings.NewReader("username=kim&password=wrong"))
+		strings.NewReader(withCSRF(t, "username=kim&password=wrong")))
 
 	if resp.Status() != http.StatusSeeOther {
 		t.Fatalf("status = %d, want 303", resp.Status())
@@ -119,7 +131,7 @@ func TestWebLoginUnknownUserRedirectsToLogin(t *testing.T) {
 		WillReturnError(errNoRows{})
 
 	resp := newWebAuthServer().Request("POST", "/auth", formHdr,
-		strings.NewReader("username=nobody&password=whatever"))
+		strings.NewReader(withCSRF(t, "username=nobody&password=whatever")))
 
 	if resp.Status() != http.StatusSeeOther || resp.Header("Location") != "/login" {
 		t.Errorf("unknown user should 303 to /login, got %d %q",
@@ -132,7 +144,7 @@ func TestWebLoginMissingFieldsRedirectsToLogin(t *testing.T) {
 	// any query runs.
 	apitest.MockDB(t)
 
-	resp := newWebAuthServer().Request("POST", "/auth", formHdr, strings.NewReader("username=kim"))
+	resp := newWebAuthServer().Request("POST", "/auth", formHdr, strings.NewReader(withCSRF(t, "username=kim")))
 	if resp.Status() != http.StatusSeeOther || resp.Header("Location") != "/login" {
 		t.Errorf("missing password should 303 to /login, got %d %q",
 			resp.Status(), resp.Header("Location"))
@@ -168,3 +180,16 @@ func TestAdminGuardRejectsStaleCookie(t *testing.T) {
 type errNoRows struct{}
 
 func (errNoRows) Error() string { return "sql: no rows in result set" }
+
+// A login POST without a valid CSRF token never reaches credential handling.
+func TestWebLoginMissingCSRFRedirectsToLogin(t *testing.T) {
+	// No DB expectation: the token check runs before any query.
+	apitest.MockDB(t)
+
+	resp := newWebAuthServer().Request("POST", "/auth", formHdr,
+		strings.NewReader("username=kim&password=secret"))
+	if resp.Status() != http.StatusSeeOther || resp.Header("Location") != "/login" {
+		t.Errorf("missing csrf should 303 to /login, got %d %q",
+			resp.Status(), resp.Header("Location"))
+	}
+}

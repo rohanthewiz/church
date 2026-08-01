@@ -97,7 +97,7 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 			grid.Column{Header: "Slug", Popup: true},
 			grid.Column{Header: "Updated By"},
 			grid.Column{Header: "Published"},
-			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // edit
+			grid.Column{Header: "Actions", NoSort: true, NoFilter: true, Shrink: true}, // edit
 			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // delete
 		)
 	}
@@ -123,8 +123,8 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 				grid.Text(ser.Slug),
 				grid.Text(ser.UpdatedBy),
 				grid.Text(published),
-				grid.EditLink(m.GetEditURL()+ser.Id),
-				grid.DeleteLink(m.GetDeleteURL()+ser.Id),
+				grid.EditLinkNamed(m.GetEditURL()+ser.Id, ser.Title),
+				grid.DeleteLinkNamed(m.GetDeleteURL()+ser.Id, ser.Title),
 			)
 		}
 		g.Rows = append(g.Rows, row)
@@ -141,7 +141,9 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 				}
 			}),
 		),
-		b.DivClass("ch-sermons-list-wrapper").R(
+		// list-wrapper added for parity with every other list module; the
+		// historical ch-sermons-list-wrapper stays for site CSS that targets it
+		b.DivClass("ch-sermons-list-wrapper list-wrapper").R(
 			g.Render(b),
 		),
 	)

@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/db"
-	"fmt"
 	"database/sql"
 	"github.com/rohanthewiz/church/util/stringops"
 )
@@ -27,7 +26,7 @@ func (i *importReceptor) Scan(rs *sql.Rows) error {
 
 func Import() (byts []byte) {
 	fail := []byte(`{"success": false}`)
-	fmt.Printf("%#v", config.Options.PG2)
+	// fmt.Printf("%#v", config.Options.PG2) // never dump PG2 — it contains the DB password
 	err := db.InitDB2(db.DBOpts{
 		DBType: db.DBTypes.Postgres,
 		Host: config.Options.PG2.Host,

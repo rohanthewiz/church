@@ -98,10 +98,12 @@ func hardwiredMenuDef(slug string) (MenuDef, bool) {
 			IsAdmin:   true,
 			Items: []MenuItemDef{
 				{Label: "Dashboard", Url: "/admin/home"},
-				{Label: "Users", Url: "/admin/users"},
-				{Label: "Articles", Url: "/admin/articles"},
 				{Label: "Pages", Url: "/admin/pages"},
 				{Label: "Menus", Url: "/admin/menus"},
+				{Label: "Articles", Url: "/admin/articles"},
+				{Label: "Sermons", Url: "/admin/sermons"},
+				{Label: "Events", Url: "/admin/events"},
+				{Label: "Users", Url: "/admin/users"},
 				{Label: "Logout", Url: "/admin/logout"},
 			},
 		}, true

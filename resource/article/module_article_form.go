@@ -63,55 +63,57 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 	}
 	b := element.NewBuilder()
 
-	b.DivClass("wrapper-material-form").R(
-		b.H3("class", "page-title").T(operation+" "+m.Name.Singular),
+	b.DivClass("af-wrap").R(
+		b.H3("class", "af-page-title").T(operation+" "+m.Name.Singular),
 		b.Form("method", "post", "action",
 			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			b.Input("type", "hidden", "name", "article_id", "value", art.Id),
 			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
 
-			b.DivClass("form-group").R(
-				b.Input("name", "article_title", "type", "text",
-					"required", "required", "value", art.Title), // we are using 'required' here to drive `input:valid` selector
-				b.Label("class", "control-label", "for", "article_title").T("Article Title"),
-				b.IClass("bar").T(""),
-			),
-			b.DivClass("form-group bootstrap-wrapper").R(
-				b.Div("id", "summer1").T(art.Summary),
-				b.TextArea("id", "article_summary", "name", "article_summary", "type", "text", "value", "",
-					"style", "display:none").T(""), // this will hold the returned editor contents
-				b.Label("class", "control-label", "for", "article_summary").T("Summary / Intro"),
-				// no bar if content editable //b.IClass("bar"),
-			),
-			b.DivClass("form-group bootstrap-wrapper").R(
-				b.Div("id", "summer2").T(art.Body),
-				b.TextArea("id", "article_body", "name", "article_body", "type", "text", "value", "",
-					"style", "display:none").T(""),
-				b.Label("class", "control-label", "for", "article_body").T("Article Body"),
-			),
-			b.DivClass("form-group").R(
-				b.Input("type", "text", "name", "categories",
-					"value", strings.Join(art.Categories, ", ")),
-				b.Label("class", "control-label", "for", "categories").T("Categories"),
-				b.IClass("bar").T(""),
-			),
-			b.DivClass("checkbox").R(
-				b.Label().R(
-					b.Wrap(func() {
-						if art.Published {
-							b.Input("type", "checkbox", "class", "enabled", "name", "published", "checked", "checked")
-						} else {
-							b.Input("type", "checkbox", "class", "enabled", "name", "published")
-						}
-					}),
-					b.IClass("helper").T(""),
-					b.T("Published"),
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Article"),
+				b.DivClass("af-field").R(
+					b.Label("for", "article_title").R(
+						b.T("Article Title "), b.SpanClass("af-req").T("*"),
+					),
+					b.Input("name", "article_title", "id", "article_title", "type", "text",
+						"required", "required", "value", art.Title),
 				),
-				b.IClass("bar").T(""),
+				b.DivClass("af-editor bootstrap-wrapper", "style", "margin-top:1rem").R(
+					b.Label("for", "article_summary").T("Summary / Intro"),
+					b.Div("id", "summer1").T(art.Summary),
+					b.TextArea("id", "article_summary", "name", "article_summary", "type", "text", "value", "",
+						"style", "display:none").T(""), // this will hold the returned editor contents
+				),
+				b.DivClass("af-editor bootstrap-wrapper").R(
+					b.Label("for", "article_body").T("Article Body"),
+					b.Div("id", "summer2").T(art.Body),
+					b.TextArea("id", "article_body", "name", "article_body", "type", "text", "value", "",
+						"style", "display:none").T(""),
+				),
+				b.DivClass("af-field").R(
+					b.Label("for", "categories").R(
+						b.T("Categories "), b.SpanClass("af-opt").T("(comma separated)"),
+					),
+					b.Input("type", "text", "name", "categories", "id", "categories",
+						"placeholder", "e.g. news, youth, missions",
+						"value", strings.Join(art.Categories, ", ")),
+				),
 			),
 
-			b.DivClass("form-group").R(
-				b.Input("type", "submit", "class", "button", "value", operation),
+			b.DivClass("af-footer").R(
+				b.LabelClass("af-switch").R(
+					b.Wrap(func() {
+						if art.Published {
+							b.Input("type", "checkbox", "name", "published", "checked", "checked")
+						} else {
+							b.Input("type", "checkbox", "name", "published")
+						}
+					}),
+					b.SpanClass("af-slider").T(""),
+					b.SpanClass("af-switch-text").T("Published"),
+				),
+				b.Input("type", "submit", "class", "af-submit", "value", operation),
 			),
 		),
 

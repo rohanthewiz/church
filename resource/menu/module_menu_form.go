@@ -46,8 +46,134 @@ func (m ModuleMenuForm) getData() (mdef MenuDef, err error) {
 	return menuDefFromModel(mnu)
 }
 
+// Menu-form-only structural styling; colors resolve through the shared --af-*
+// custom properties (template/admin_css.go) so site themes re-skin this form.
+// Each menu item is one responsive grid row: three fields plus a tool cluster
+// that drops under the fields on narrow screens.
+const menuFormCSS = `
+.mf-item { display: grid; grid-template-columns: 1fr 1.4fr 1fr auto;
+	gap: 0.6rem 0.9rem; align-items: end; border: 1px solid var(--af-inset-border);
+	border-radius: 6px; background: var(--af-inset-bg);
+	padding: 0.6rem 0.7rem 0.7rem; margin-bottom: 0.6rem; min-width: 0; }
+.mf-item__tools { display: flex; gap: 0.3rem; padding-bottom: 0.15rem; }
+.mf-item__tools .af-btn { padding: 0.15rem 0.55rem; font-size: 0.95rem; }
+.mf-switches { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; margin-top: 0.8rem; }
+@media (max-width: 760px) {
+	.mf-item { grid-template-columns: 1fr; align-items: stretch; }
+	.mf-item__tools { justify-content: flex-end; padding-bottom: 0; }
+}
+`
+
+// Client side: vanilla JS, DOM as source of truth. Submit serializes exactly
+// the {"items": [...]} shape the controller unmarshals (FormMenuObject) —
+// the old version posted the whole jQuery-serialized form instead.
+const menuFormJS = `
+(function () {
+	'use strict';
+	var MAX_ITEMS = 20;
+	var list, addBtn, countEl;
+
+	function el(tag, className, attrs) {
+		var n = document.createElement(tag);
+		if (className) { n.className = className; }
+		if (attrs) { for (var k in attrs) { n.setAttribute(k, attrs[k]); } }
+		return n;
+	}
+
+	function field(labelText, fieldName, value, placeholder) {
+		var f = el('div', 'af-field');
+		var lb = el('label');
+		lb.textContent = labelText;
+		var inp = el('input', '', { type: 'text', 'data-field': fieldName });
+		if (placeholder) { inp.placeholder = placeholder; }
+		inp.value = value || '';
+		f.appendChild(lb); f.appendChild(inp);
+		return f;
+	}
+
+	function btn(txt, title, extraClass) {
+		var x = el('button', 'af-btn' + (extraClass ? ' ' + extraClass : ''),
+			{ type: 'button', title: title });
+		x.textContent = txt;
+		return x;
+	}
+
+	function buildItem(item) {
+		var row = el('div', 'mf-item');
+		row.appendChild(field('Label', 'label', item.label, 'e.g. About Us'));
+		row.appendChild(field('URL', 'url', item.url, '/pages/page-slug, or # for submenu parent'));
+		row.appendChild(field('Submenu Slug (optional)', 'sub_menu_slug', item.sub_menu_slug,
+			'slug of another menu'));
+
+		var tools = el('div', 'mf-item__tools');
+		var up = btn('↑', 'Move up');
+		var down = btn('↓', 'Move down');
+		var del = btn('×', 'Remove menu item', 'af-btn--danger');
+		tools.appendChild(up); tools.appendChild(down); tools.appendChild(del);
+		row.appendChild(tools);
+
+		up.addEventListener('click', function () {
+			var prev = row.previousElementSibling;
+			if (prev) { list.insertBefore(row, prev); }
+		});
+		down.addEventListener('click', function () {
+			var next = row.nextElementSibling;
+			if (next) { list.insertBefore(next, row); }
+		});
+		del.addEventListener('click', function () {
+			if (window.confirm('Remove this menu item?')) {
+				row.parentNode.removeChild(row);
+				syncCount();
+			}
+		});
+		return row;
+	}
+
+	function syncCount() {
+		var n = list.querySelectorAll('.mf-item').length;
+		countEl.textContent = n + (n === 1 ? ' item' : ' items');
+		addBtn.disabled = n >= MAX_ITEMS;
+		var empty = document.getElementById('mf_empty');
+		if (empty) { empty.style.display = n === 0 ? '' : 'none'; }
+	}
+
+	window.preSubmit = function () {
+		var out = [];
+		var rows = list.querySelectorAll('.mf-item');
+		for (var i = 0; i < rows.length; i++) {
+			var read = function (name) {
+				return rows[i].querySelector('[data-field="' + name + '"]').value;
+			};
+			out.push({ label: read('label'), url: read('url'),
+				sub_menu_slug: read('sub_menu_slug') });
+		}
+		document.getElementById('items').value = JSON.stringify({ items: out });
+		return true;
+	};
+
+	document.addEventListener('DOMContentLoaded', function () {
+		list = document.getElementById('mf_items');
+		addBtn = document.getElementById('mf_add_item');
+		countEl = document.getElementById('mf_count');
+
+		if (window.menuItems) {
+			for (var i = 0; i < window.menuItems.length; i++) {
+				list.appendChild(buildItem(window.menuItems[i]));
+			}
+		}
+		addBtn.addEventListener('click', function () {
+			if (list.querySelectorAll('.mf-item').length >= MAX_ITEMS) { return; }
+			var row = buildItem({ label: '', url: '', sub_menu_slug: '' });
+			list.appendChild(row);
+			syncCount();
+			row.querySelector('input').focus();
+		});
+		syncCount();
+	});
+})();
+`
+
 func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bool) string {
-	// fmt.Printf("*|* Params: %#v\n", params)
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
@@ -63,7 +189,6 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 			logger.LogErr(err, "Error in menu render", "module", fmt.Sprintf("%#v", m.Opts))
 			return "error generating menu"
 		}
-		fmt.Printf("Menu object: %#v\n", mnu)
 		action = "/update/" + mnu.Id
 	}
 
@@ -75,151 +200,80 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 		return "menu error"
 	}
 
-	b.DivClass("wrapper-material-form").R(
-		b.H3("class", "page-title").T(operation+" "+m.Name.Singular),
+	namedSwitch := func(label, name string, on bool) {
+		b.LabelClass("af-switch").R(
+			b.Wrap(func() {
+				if on {
+					b.Input("type", "checkbox", "name", name, "checked", "checked")
+				} else {
+					b.Input("type", "checkbox", "name", name)
+				}
+			}),
+			b.SpanClass("af-slider").T(""),
+			b.SpanClass("af-switch-text").T(label),
+		)
+	}
+
+	b.DivClass("af-wrap").R(
+		b.Style().T(menuFormCSS),
+		b.H3("class", "af-page-title").T(operation+" "+m.Name.Singular),
 		b.Form("id", "menu_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			b.Input("type", "hidden", "id", "items", "name", "items", "value", ""),
 			b.Input("type", "hidden", "name", "menu_id", "value", mnu.Id),
 			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
-			b.DivClass("form-inner").R(
 
-				b.DivClass("form-inline").R(
-					b.DivClass("form-group").R(
-						b.Input("name", "menu_title", "type", "text", "value", mnu.Title),
-						b.Label("class", "control-label", "for", "menu_title").T("Menu Title"),
-						b.IClass("bar").R(),
-					),
-					b.DivClass("form-group").R(
-						b.Input("class", "form-group__slug", "name", "menu_slug", "type", "text",
-							"placeholder", "slug is automatically generated on save", "value", mnu.Slug),
-						b.Label("class", "control-label form-group__label--disabled", "for", "menu_slug").T("Menu Slug"),
-						b.IClass("bar").R(),
-					),
-				),
-				b.DivClass("form-inline").R(
-					b.DivClass("checkbox").R(
-						b.Label().R(
-							b.Wrap(func() {
-								if mnu.Published {
-									b.Input("type", "checkbox", "name", "published", "checked", "checked")
-								} else {
-									b.Input("type", "checkbox", "name", "published")
-								}
-							}),
-							b.IClass("helper").R(),
-							b.T("Published"),
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Menu Details"),
+				b.DivClass("af-row").R(
+					b.DivClass("af-field").R(
+						b.Label("for", "menu_title").R(
+							b.T("Menu Title "), b.SpanClass("af-req").T("*"),
 						),
-						b.IClass("bar").R(),
+						b.Input("name", "menu_title", "id", "menu_title", "type", "text",
+							"required", "required", "value", mnu.Title),
 					),
-					b.DivClass("checkbox").R(
-						b.Label().R(
-							b.Wrap(func() {
-								if mnu.IsAdmin {
-									b.Input("type", "checkbox", "name", "is_admin", "checked", "checked")
-								} else {
-									b.Input("type", "checkbox", "name", "is_admin")
-								}
-							}),
-							b.IClass("helper").R(),
-							b.T("For Admin Only"),
+					b.DivClass("af-field").R(
+						b.Label("for", "menu_slug").R(
+							b.T("Menu Slug "), b.SpanClass("af-opt").T("(auto-generated on save)"),
 						),
-						b.IClass("bar").R(),
+						// The server derives the slug from the title and ignores this
+						// field on post, so show it read-only rather than implying
+						// it is editable (the old form accepted edits it discarded)
+						b.Input("name", "menu_slug", "id", "menu_slug", "type", "text",
+							"readonly", "readonly", "placeholder", "generated when saved",
+							"value", mnu.Slug),
 					),
 				),
-				b.DivClass("form-inline").R(
-					b.DivClass("form-group").R(
-						b.H3().T("Menu Items"),
-					),
-					b.Button("class", "btn-add-menu-item", "title", "Add Menu Item").T("+"),
+				b.DivClass("mf-switches").R(
+					b.Wrap(func() {
+						namedSwitch("Published", "published", mnu.Published)
+						namedSwitch("For Admin Only", "is_admin", mnu.IsAdmin)
+					}),
 				),
-			), // end form-inner
-			b.DivClass("form-group").R(
-				b.Input("type", "submit", "class", "button", "value", operation),
+			),
+
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").R(
+					b.Span().T("Menu Items"),
+					b.Span().R(
+						b.Span("id", "mf_count", "style", "font-weight:400;margin-right:0.8rem").T(""),
+						b.Button("id", "mf_add_item", "type", "button", "class", "af-btn af-btn--primary",
+							"title", "Add a menu item").T("+ Add Item"),
+					),
+				),
+				b.PClass("af-help").T(`Each item links to a URL like "/pages/page-slug". `+
+					`To make an item open a submenu, set its URL to "#" and put the other menu's slug in Submenu Slug.`),
+				b.PClass("af-help", "id", "mf_empty").T("No items yet — use \"+ Add Item\" to build this menu."),
+				b.Div("id", "mf_items").R(),
+			),
+
+			b.DivClass("af-footer").R(
+				b.AClass("af-btn", "href", "/admin/"+m.Name.Plural).T("Cancel"),
+				b.Input("type", "submit", "class", "af-submit", "value", operation),
 			),
 		),
 		b.Script("type", "text/javascript").T(
-			"var items = JSON.parse(`"+string(byts)+"`);"+
-				`var newItem = {
-			label: "", url: "", sub_menu_slug: ""
-		};
-
-		function preSubmit() {
-			$('#items').val($('#menu_form').serializeJSON());
-			//console.log($('#items').get(0).value);
-			return true;
-		}
-
-		$(document).ready(function() {
-			var inner = $(".form-inner");
-			var add_button = $("#menu_form .btn-add-menu-item"); //Add button ID
-			var count = 0;
-			var max_components = 20; //maximum components allowed
-
-			// Initial Components
-			if(items) {
-				//console.log(items);  // ***debug***
-				for (var i = 0; i < items.length; i++) {
-					$(inner).append(buildComponent(i, items[i])); //add input box
-				}
-			}
-			// Can Add
-			$(add_button).click(function (e) { //on add input button click
-				e.preventDefault();
-				if (count < max_components) {
-					$(inner).append(buildComponent($('.item').length, newItem)); //add input box
-				}
-			});
-
-			// Remove
-			$(inner).on("click",".remove_field", function(e){
-				e.preventDefault();
-				$(this).closest('.item').remove();
-				count--;
-				reorderItems();
-			});
-			// Move Up
-			$(inner).on("click",".move_up", function(e){
-				e.preventDefault();
-				var parent = $(this).closest('.item');
-				parent.insertBefore(parent.prev('.item'));
-				reorderItems();
-			});
-			// Move Down
-			$(inner).on("click",".move_down", function(e){
-				e.preventDefault();
-				var parent = $(this).closest('.item');
-				parent.insertAfter(parent.next('.item'));
-				reorderItems();
-			});
-		});
-
-function buildComponent(x, item) {
-	return $('<div class="item form-pack">' +
-		'<div class="form-group"><label>Label</label>&nbsp;<input type="text" placeholder="label" name="items[' + x + '][label]" value="' + item.label + '"><i class="bar"></i></div>' +
-		'<div class="form-group"><label>URL (e.g. /pages/page-slug...)</label><input type="text" placeholder="/pages/page-slug or #" name="items[' + x + '][url]" value="' + item.url + '" /><i class="bar"></i></div>' +
-		'<div class="form-group"><label>Submenu slug</label><input type="text" name="items[' + x + '][sub_menu_slug]" value="' + item.sub_menu_slug + '"><i class="bar"></i></div>' +
-		'<div class="form-group btn-group"><button class="btn move_up" title="Move row up">Up</button><button class="btn move_down" title="Move row down">Down</button>' +
-			'<button class="remove_field">Delete</button></div>');
-}
-function checkbox(displayName, fieldName, index, isChecked) {
-	var str = hspace() + '<input type="checkbox" name="items[' + index + '][' + fieldName + ']"';
-	if (isChecked) {
-		str += ' checked="checked"';
-	}
-	str += ' /> ' + displayName + hspace();
-	return str;
-}
-function reorderItems() {
-	$('.item').each(function(i){
-		$(this).find('input[name^=items]').each(function(){
-			m = $(this).attr("name").replace(/items\[\d+\]/, 'items[' + i + ']');
-			$(this).attr("name", m);
-		})
-	})
-}
-function hspace() {
-	return '&nbsp;&nbsp;'
-}`),
+			"window.menuItems = JSON.parse(`"+string(byts)+"`);"+menuFormJS),
 	)
 
 	return b.String()

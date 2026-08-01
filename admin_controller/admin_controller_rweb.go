@@ -1,21 +1,35 @@
 package admin_controller
 
 import (
+	"bytes"
 	"errors"
 	"time"
 
 	"github.com/rohanthewiz/church/admin"
+	"github.com/rohanthewiz/church/app"
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/models"
+	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
 	"gopkg.in/nullbio/null.v6"
 )
 
+// AdminHandlerRWeb renders the admin dashboard (was a plain-text greeting).
 func AdminHandlerRWeb(ctx rweb.Context) error {
-	return ctx.WriteString("Hello Administrator!")
+	pg, err := page.AdminHome()
+	if err != nil {
+		return err
+	}
+	buf := new(bytes.Buffer)
+	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
+		"_global": {"user_agent": ctx.UserAgent()},
+	}, app.IsLoggedInRWeb(ctx))
+	return ctx.WriteHTML(buf.String())
 }
 
 func CreateTestEventsRWeb(ctx rweb.Context) error {

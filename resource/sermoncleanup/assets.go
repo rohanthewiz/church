@@ -74,6 +74,9 @@ const cleanupCSS = `
   background: var(--sc-green-soft); border-radius: 999px;
 }
 
+/* The 5-column table (monospace paths, nowrap dates) overflows a phone;
+   auto overflow keeps the panning inside the group instead of the page. */
+.ch-` + ModuleTypeSermonCleanup + ` .sc-year-group { overflow-x: auto; }
 .ch-` + ModuleTypeSermonCleanup + ` .sc-table { width: 100%; border-collapse: collapse; }
 .ch-` + ModuleTypeSermonCleanup + ` .sc-table th {
   text-align: left; padding: 0.4rem 0.6rem; font-size: 0.78em;

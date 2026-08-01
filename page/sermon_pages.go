@@ -69,7 +69,10 @@ func AdminSermonsList() (*Page, error) {
 			Title:        "Admin Sermons List",
 			Published:    true,
 			IsMainModule: true,
-			//Limit: 20,
+			// Without a limit every sermon ever recorded rendered into one
+			// page (the only unpaginated admin list); 50 keeps grouping-by-year
+			// useful while bounding the DOM. Server Prev/Next covers the rest.
+			Limit: 50,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modPres}

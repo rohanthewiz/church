@@ -89,7 +89,7 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 			grid.Column{Header: "Categories", Popup: true},
 			grid.Column{Header: "Updated By"},
 			grid.Column{Header: "Published"},
-			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // edit
+			grid.Column{Header: "Actions", NoSort: true, NoFilter: true, Shrink: true}, // edit
 			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // delete
 		)
 	}
@@ -114,8 +114,8 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 				grid.Text(strings.Join(evt.Categories, ", ")),
 				grid.Text(evt.UpdatedBy),
 				grid.Text(published),
-				grid.EditLink(m.GetEditURL()+evt.Id),
-				grid.DeleteLink(m.GetDeleteURL()+evt.Id),
+				grid.EditLinkNamed(m.GetEditURL()+evt.Id, evt.Title),
+				grid.DeleteLinkNamed(m.GetDeleteURL()+evt.Id, evt.Title),
 			)
 		}
 		g.Rows = append(g.Rows, row)

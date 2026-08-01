@@ -1,181 +1,308 @@
-var modules,
-	moduleTypes,
-	contentBys; // module option types (by Id(s) or by limit/offset)
+// Client side of the admin Page form (see page/module_page_form.go).
+// Rewritten vanilla-JS: the old version string-built jQuery HTML and relied on
+// jquery.serialize-object to post the whole form as JSON. Now the DOM is the
+// single source of truth and submit serializes exactly the {"mods": [...]}
+// shape page/form_objects.go unmarshals — booleans as real booleans, ids /
+// limit / offset as strings (ModuleReceiver declares them as strings).
+//
+// Injected globals (set by the Go module just before this script):
+//   modules     - the page's saved module option sets ([{opts: {...}}, ...])
+//   moduleTypes - selectable module types for dynamic pages
+//   contentBys  - moduleType -> content kind ("SingleId" | "MultiId" |
+//                 "Pagination" | "Form" | ...) driving which option fields
+//                 apply to a given type
+var modules, moduleTypes, contentBys;
 
 // PACKER START ModulePageForm_js
-// The format is PACKER START <varname_to_hold_contents>
-var newModule = {
-		opts: {
-			layout_column: "center", published: true, main_module: false,
-			title: "", slug: "", module_type: "article_single", custom_class: "",
-			items_url_path: "", item_ids: [], is_admin: false,
-			show_unpublished: false, ascending: false, condition: "", limit: 5, offset: 0
-		}
+(function () {
+	'use strict';
+
+	var MAX_MODULES = 16;
+
+	var list;       // container the module cards live in
+	var addBtn;
+	var countEl;    // "N modules" badge in the card title
+
+	var newModuleOpts = {
+		layout_column: 'center', published: true, main_module: false,
+		title: '', module_type: 'article_single', custom_class: '',
+		item_ids: [], show_unpublished: false, ascending: false,
+		limit: 5, offset: 0
 	};
 
-function preSubmit() {
-	$('#modules').val($('#page_form').serializeJSON());
-	//console.log($('#modules').get(0).value);
-	return true;
-}
-
-$(document).ready(function() {
-	//var wrapper = $("#page_form"); //Fields wrapper
-	var inner = $(".form-inner");
-	var add_button = $("#page_form .btn-add-module"); //Add button ID
-	var count = 0;
-	var max_components = 16; //maximum components allowed
-
-	// Initial Components
-	if(modules) {
-		//console.log(modules);  // ***debug***
-		for (var i = 0; i < modules.length; i++) {
-			$(inner).append(buildComponent(i, modules[i])); //add input box
-		}
+	// content kind helpers -----------------------------------------------------
+	function kindOf(modType) { return contentBys[modType] || ''; }
+	function usesIds(modType) {
+		var k = kindOf(modType);
+		return k === 'SingleId' || k === 'MultiId';
 	}
-	// Can Add
-	$(add_button).click(function (e) { //on add input button click
-		e.preventDefault();
-		if (count < max_components) {
-			$(inner).append(buildComponent($('.module').length, newModule)); //add input box
-		}
-	});
-	// Serialize
-	//$(wrapper).on("click","#btn_serialize", function(e){
-	//    e.preventDefault();
-	//    console.log($(wrapper).serializeJSON()); // ..izeObject();
-	//});
+	function usesPagination(modType) { return kindOf(modType) === 'Pagination'; }
 
-	// Remove
-	$(inner).on("click",".remove_field", function(e){
-		e.preventDefault();
-		$(this).closest('.module').remove();
-		count--;
-		reorderItems();
-	});
-	// Move Up
-	$(inner).on("click",".move_up", function(e){
-		e.preventDefault();
-		var parent = $(this).closest('.module');
-		parent.insertBefore(parent.prev('.module'));
-		reorderItems();
-	});
-	// Move Down
-	$(inner).on("click",".move_down", function(e){
-		e.preventDefault();
-		var parent = $(this).closest('.module');
-		parent.insertAfter(parent.next('.module'));
-		reorderItems();
-	});
-	// ModuleType Selection Change - Todo at document ready also
-	$(inner).on("change", ".module_type", function(e){
-		e.preventDefault();
-		var contentBy = contentBys[this.value];
-		//console.log(this.value);
-		// remove any disabled attrs // not necessary on startup
-		$(this).closest('.module').find('.can-disable').each(function(i){
-			$(this).prop("disabled", false);
+	// tiny DOM helpers ---------------------------------------------------------
+	function el(tag, className, attrs) {
+		var node = document.createElement(tag);
+		if (className) { node.className = className; }
+		if (attrs) {
+			for (var k in attrs) {
+				if (Object.prototype.hasOwnProperty.call(attrs, k)) {
+					node.setAttribute(k, attrs[k]);
+				}
+			}
+		}
+		return node;
+	}
+
+	function field(labelText, input, extraClass) {
+		var f = el('div', 'af-field' + (extraClass ? ' ' + extraClass : ''));
+		var lb = el('label');
+		lb.textContent = labelText;
+		f.appendChild(lb);
+		f.appendChild(input);
+		return f;
+	}
+
+	function textInput(fieldName, value, placeholder) {
+		var inp = el('input', '', { type: 'text', 'data-field': fieldName });
+		if (placeholder) { inp.placeholder = placeholder; }
+		inp.value = (value === undefined || value === null) ? '' : value;
+		return inp;
+	}
+
+	function switchCtl(labelText, fieldName, checked, extraClass) {
+		var lb = el('label', 'af-switch' + (extraClass ? ' ' + extraClass : ''));
+		var inp = el('input', '', { type: 'checkbox', 'data-field': fieldName });
+		inp.checked = !!checked;
+		var slider = el('span', 'af-slider');
+		var txt = el('span', 'af-switch-text');
+		txt.textContent = labelText;
+		lb.appendChild(inp); lb.appendChild(slider); lb.appendChild(txt);
+		return lb;
+	}
+
+	// one module card ----------------------------------------------------------
+	function buildCard(opts) {
+		var card = el('div', 'pf-module');
+
+		// Header: summary text + reorder/collapse/remove controls. The summary
+		// mirrors type + title live so a collapsed card is still identifiable.
+		var head = el('div', 'pf-module__head');
+		var summary = el('span', 'pf-module__summary');
+		var tools = el('div', 'pf-module__tools');
+		var upBtn = btn('↑', 'Move up');
+		var downBtn = btn('↓', 'Move down');
+		var togBtn = btn('−', 'Collapse');
+		var delBtn = btn('×', 'Remove module', 'af-btn--danger');
+		tools.appendChild(upBtn); tools.appendChild(downBtn);
+		tools.appendChild(togBtn); tools.appendChild(delBtn);
+		head.appendChild(summary); head.appendChild(tools);
+		card.appendChild(head);
+
+		var body = el('div', 'pf-module__body');
+		card.appendChild(body);
+
+		// Row 1: type + title
+		var typeSel = el('select', '', { 'data-field': 'module_type' });
+		for (var i = 0; i < moduleTypes.length; i++) {
+			var opt = el('option');
+			opt.value = moduleTypes[i];
+			opt.textContent = moduleTypes[i].replace(/_/g, ' ');
+			if (moduleTypes[i] === opts.module_type) { opt.selected = true; }
+			typeSel.appendChild(opt);
+		}
+		var titleInp = textInput('title', opts.title, 'shown as the module heading');
+		var row1 = el('div', 'af-row');
+		row1.appendChild(field('Module Type', typeSel));
+		row1.appendChild(field('Module Title', titleInp));
+		body.appendChild(row1);
+
+		// Row 2: column + content-selection fields (which of these matter
+		// depends on the module type; irrelevant ones are hidden, not disabled,
+		// so the form never shows dead controls)
+		var colSel = el('select', '', { 'data-field': 'layout_column' });
+		['center', 'left', 'right'].forEach(function (c) {
+			var o = el('option');
+			o.value = c; o.textContent = c;
+			if (c === (opts.layout_column || 'center')) { o.selected = true; }
+			colSel.appendChild(o);
 		});
-		// add disabled attrs depending on contentBy MultiId or SingleId
-		if (contentBy == "SingleId" || contentBy == "MultiId") {
-			$(this).closest('.module').find('.by-list').each(function(i){
-				$(this).prop("disabled", true);
-			});
-		} else {
-			$(this).closest('.module').find('.by-id').first().prop("disabled", true);
+		// A saved page may use a custom column name; keep it selectable
+		if (opts.layout_column && ['center', 'left', 'right'].indexOf(opts.layout_column) === -1) {
+			var custom = el('option');
+			custom.value = opts.layout_column; custom.textContent = opts.layout_column;
+			custom.selected = true;
+			colSel.appendChild(custom);
 		}
+		var idsInp = textInput('item_ids',
+			(opts.item_ids || []).join(','), 'e.g. 12 or 12,15');
+		var limitInp = textInput('limit', String(opts.limit), 'how many');
+		var offsetInp = textInput('offset', String(opts.offset), 'skip first N');
+		var row2 = el('div', 'af-row af-row--3');
+		row2.appendChild(field('Column Position', colSel));
+		var idsField = field('Item Id(s)', idsInp, 'pf-ids');
+		var limitField = field('Items to List', limitInp, 'pf-limit');
+		var offsetField = field('Items to Skip', offsetInp, 'pf-offset');
+		row2.appendChild(idsField);
+		row2.appendChild(limitField);
+		row2.appendChild(offsetField);
+		body.appendChild(row2);
+
+		// Row 3: custom style class
+		var styleInp = textInput('custom_class', opts.custom_class,
+			'CSS class(es), space separated');
+		var row3 = el('div', 'af-row');
+		row3.appendChild(field('Module Style Class (optional)', styleInp));
+		body.appendChild(row3);
+
+		// Row 4: switches
+		var switches = el('div', 'pf-switches');
+		switches.appendChild(switchCtl('Published', 'published', opts.published));
+		switches.appendChild(switchCtl('Main Module', 'main_module',
+			opts.main_module || opts.is_main_module, 'pf-main-switch'));
+		switches.appendChild(switchCtl('Show Unpublished', 'show_unpublished',
+			opts.show_unpublished, 'pf-list-switch'));
+		switches.appendChild(switchCtl('Oldest First', 'ascending',
+			opts.ascending, 'pf-list-switch'));
+		body.appendChild(switches);
+
+		function syncKind() {
+			var t = typeSel.value;
+			idsField.style.display = usesIds(t) ? '' : 'none';
+			var pag = usesPagination(t);
+			limitField.style.display = pag ? '' : 'none';
+			offsetField.style.display = pag ? '' : 'none';
+			var listSwitches = switches.querySelectorAll('.pf-list-switch');
+			for (var i = 0; i < listSwitches.length; i++) {
+				listSwitches[i].style.display = pag ? '' : 'none';
+			}
+		}
+		function syncSummary() {
+			var t = typeSel.value.replace(/_/g, ' ');
+			summary.textContent = titleInp.value ? t + ' — ' + titleInp.value : t;
+		}
+		typeSel.addEventListener('change', function () { syncKind(); syncSummary(); });
+		titleInp.addEventListener('input', syncSummary);
+
+		// Only one module should be the page's main module; checking one
+		// unchecks the rest rather than leaving the admin to hunt for it
+		switches.querySelector('.pf-main-switch input')
+			.addEventListener('change', function (e) {
+				if (!e.target.checked) { return; }
+				var others = list.querySelectorAll('.pf-main-switch input');
+				for (var i = 0; i < others.length; i++) {
+					if (others[i] !== e.target) { others[i].checked = false; }
+				}
+			});
+
+		upBtn.addEventListener('click', function () {
+			var prev = card.previousElementSibling;
+			if (prev) { list.insertBefore(card, prev); }
+		});
+		downBtn.addEventListener('click', function () {
+			var next = card.nextElementSibling;
+			if (next) { list.insertBefore(next, card); }
+		});
+		togBtn.addEventListener('click', function () {
+			var hidden = body.style.display === 'none';
+			body.style.display = hidden ? '' : 'none';
+			togBtn.textContent = hidden ? '−' : '+';
+			togBtn.title = hidden ? 'Collapse' : 'Expand';
+		});
+		delBtn.addEventListener('click', function () {
+			if (window.confirm('Remove this module from the page?')) {
+				card.parentNode.removeChild(card);
+				syncCount();
+			}
+		});
+
+		syncKind();
+		syncSummary();
+		return card;
+	}
+
+	function btn(txt, title, extraClass) {
+		var x = el('button', 'af-btn' + (extraClass ? ' ' + extraClass : ''),
+			{ type: 'button', title: title });
+		x.textContent = txt;
+		return x;
+	}
+
+	function syncCount() {
+		var n = list.querySelectorAll('.pf-module').length;
+		countEl.textContent = n + (n === 1 ? ' module' : ' modules');
+		addBtn.disabled = n >= MAX_MODULES;
+		var empty = document.getElementById('pf_empty');
+		if (empty) { empty.style.display = n === 0 ? '' : 'none'; }
+	}
+
+	// submit: DOM -> {"mods": [...]} in the hidden #modules field ---------------
+	window.preSubmit = function () {
+		var mods = [];
+		var cards = list.querySelectorAll('.pf-module');
+		for (var i = 0; i < cards.length; i++) {
+			var read = function (name) {
+				return cards[i].querySelector('[data-field="' + name + '"]');
+			};
+			mods.push({
+				module_type: read('module_type').value,
+				title: read('title').value,
+				layout_column: read('layout_column').value,
+				item_ids: read('item_ids').value,
+				limit: read('limit').value,
+				offset: read('offset').value,
+				custom_class: read('custom_class').value,
+				published: read('published').checked,
+				main_module: read('main_module').checked,
+				show_unpublished: read('show_unpublished').checked,
+				ascending: read('ascending').checked
+			});
+		}
+		if (mods.length === 0) {
+			window.alert('A page needs at least one module. Use "+ Add Module".');
+			return false;
+		}
+		document.getElementById('modules').value = JSON.stringify({ mods: mods });
+		return true;
+	};
+
+	document.addEventListener('DOMContentLoaded', function () {
+		list = document.getElementById('pf_modules');
+		addBtn = document.getElementById('pf_add_module');
+		countEl = document.getElementById('pf_count');
+
+		if (modules) {
+			for (var i = 0; i < modules.length; i++) {
+				list.appendChild(buildCard(modules[i].opts || modules[i]));
+			}
+		}
+		addBtn.addEventListener('click', function () {
+			if (list.querySelectorAll('.pf-module').length >= MAX_MODULES) { return; }
+			var card = buildCard(newModuleOpts);
+			list.appendChild(card);
+			syncCount();
+			card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+		});
+		syncCount();
+
+		// The page-level position toggles maintain the hidden
+		// available_positions value ("left,center,right" subset; center fixed)
+		var posBoxes = document.querySelectorAll('.pf-pos input[type="checkbox"]');
+		var posHidden = document.getElementById('available_positions');
+		function syncPositions() {
+			var vals = ['center']; // center is the page's required main column
+			for (var i = 0; i < posBoxes.length; i++) {
+				if (posBoxes[i].checked) { vals.push(posBoxes[i].value); }
+			}
+			// keep canonical order for a stable, readable stored value
+			vals.sort(function (a, b) {
+				var order = { left: 0, center: 1, right: 2 };
+				return order[a] - order[b];
+			});
+			posHidden.value = vals.join(',');
+		}
+		for (var p = 0; p < posBoxes.length; p++) {
+			posBoxes[p].addEventListener('change', syncPositions);
+		}
+		if (posBoxes.length) { syncPositions(); }
 	});
-});
-
-// Todo - init (contentBys[mod.opts.module_type] != "SingleId" && contentBys[mod.opts.module_type] != "MultiId") to a var isList
-function buildComponent(x, mod) {
-	var ids = "";
-	if (mod.opts.item_ids) {
-		ids = mod.opts.item_ids.join(',');
-	}
-	return $('<div class="module">' +
-		'<div class="form-pack">' +
-			'<div class="form-group"><label>Choose Module Type</label><select class="module_type" name="mods[' + x + '][module_type]" value="' +
-					mod.opts.module_type + '">' + buildModuleTypeOptions(mod.opts.module_type) + '</select><i class="bar"></i>' +
-			'</div>' +
-			'<div class="form-group"><label>Module Title</label>&nbsp;<input type="text" placeholder="title" name="mods[' + x + '][title]" ' +
-					'value="' + mod.opts.title + '" /><i class="bar"></i>' +
-			'</div>' +
-			'<div class="form-group btn-group"><button class="btn move_up" title="Move row up">Up</button>' +
-					'<button class="btn move_down" title="Move row down">Down</button>' +
-					'<button class="remove_field">Delete</button>' +
-			'</div>' +
-		'</div>' +
-
-		'<div class="form-pack">' +
-			'<div class="form-group"><label>Column Position (e.g. center)</label>&nbsp;<input type="text"' +
-					'placeholder="layout_column" name="mods[' + x + '][layout_column]" value="' + mod.opts.layout_column +
-					'"><i class="bar"></i>' +
-			'</div>' +
-			'<div class="form-group"><label>Item Ids</label>&nbsp;<input class="by-id can-disable" type="text"' +
-					((contentBys[mod.opts.module_type] != "SingleId" && contentBys[mod.opts.module_type] != "MultiId") ? ' disabled="disabled"' : '') +
-					'placeholder="Item id(s)" name="mods[' + x + '][item_ids]" value="' + ids + '"><i class="bar"></i>' +
-			'</div>' +
-		'</div>' +
-		'<div class="form-pack">' + // Todo - Apply a class to show only on isList (bool var)
-			'<div class="form-group"><label>Number of Items to List</label>&nbsp;<input class="by-list can-disable" type="text"' +
-					((contentBys[mod.opts.module_type] == "SingleId" || contentBys[mod.opts.module_type] == "MultiId") ? ' disabled="disabled"' : '')  +
-					'placeholder="limit" name="mods[' + x + '][limit]" value="' + mod.opts.limit + '"><i class="bar"></i>' +
-			'</div>' +
-			'<div class="form-group"><label>Number of Items to Skip</label>&nbsp;<input class="by-list can-disable" type="text"' +
-					((contentBys[mod.opts.module_type] == "SingleId" || contentBys[mod.opts.module_type] == "MultiId") ? ' disabled="disabled"' : '')  +
-					'placeholder="offset" name="mods[' + x + '][offset]" value="' + mod.opts.offset + '"><i class="bar"></i>' +
-			'</div>' +
-		'</div>' +
-		'<div class="form-pack">' +
-			'<div class="form-group"><label>Module style</label>&nbsp;<input placeholder="module style(s) - separate multiples with spaces" name="mods[' + x + '][custom_class]" value="' + mod.opts.custom_class + '"><i class="bar"></i>' +
-			'</div>' +
-		'</div>' +
-		'<div class="form-pack">' +
-			//checkbox('Admin', 'is_admin', x, mod.opts.is_admin) +
-			checkbox('Published', 'published', x, mod.opts.published) +
-			checkbox('Main Module (Only one module should be the Main)', 'main_module', x, mod.opts.is_main_module) +
-			checkbox('Show Unpublished', 'show_unpublished', x, mod.opts.show_unpublished) +
-			checkbox('Oldest First', 'ascending', x, mod.opts.ascending) +
-		'</div>' +
-	'</div>');
-}
-
-function buildModuleTypeOptions(modType) {
-	var out = "";
-	for(var i = 0; i < moduleTypes.length; i++) {
-		out += '<option value="' + moduleTypes[i] + '"'
-		if (moduleTypes[i] === modType) { out += ' selected="selected"' }
-		out += '>' + moduleTypes[i]
-		out += '</option>'
-	}
-	return out
-}
-
-function reorderItems() {
-	// Remember we need to reorder all types of inputs including selects
-	$('.module').each(function(i){
-		$(this).find('input[name^=mods]').each(function(){
-			m = $(this).attr("name").replace(/mods\[\d+\]/, 'mods[' + i + ']');
-			$(this).attr("name", m);
-		})
-		$(this).find('select[name^=mods]').each(function(){
-			m = $(this).attr("name").replace(/mods\[\d+\]/, 'mods[' + i + ']');
-			$(this).attr("name", m);
-		})
-	})
-}
-
-function checkbox(displayName, fieldName, index, isChecked) {
-	var str = hspace() + '<input type="checkbox" name="mods[' + index + '][' + fieldName + ']"';
-	if (isChecked) {
-		str += ' checked="checked"';
-	}
-	str += ' /> ' + displayName + hspace();
-	return str;
-}
-
-function hspace() {
-	return '&nbsp;&nbsp;'
-}
+})();
 // PACKER END

@@ -46,6 +46,17 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	// Emitted after the app.css link so it wins the cascade on every site.
 	b.Style().T(ResponsiveCSS)
 
+	// Shared page-chrome fixes: viewport-pinned flash banner and tap-to-open
+	// nav submenus (see chrome_css.go).
+	b.Style().T(ChromeCSS)
+	b.Script("type", "text/javascript").T(ChromeJS)
+
+	// Admin pages carry the framework's own admin stylesheet (see admin_css.go)
+	// so every admin screen looks the same on every site with no stylus rebuild.
+	if page.IsAdmin {
+		b.Style().T(AdminCSS)
+	}
+
 	b.T(`</head><body class="theme-` + config.Options.Theme + `">`)
 
 	// Banner
@@ -58,7 +69,13 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	// Flash
 	b.T(flsh.Render())
 
-	b.DivClass("theme-"+config.Options.Theme, "id", "mid").R(
+	// .af-scope declares the admin CSS variables (see AdminCSS); scoping it to
+	// #mid keeps admin styling entirely out of public pages.
+	midClass := "theme-" + config.Options.Theme
+	if page.IsAdmin {
+		midClass += " af-scope"
+	}
+	b.DivClass(midClass, "id", "mid").R(
 		// Left
 		b.DivClass(layout, "id", "left-side").R(
 			b.T(page.Render("left", params, loggedIn)),

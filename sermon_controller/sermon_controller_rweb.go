@@ -2,6 +2,7 @@ package sermon_controller
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -40,8 +41,46 @@ func NewSermonRWeb(ctx rweb.Context) error {
 	return ctx.WriteHTML(buf.String())
 }
 
+// ImportRWeb shows a confirmation screen for the legacy-DB sermon import.
+// The import itself moved behind ImportRunRWeb (POST + CSRF): a GET that
+// bulk-writes the sermons table could be re-triggered by a browser refresh or
+// even a link prefetcher, and it answered with raw JSON instead of a page.
 func ImportRWeb(ctx rweb.Context) error {
-	return ctx.WriteJSON(sermon.Import())
+	csrf, err := app.GenerateFormToken()
+	if err != nil {
+		return serr.Wrap(err, "Could not generate form token")
+	}
+	// Self-contained confirmation card (this endpoint predates the shared
+	// admin page template and stays standalone).
+	return ctx.WriteHTML(`<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sermon Import</title></head>
+<body style="font-family:system-ui,sans-serif;background:#f4f6f4;margin:0;padding:2rem 1rem;">
+<div style="max-width:34rem;margin:0 auto;background:#fff;border:1px solid #dfe6e0;border-radius:8px;padding:1.2rem 1.4rem;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+<h2 style="margin-top:0">Import sermons from legacy database?</h2>
+<p>This connects to the configured secondary (PG2) database and imports every
+sermon found there into this site, marking them published. It is not
+idempotent &mdash; running it twice can duplicate sermons.</p>
+<form method="post" action="/admin/sermons/import">
+<input type="hidden" name="csrf" value="` + csrf + `">
+<button type="submit" style="background:#c0392b;color:#fff;border:none;border-radius:6px;padding:0.55rem 1.4rem;font-size:1rem;cursor:pointer">Run Import</button>
+<a href="/admin/sermons" style="margin-left:1rem">Cancel</a>
+</form></div></body></html>`)
+}
+
+// ImportRunRWeb performs the import (POST + CSRF) and reports via flash.
+func ImportRunRWeb(ctx rweb.Context) error {
+	if ok, err := app.VerifyFormTokenRWeb(ctx, "/admin/sermons"); !ok {
+		return err
+	}
+	result := struct {
+		Success bool `json:"success"`
+		Count   int  `json:"count"`
+	}{}
+	if err := json.Unmarshal(sermon.Import(), &result); err != nil || !result.Success {
+		return app.RedirectRWebError(ctx, "/admin/sermons", "Sermon import failed — check the server logs.")
+	}
+	return app.RedirectRWeb(ctx, "/admin/sermons", fmt.Sprintf("Imported %d sermon(s)", result.Count))
 }
 
 // Show a particular sermon - for given by id

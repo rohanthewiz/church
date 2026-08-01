@@ -46,8 +46,29 @@ func (m ModulePageForm) getData() (Presenter, error) {
 	return presenterFromModel(pg)
 }
 
+// Page-form-only styling on top of the shared admin stylesheet
+// (template/admin_css.go). Everything colorful resolves through the --af-*
+// custom properties so a site theme that overrides those re-skins this form
+// too. Only structural rules live here: the module-card repeater chrome and
+// the switch strip.
+const pageFormCSS = `
+.pf-module { border: 1px solid var(--af-inset-border); border-radius: 6px;
+	background: var(--af-inset-bg); margin-bottom: 0.8rem; min-width: 0; }
+.pf-module__head { display: flex; align-items: center; gap: 0.6rem;
+	justify-content: space-between; padding: 0.45rem 0.7rem;
+	border-bottom: 1px solid var(--af-inset-border); }
+.pf-module__summary { font-weight: 600; font-size: 0.9rem;
+	color: var(--af-text-soft); text-transform: capitalize; min-width: 0;
+	overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pf-module__tools { display: flex; gap: 0.3rem; flex: none; }
+.pf-module__tools .af-btn { padding: 0.15rem 0.55rem; font-size: 0.95rem; }
+.pf-module__body { padding: 0.7rem 0.7rem 0.8rem; }
+.pf-module__body > .af-row { margin-bottom: 0.7rem; }
+.pf-switches { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; }
+.pf-pos { display: flex; flex-wrap: wrap; gap: 0.5rem 1.4rem; margin-top: 0.3rem; }
+`
+
 func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bool) string {
-	// fmt.Printf("*|* Params: %#v\n", params)
 	if opts, ok := params[m.Opts.Slug]; ok { // params addressed to us
 		m.SetId(opts)
 	}
@@ -63,7 +84,6 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 			logger.LogErr(err, "Error in module render", "module_options", fmt.Sprintf("%#v", m.Opts))
 			return "" // todo - error presentation to user
 		}
-		logger.LogAsync("Debug", "Existing page object for module form", "page object", fmt.Sprintf("%#v", pg))
 		logger.DebugF("Page %q has: %d module(s)", pg.Title, len(pg.Modules))
 		action = "/update/" + pg.Id
 	}
@@ -87,59 +107,109 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 		return "page error - try again or contact the site administrator"
 	}
 
-	b.DivClass("wrapper-material-form").R(
-		b.H3("class", "page-title").T(operation+" "+m.Name.Singular),
+	// The stored value is a comma list like "left,center,right"; the form
+	// offers left/right as switches (center is always present — it is the main
+	// column) and JS maintains the hidden canonical value.
+	hasLeft, hasRight := false, false
+	for _, p := range pg.AvailablePositions {
+		switch strings.TrimSpace(p) {
+		case "left":
+			hasLeft = true
+		case "right":
+			hasRight = true
+		}
+	}
+
+	posSwitch := func(label, value string, on bool) {
+		b.LabelClass("af-switch").R(
+			b.Wrap(func() {
+				if on {
+					b.Input("type", "checkbox", "value", value, "checked", "checked")
+				} else {
+					b.Input("type", "checkbox", "value", value)
+				}
+			}),
+			b.SpanClass("af-slider").T(""),
+			b.SpanClass("af-switch-text").T(label),
+		)
+	}
+
+	namedSwitch := func(label, name string, on bool) {
+		b.LabelClass("af-switch").R(
+			b.Wrap(func() {
+				if on {
+					b.Input("type", "checkbox", "name", name, "checked", "checked")
+				} else {
+					b.Input("type", "checkbox", "name", name)
+				}
+			}),
+			b.SpanClass("af-slider").T(""),
+			b.SpanClass("af-switch-text").T(label),
+		)
+	}
+
+	b.DivClass("af-wrap").R(
+		b.Style().T(pageFormCSS),
+		b.H3("class", "af-page-title").T(operation+" "+m.Name.Singular),
 		b.Form("id", "page_form", "method", "post", "action", "/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			b.Input("type", "hidden", "id", "modules", "name", "modules", "value", ""),
 			b.Input("type", "hidden", "name", "page_id", "value", pg.Id),
 			b.Input("type", "hidden", "name", "csrf", "value", m.csrf),
+			b.Input("type", "hidden", "id", "available_positions", "name", "available_positions",
+				"value", strings.Join(pg.AvailablePositions, ",")),
 
-			b.DivClass("form-inner").R(
-				b.DivClass("form-inline").R(
-					b.DivClass("form-group").R(
-						b.Input("name", "page_title", "type", "text", "value", pg.Title),
-						b.LabelClass("control-label", "for", "page_title").T("Page Title"),
-						b.IClass("bar").R(),
-					),
-					b.DivClass("form-group").R(
-						b.InputClass("form-group__slug", "name", "page_slug", "type", "text",
-							"placeholder", "will be automatically filled in", "value", pg.Slug),
-						b.LabelClass("control-label form-group__label--disabled", "for", "page_slug").T("Page Slug (identifier)"),
-						b.IClass("bar").R(),
-					),
-				),
-				b.DivClass("form-group").R(
-					b.Input("name", "available_positions", "type", "text", "placeholder", "combo of left,right,center - must include center",
-						"value", strings.Join(pg.AvailablePositions, ",")),
-					b.LabelClass("control-label", "for", "available_positions").T("Available Column Positions"),
-					b.IClass("bar").R(),
-				),
-				b.DivClass("form-inline").R(
-					b.DivClass("checkbox").R(
-						b.Label().R(
-							b.Wrap(func() {
-								if pg.Published {
-									b.Input("type", "checkbox", "name", "published", "checked", "checked")
-								} else {
-									b.Input("type", "checkbox", "name", "published")
-								}
-							}),
-							b.IClass("helper").R(),
-							b.T("Publish Page"),
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Page Details"),
+				b.DivClass("af-row").R(
+					b.DivClass("af-field").R(
+						b.Label("for", "page_title").R(
+							b.T("Page Title "), b.SpanClass("af-req").T("*"),
 						),
-						b.IClass("bar").R(),
+						b.Input("name", "page_title", "id", "page_title", "type", "text",
+							"required", "required", "value", pg.Title),
+					),
+					b.DivClass("af-field").R(
+						b.Label("for", "page_slug").R(
+							b.T("Page Slug "), b.SpanClass("af-opt").T("(auto-generated)"),
+						),
+						b.Input("name", "page_slug", "id", "page_slug", "type", "text",
+							"placeholder", "will be automatically filled in", "value", pg.Slug),
 					),
 				),
-				b.DivClass("form-inline").R(
-					b.DivClass("form-group").R(
-						b.H3().T("Modules (page components)"),
+				b.DivClass("af-field", "style", "margin-top:0.8rem").R(
+					b.Label().T("Side Columns"),
+					b.DivClass("pf-pos").R(
+						b.Wrap(func() {
+							posSwitch("Left column", "left", hasLeft)
+							posSwitch("Right column", "right", hasRight)
+						}),
 					),
-					b.ButtonClass("btn-add-module", "title", "Add Module").T("+"),
+					b.PClass("af-help").T("The center (main) column is always present. Toggle side columns to give modules more positions."),
 				),
-			), // end form-inner
+				b.DivClass("pf-switches", "style", "margin-top:0.8rem").R(
+					b.Wrap(func() {
+						namedSwitch("Publish Page", "published", pg.Published)
+						namedSwitch("Make this the Home Page", "is_home", pg.IsHome)
+					}),
+				),
+			),
 
-			b.DivClass("form-group").R(
-				b.Input("type", "submit", "class", "button", "value", operation),
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").R(
+					b.Span().T("Modules (page components)"),
+					b.Span().R(
+						b.Span("id", "pf_count", "style", "font-weight:400;margin-right:0.8rem").T(""),
+						b.Button("id", "pf_add_module", "type", "button", "class", "af-btn af-btn--primary",
+							"title", "Add a module to this page").T("+ Add Module"),
+					),
+				),
+				b.PClass("af-help", "id", "pf_empty").T("No modules yet — a page renders its modules, so add at least one."),
+				b.Div("id", "pf_modules").R(),
+			),
+
+			b.DivClass("af-footer").R(
+				b.AClass("af-btn", "href", "/admin/"+m.Name.Plural).T("Cancel"),
+				b.Input("type", "submit", "class", "af-submit", "value", operation),
 			),
 		),
 		b.Script("type", "text/javascript").T(
