@@ -2,10 +2,10 @@
 
 Runs each church site (ccswm.org, calvaryeastmetro.org, …) as a single-pod
 Deployment on a shared LKE cluster. bytdb is embedded in the site process;
-the database file lives on Linode Block Storage; hourly consistent backups
-go to Linode Object Storage (S3-compatible); one shared ingress-nginx
-NodeBalancer fans out by Host header to all sites, with Let's Encrypt TLS
-via cert-manager.
+the database file lives on Linode Block Storage; its WAL ships continuously
+to Linode Object Storage (S3-compatible), backed by hourly full snapshots to
+the same bucket; one shared ingress-nginx NodeBalancer fans out by Host
+header to all sites, with Let's Encrypt TLS via cert-manager.
 
 ```
                  DNS A records ─┐ (all domains → one IP)
@@ -26,8 +26,11 @@ via cert-manager.
                          ▼             ▼
                    [Block PVC]    [Block PVC]    live DB file (honest fsync)
                          └──────┬──────┘
-                                ▼  hourly Engine.BackupTo (CronJob-triggered)
-                        [Object Storage]         backups only — never live WAL
+                                │  ~5s  in-app WAL shipping   → <site>/wal/gen/…
+                                ▼  1h   Engine.BackupTo       → <site>/<ts>/church.db
+                        [Object Storage]         replicas only — never live WAL
+                                │
+                                └──▶ boot on an empty PVC restores from it
 ```
 
 ## Why this shape
@@ -38,12 +41,73 @@ via cert-manager.
 - **Live DB on block storage, never object storage** — the WAL requires
   honest fsync semantics; S3-compatible stores can't provide that. Object
   storage is strictly the backup/restore target.
-- **Hourly full backup = interim replication** — the databases are MBs, so
-  full snapshots are cheap; RPO is the backup interval (1h). The future
-  `bytdb/replicate` (WAL shipping via `Engine.ReadLogRange`/`LogState`)
-  tightens RPO to seconds without changing the manifests' shape.
+- **Two replication tiers, one bucket** — WAL shipping (`bytdb/replicate`,
+  driven from `db/replicate.go`) gives RPO ~5s; the hourly full snapshot
+  stays as an independent second tier. Keeping both is deliberate: they share
+  no code path, so a bug in the WAL chain cannot take out both copies, and
+  `latest/` remains the migration-delivery vehicle. Their key namespaces are
+  disjoint by shape, so neither tier's pruning can reach the other's objects.
+- **Restore is in-app, not an initContainer** — `startBytDB()` self-heals an
+  empty volume before opening the engine: newest complete WAL generation
+  first, `latest/` snapshot on `ErrNoReplica`, fresh schema bootstrap if
+  neither exists. A store that is reachable but errors aborts the boot on
+  purpose — an empty site serving 200s is worse than a crash-looping pod, and
+  `Recreate` means nothing else is serving anyway.
 - **Shared namespace `churches`** — same operator for all sites; naming
   (`ccswm-*`, `cema-*`) is isolation enough.
+
+## Bucket layout
+
+One prefix per site, three key shapes that never overlap:
+
+| Key | Writer | Read by |
+|---|---|---|
+| `<prefix>/wal/gen/<gen>/<start>-<end>.wlog` | replicator (`db/replicate.go`) | boot restore, replicator prune |
+| `<prefix>/wal/gen/<gen>/manifest.json` | replicator | boot restore (completeness check) |
+| `<prefix>/<UTC timestamp>/church.db` | `resource/dbbackup` | its own prune |
+| `<prefix>/latest/church.db` | `resource/dbbackup` (CopyObject) | boot restore fallback, migration delivery |
+
+The snapshot prune only deletes keys shaped exactly
+`<prefix>/<timestamp>/church.db`; the replicator only lists and prunes under
+`<prefix>/wal/gen/`. Sharing one prefix (and one credential set) is safe by
+construction and keeps a site to a single `<site>-backup` secret.
+
+## WAL shipping
+
+Enabled per site with `BACKUP_REPLICATE=true` in the Deployment (or
+`backup.replicate: true` in options.yml); cadence via
+`BACKUP_REPLICATE_INTERVAL` / `backup.replicate_interval`, default 5s. Started
+by `db.StartBytDBReplication()` from each site's `main.go`, which is a no-op
+on the Postgres backend, without object-store credentials, or without the
+flag. A start failure is logged and the site keeps serving — shipping is
+insurance, and refusing to boot on stale credentials would turn a degraded
+backup into an outage.
+
+Idle ticks cost one local `LogState()` call and zero requests, so a quiet
+site generates no traffic. A pod restart with the PVC intact rolls a new
+generation and re-ships the whole (MB-scale) file from offset zero, which is
+why the missing SIGTERM handler costs nothing: `church.ServeRWeb()` blocks
+until process death, so `defer db.CloseDB()` — and with it the replicator's
+final flush — usually does not run on a pod kill. That only matters if the
+pod *and* the volume are lost inside one interval, which is exactly the
+≤1-interval loss the design already accepts.
+
+Health: `GET /api/admin/db/replication`, same bearer token as the backup
+endpoint.
+
+```bash
+curl -sS -H "Authorization: Bearer $BACKUP_TOKEN" \
+  http://ccswm.churches.svc.cluster.local:4000/api/admin/db/replication
+# {"generation":"20260801t…","epoch":3,"watermark":52480,
+#  "last_ship":"2026-08-01T21:04:05Z","lag_seconds":2,
+#  "interval_seconds":5,"last_error":null}
+```
+
+`last_error` non-null, or `lag_seconds` ≫ `interval_seconds`, means shipping
+is stalled (bucket outage, rotated credentials) while the site itself is
+fine. 503 means replication is off or the backend is not bytdb. Deliberately
+**not** wired into the readiness probe: killing traffic because object
+storage hiccuped inverts the priority — serving outranks shipping.
 
 ## The backup endpoint
 
@@ -53,17 +117,18 @@ can produce a consistent snapshot (`Engine.BackupTo`) — an external job must
 not copy the live file. On each trigger it: authenticates the
 `Authorization: Bearer` token against `BACKUP_TOKEN` (constant-time),
 snapshots the engine, uploads to `<bucket>/<prefix>/<UTC timestamp>/church.db`,
-server-side copies over `<bucket>/<prefix>/latest/church.db` (the
-initContainer's restore source), and prunes timestamped snapshots beyond
+server-side copies over `<bucket>/<prefix>/latest/church.db` (the boot
+restore's fallback source), and prunes timestamped snapshots beyond
 `BACKUP_RETAIN` (default 72 ≈ 3 days hourly). Responses: 503 unconfigured or
 non-bytdb backend, 401 bad token, 200 with
 `{key, latest_key, bytes, pruned, dur_millis}`.
 
 Configuration arrives as env from the `<site>-backup` secret (`OBJ_ENDPOINT`,
 `OBJ_BUCKET`, `OBJ_ACCESS_KEY`, `OBJ_SECRET_KEY`, `BACKUP_TOKEN`) plus
-`BACKUP_PREFIX` set in the Deployment — or equivalently a `backup:` block in
-options.yml (see `config/config.go`). Gate ordering and JSON shapes are
-frozen by `resource/dbbackup/api_contract_test.go`.
+`BACKUP_PREFIX` and `BACKUP_REPLICATE` set in the Deployment — or equivalently
+a `backup:` block in options.yml (see `config/config.go`). Gate ordering and
+JSON shapes for both endpoints are frozen by
+`resource/dbbackup/api_contract_test.go`.
 
 On-demand run: `kubectl -n churches create job --from=cronjob/ccswm-backup
 ccswm-backup-manual`, or curl the endpoint directly with the token.
@@ -118,9 +183,11 @@ kubectl apply -f deploy/k8s/sites/cema.yaml
 
 ## Migration runbook: Postgres → bytdb per site
 
-The initContainer restore path doubles as the migration delivery mechanism:
-migrate locally, upload the file as the "latest backup", and first deploy
-restores it. No surgery inside the cluster.
+The boot restore path doubles as the migration delivery mechanism: migrate
+locally, upload the file as the "latest backup", and the first deploy restores
+it. No surgery inside the cluster. A brand-new site has no WAL generations, so
+the snapshot fallback is what fires — which is why the two-tier precedence
+leaves this runbook unchanged.
 
 1. **Run the importer** (`test_scripts/pg_to_bytdb`): brings the destination
    up through the production path (schema bootstrap + wire loopback), then
@@ -141,9 +208,12 @@ restores it. No surgery inside the cluster.
    a short freeze beats building delta sync).
 4. **Final import** against live PG; upload the result to
    `s3://<bucket>/<site>/latest/church.db`.
-5. **Deploy** the site manifest. The initContainer finds an empty volume,
-   pulls the migrated file, and the app boots on it. Verify via
-   `kubectl port-forward` before touching DNS.
+5. **Deploy** the site manifest. The app finds an empty volume, restores the
+   migrated file from `latest/` (no WAL generation exists yet), and boots on
+   it. Verify via `kubectl port-forward` before touching DNS. Within a few
+   seconds of serving, generations should appear:
+   `mc ls obj/<bucket>/<site>/wal/gen/` — and
+   `GET /api/admin/db/replication` should report a small `lag_seconds`.
 6. **Cut DNS** to the NodeBalancer IP. Old PG stack stays warm as rollback
    (`db.type: postgres` in options.yml is the escape hatch) until confident;
    then decommission.
@@ -154,10 +224,38 @@ restores it. No surgery inside the cluster.
 kubectl -n churches get pods,pvc,ingress,cronjobs
 kubectl -n churches logs deploy/ccswm -f
 kubectl -n churches create job --from=cronjob/ccswm-backup ccswm-backup-manual  # on-demand backup
+# replication health (needs BACKUP_TOKEN):
+kubectl -n churches exec deploy/ccswm -- \
+  wget -qO- --header="Authorization: Bearer $BACKUP_TOKEN" \
+  http://localhost:4000/api/admin/db/replication
 # psql into a live site's embedded DB: pin db.listen (e.g. 127.0.0.1:5433)
 # in its options.yml, then:
 kubectl -n churches port-forward deploy/ccswm 5433:5433
 ```
+
+### Recovering a lost volume
+
+Nothing to do: delete the PVC's pod, let a fresh volume attach, and the app
+restores the newest complete WAL generation on boot (seconds of loss). The
+log line names the source, e.g.
+`bytdb: restored from WAL generation 20260801t… (5242880 bytes, 1 chunks)`.
+
+The one case that needs hands is a store that *lost* objects: if every
+manifested generation is missing chunks, the boot aborts with
+`ErrIncompleteReplica` rather than silently rolling back to the hour-old
+snapshot — that trade is an operator's call, not the app's. Make it by
+putting a file on the volume, after which the in-app restore sees it and
+stands down:
+
+```bash
+kubectl -n churches debug -it deploy/ccswm --image=minio/mc:latest \
+  --target=ccswm -- sh -c '
+    mc alias set obj "https://$OBJ_ENDPOINT" "$OBJ_ACCESS_KEY" "$OBJ_SECRET_KEY" &&
+    mc cp "obj/$OBJ_BUCKET/ccswm/latest/church.db" /data/church.db'
+```
+
+(The commented-out `restore-if-empty` initContainer in the site manifest is
+the same command, kept for one release as documentation of this path.)
 
 ## Cost (monthly, approx)
 

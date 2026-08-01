@@ -102,10 +102,16 @@ github.com/rohanthewiz/assert v0.1.2 h1:coi0nUTAuqgpxoa7THQynDnBKUzV9Bid+tNaocUk
 github.com/rohanthewiz/assert v0.1.2/go.mod h1:Xix0OMMRN0aGkE207Wk5GJk0eWlpcNGph0+kYpuq+vQ=
 github.com/rohanthewiz/btypedb v0.6.0 h1:ZcpejLoqyy5yC0LvkHtXGnH+odFv+87EwqwShBj9qEo=
 github.com/rohanthewiz/btypedb v0.6.0/go.mod h1:K+7M8clbmaVh33X9QYm1sA5A7DWDKOE1+O9WFQflMI0=
+github.com/rohanthewiz/btypedb v0.7.0 h1:i8zu+Rc5YIkocbVuNk1jlnb94g9RTtJQGAGm9xob+QI=
+github.com/rohanthewiz/btypedb v0.7.0/go.mod h1:K+7M8clbmaVh33X9QYm1sA5A7DWDKOE1+O9WFQflMI0=
 github.com/rohanthewiz/bytdb v0.6.2 h1:TNn8TPlfcAP6uT3AKWcIqIK1vc1pqSCVv0+Ai382MKw=
 github.com/rohanthewiz/bytdb v0.6.2/go.mod h1:7ymg8waOlGeyLMHKlH1QhNjv9JWA2T20ZfbiJzoWx0g=
+github.com/rohanthewiz/bytdb v0.8.0 h1:jvL9BsH1YvxTS4yL2cAbHwsdB0rFiz0H6ChZiDTIoIg=
+github.com/rohanthewiz/bytdb v0.8.0/go.mod h1:HKuQb7ptS/dPzagWWttvfy1qkQulke/p8JUHZeDOvO4=
 github.com/rohanthewiz/bytdb/pgwire v0.6.2 h1:d4ut2XVVvlflb9o1VaiA5Y9MWvFY76FXJggxeSTG9n8=
 github.com/rohanthewiz/bytdb/pgwire v0.6.2/go.mod h1:3pbSBhPIqRmKLLgfEKxDXxQdm43od7YpC2BiX6KKt9g=
+github.com/rohanthewiz/bytdb/pgwire v0.8.0 h1:cH4fNeb+9i9WPWVusq+ctG2vKabS6iYs091OBn27W6E=
+github.com/rohanthewiz/bytdb/pgwire v0.8.0/go.mod h1:6biDrQgYFuZsezfOSbqyo8wWI+eOyufG9nBCl92gUE0=
 github.com/rohanthewiz/element v0.5.6 h1:ngtHqe7asrJavAotQVNBK2veXgnGEIfcCzm7AYVJFHM=
 github.com/rohanthewiz/element v0.5.6/go.mod h1:YZnKqWX2lSsR+zi06x3vhViYVoOSx8xHQjUMTmM/FLo=
 github.com/rohanthewiz/gmail_send v1.0.0 h1:GxgZf6vF/iozP2YhYg3sgSWJCl2lrc/XNnhOpSRpUuY=

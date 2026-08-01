@@ -51,31 +51,41 @@ spec:
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000 # block-storage volumes mount root-owned; fsGroup makes /data writable by the app user
-      initContainers:
-        # Seed-or-restore: if the volume has no database yet, pull the latest
-        # backup from object storage. This one mechanism covers three cases:
-        #   1. first deploy after PG migration (the migrated file is uploaded
-        #      to backups/latest/ — see README runbook)
-        #   2. disaster recovery onto a fresh volume
-        #   3. genuinely fresh site — no backup exists, the copy fails
-        #      harmlessly, and the app's schema bootstrap creates empty tables
-        - name: restore-if-empty
-          image: minio/mc:latest
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              if [ -f /data/church.db ]; then
-                echo "database present - skipping restore"
-                exit 0
-              fi
-              mc alias set obj "https://${OBJ_ENDPOINT}" "${OBJ_ACCESS_KEY}" "${OBJ_SECRET_KEY}"
-              mc cp "obj/${OBJ_BUCKET}/cema/latest/church.db" /data/church.db \
-                && echo "restored from object storage" \
-                || echo "no backup found - starting fresh (schema bootstrap will run)"
-          envFrom:
-            - secretRef: {name: cema-backup}
-          volumeMounts:
-            - {name: data, mountPath: /data}
+      # RETIRED: seed-or-restore now happens in-app, in db/replicate.go, before
+      # the engine opens the file. The move buys three things the initContainer
+      # could not: it prefers the seconds-stale WAL replica over the hour-stale
+      # latest/ snapshot, it FAILS the boot when the store is reachable but the
+      # restore errors (mc's `|| echo` swallowed that, and an empty site serving
+      # 200s is worse than a crash-looping pod), and it is unit-tested. It also
+      # drops a third-party image out of the boot path.
+      #
+      # Kept commented for one release as the documented manual escape hatch:
+      # if a WAL generation is ever certified-complete-but-missing-chunks, the
+      # app aborts on purpose, and the operator recovers by putting a file on
+      # the volume by hand — after which the in-app restore sees it and stands
+      # down. Same command, run once:
+      #
+      #   kubectl -n churches run restore --rm -it --image=minio/mc:latest -- \
+      #     sh -c 'mc alias set obj ... && mc cp obj/$BUCKET/cema/latest/church.db /data/church.db'
+      #
+      # initContainers:
+      #   - name: restore-if-empty
+      #     image: minio/mc:latest
+      #     command: ["/bin/sh", "-c"]
+      #     args:
+      #       - |
+      #         if [ -f /data/church.db ]; then
+      #           echo "database present - skipping restore"
+      #           exit 0
+      #         fi
+      #         mc alias set obj "https://${OBJ_ENDPOINT}" "${OBJ_ACCESS_KEY}" "${OBJ_SECRET_KEY}"
+      #         mc cp "obj/${OBJ_BUCKET}/cema/latest/church.db" /data/church.db \
+      #           && echo "restored from object storage" \
+      #           || echo "no backup found - starting fresh (schema bootstrap will run)"
+      #     envFrom:
+      #       - secretRef: {name: cema-backup}
+      #     volumeMounts:
+      #       - {name: data, mountPath: /data}
       containers:
         - name: cema
           image: ghcr.io/rohanthewiz/cema:latest # pin a tag/digest for real deploys
@@ -88,9 +98,16 @@ spec:
             - {name: DB_FILE, value: /data/church.db}
             # Site's key prefix in the shared backup bucket (→ cema/<ts>/church.db)
             - {name: BACKUP_PREFIX, value: cema}
-          # OBJ_* destination + BACKUP_TOKEN: the app performs the backup
-          # (resource/dbbackup), so it needs the same secret the CronJob and
-          # the restore initContainer use — one secret, three consumers.
+            # Continuous WAL shipping → cema/wal/gen/... Cuts RPO from 1h
+            # (the CronJob below) to ~5s. Opt-in per site and reversible:
+            # setting this to "false" stops shipping, and generations already
+            # in the bucket stay restorable. Same bucket and credentials as the
+            # snapshots — identical blast radius, disjoint key namespaces.
+            - {name: BACKUP_REPLICATE, value: "true"}
+          # OBJ_* destination + BACKUP_TOKEN: the app now performs both the
+          # snapshot (resource/dbbackup) and the WAL shipping + cold-start
+          # restore (db/replicate.go), so it needs the same secret the CronJob
+          # uses — one secret, two consumers.
           envFrom:
             - secretRef: {name: cema-backup}
           ports:
@@ -163,10 +180,12 @@ metadata:
   name: cema-backup
   namespace: churches
 spec:
-  # Hourly full backup. The DB is small enough (MBs) that full-snapshot
-  # frequency IS the replication story for now: RPO = 1h. Streaming WAL
-  # shipping (bytdb/replicate) will tighten that later without changing
-  # this manifest's shape.
+  # Hourly full backup — the SNAPSHOT tier. In-app WAL shipping
+  # (BACKUP_REPLICATE above) is now the primary tier at RPO ~5s, and this
+  # stays as the independent second one: it is produced by different code
+  # through a different client from a different mechanism, so it survives a
+  # bug in the WAL chain, and latest/ remains how a migrated database is
+  # delivered to a new site.
   schedule: "37 * * * *" # :37 offset — staggered from ccswm's :07 so backups don't stampede
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3

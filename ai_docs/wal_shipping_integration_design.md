@@ -1,7 +1,20 @@
 # Design: WAL-Shipping Replication Integration (bytdb/replicate)
 
 - **Date:** 2026-07-19
-- **Status:** DESIGN — ready to implement
+- **Status:** IMPLEMENTED 2026-08-01, on bytdb **v0.8.0** (the repo was on v0.6.2 when
+  this was written). Kept as the rationale record. Deltas from the design as written:
+  - `replicate.Restore` now returns `(*RestoreInfo, error)`, and generations carry a
+    `manifest.json` certifying completeness. That adds a third outcome the design did not
+    have: `ErrIncompleteReplica` (manifested generations exist but have lost chunks). It
+    is treated as a hard failure — abort startup — not as a reason to fall back to the
+    hour-old snapshot, since a silent rollback is exactly what the manifest exists to
+    prevent. Manual recovery is documented in `deploy/k8s/README.md`.
+  - Cold-start restore is gated on the *destination* being configured, not on
+    `replicate: true`. Pulling `latest/` onto an empty volume is the initContainer's old
+    job and must keep working on sites that never opt into WAL shipping.
+  - The status endpoint returns a JSON DTO (`db.ReplicationStatus`) rather than
+    `replicate.Status` directly — the latter carries a bare `error` (marshals to `{}`) —
+    and answers 503, not 200-with-a-flag, when replication is off.
 - **Upstream:** `github.com/rohanthewiz/bytdb/replicate` + `replicate/s3` shipped in
   bytdb v0.6.0 and are present in the v0.6.2 this repo already pins. The package-level
   design (generations, epochs, chunk keys, restore semantics) is settled upstream — see

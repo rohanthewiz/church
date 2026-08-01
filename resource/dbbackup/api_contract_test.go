@@ -18,12 +18,17 @@ import (
 	"github.com/rohanthewiz/rweb"
 )
 
-const backupPath = "/api/admin/db/backup"
+const (
+	backupPath      = "/api/admin/db/backup"
+	replicationPath = "/api/admin/db/replication"
+)
 
-// Route registered exactly as in router_rweb.go so the path is part of the test.
+// Routes registered exactly as in router_rweb.go so the paths (and methods)
+// are part of the test.
 func newBackupServer() *rweb.Server {
 	s := apitest.NewServer()
 	s.Post(backupPath, APIBackupRWeb)
+	s.Get(replicationPath, APIReplicationStatusRWeb)
 	return s
 }
 
@@ -113,4 +118,50 @@ func TestBackupRequiresBytdbBackend(t *testing.T) {
 	if status != http.StatusServiceUnavailable {
 		t.Fatalf("want 503 on non-bytdb backend, got %d (%v)", status, doc)
 	}
+}
+
+// The replication status endpoint shares the backup token and therefore the
+// gate chain. Re-running the whole matrix against it (rather than trusting
+// that both handlers call the same helper) is the point of a contract test:
+// the guarantee being frozen is per-endpoint, and a future refactor that
+// gives one of them its own auth path must fail here.
+func TestReplicationStatusGates(t *testing.T) {
+	s := newBackupServer()
+
+	t.Run("unconfigured", func(t *testing.T) {
+		prev := config.Options
+		config.Options = nil
+		t.Cleanup(func() { config.Options = prev })
+		status, doc := apitest.RequestJSON(t, s, "GET", replicationPath, bearer("whatever"), "")
+		if status != http.StatusServiceUnavailable {
+			t.Fatalf("want 503 with nil config, got %d (%v)", status, doc)
+		}
+	})
+
+	t.Run("bad token", func(t *testing.T) {
+		setBackupConfig(t, "correct-horse-battery-staple")
+		status, doc := apitest.RequestJSON(t, s, "GET", replicationPath, bearer("wrong-token"), "")
+		if status != http.StatusUnauthorized {
+			t.Fatalf("want 401, got %d (%v)", status, doc)
+		}
+		if doc["error"] == "" {
+			t.Fatal("401 must carry the uniform {\"error\": ...} shape")
+		}
+	})
+
+	// Authenticated, but no bytdb engine and hence no replicator in the test
+	// process. Both remaining gates answer 503 — a monitor pointed at a site
+	// that is not replicating must see a hard failure, not a 200 whose
+	// "everything is fine" reading depends on parsing the body.
+	t.Run("not replicating", func(t *testing.T) {
+		setBackupConfig(t, "correct-horse-battery-staple")
+		status, doc := apitest.RequestJSON(t, s, "GET", replicationPath,
+			bearer("correct-horse-battery-staple"), "")
+		if status != http.StatusServiceUnavailable {
+			t.Fatalf("want 503 when replication is not running, got %d (%v)", status, doc)
+		}
+		if doc["error"] == "" {
+			t.Fatal("503 must carry the uniform {\"error\": ...} shape")
+		}
+	})
 }

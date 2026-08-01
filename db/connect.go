@@ -70,6 +70,13 @@ func InitDB(opts DBOpts) error {
 }
 
 func CloseDB() {
+	// The replicator closes first, before anything below can take the engine
+	// away: its shutdown performs one final ship, and that read needs a live
+	// source. (See db/replicate.go — on a k8s SIGTERM this path usually does
+	// not run at all, which costs nothing: the next boot starts a fresh
+	// generation and re-ships the whole small file from offset zero.)
+	closeBytDBReplication()
+
 	if dbHandle != nil {
 		dbHandle.Close()
 	}
@@ -164,6 +171,15 @@ func startBytDB() error {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return serr.Wrap(err, "Could not create bytdb data directory", "dir", dir)
 		}
+	}
+
+	// Self-heal an empty volume before opening it. This is what the
+	// `restore-if-empty` initContainer used to do (minio/mc pulling
+	// latest/church.db), moved in-app so it can prefer the seconds-stale WAL
+	// replica over the hour-stale snapshot, and so it can be unit-tested.
+	// A restore failure aborts startup on purpose — see restoreIfMissing.
+	if err := restoreBytDBIfMissing(file); err != nil {
+		return serr.Wrap(err, "Failed restoring bytdb data file from object storage", "file", file)
 	}
 
 	eng, err := bytdb.Open(file)

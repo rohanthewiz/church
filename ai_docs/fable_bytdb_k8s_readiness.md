@@ -200,8 +200,10 @@ for the bytdb path — the schema ships as an in-code, idempotent bootstrap.
   sites share a host without port coordination).
 - `cema/main.go`, `ccswm/main.go` — build DBOpts from the new block; PG fallback wired;
   dead `roredis.InitRedis` in cema commented out.
-- Dependencies: `bytdb v0.6.2`, `bytdb/pgwire v0.6.2`; church module now `go 1.26.1`
-  (go.work files bumped; a local Go ≥1.26 install stops gopls complaining).
+- Dependencies: `bytdb v0.8.0`, `bytdb/pgwire v0.8.0` (upgraded from v0.6.2 on 2026-08-01
+  alongside the replication work; the 35-check wire proof re-passes unchanged); church
+  module now `go 1.26.1` (go.work files bumped; a local Go ≥1.26 install stops gopls
+  complaining).
 
 ### Wire proof: `test_scripts/bytdb_wire_check` — ALL 35 CHECKS PASS
 Drives the REAL query functions (chat, prayerwall, apitoken, event recurrence) plus the
@@ -236,12 +238,24 @@ child tables; JOIN + windowed selects.
    endpoint `POST /api/admin/db/backup` (`resource/dbbackup`: Engine.BackupTo
    → timestamped S3 upload → latest/ rotation → retention pruning; contract
    tests + snapshot-restorability test). See `deploy/k8s/README.md`.
-4. ~~Design `bytdb/replicate` — WAL shipping to S3-compatible storage.~~ Done in two
-   parts 2026-07-19: the package itself shipped upstream in bytdb v0.6.0 (litestream-style
-   generations/epochs + stdlib SigV4 `replicate/s3` client; included in the v0.6.2 we pin),
-   and the church-side integration is designed in
-   `ai_docs/wal_shipping_integration_design.md` (config, db wiring, in-app cold-start
-   restore replacing the initContainer, status endpoint, manifest changes). RPO on volume
-   loss drops 1 h → ~5 s once implemented.
+4. ~~Design `bytdb/replicate` — WAL shipping to S3-compatible storage.~~ Done in three
+   parts. The package itself shipped upstream in bytdb v0.6.0 (litestream-style
+   generations/epochs + stdlib SigV4 `replicate/s3` client). The church-side integration
+   was designed 2026-07-19 in `ai_docs/wal_shipping_integration_design.md`, and
+   **implemented 2026-08-01** on bytdb v0.8.0: `backup.replicate` /
+   `replicate_interval` config + `BACKUP_REPLICATE*` env overrides; `db/replicate.go`
+   (start/status/close, replicator closed first in `CloseDB`); in-app cold-start restore
+   in `startBytDB()` (WAL generation → `latest/` snapshot → fresh bootstrap, aborting
+   loudly on a reachable-but-erroring store) which retires the `minio/mc` initContainer;
+   `GET /api/admin/db/replication`; one line in each site `main.go`; manifests and
+   runbook updated. RPO on volume loss: 1 h → ~5 s. Covered by a restore-precedence
+   matrix plus an end-to-end boot→ship→lose-volume→restore test against a fake S3 driven
+   by the real signing client (`db/replicate_test.go`,
+   `db/replicate_integration_test.go`).
 5. ~~Upstream: BETWEEN-in-CHECK and LIMIT/OFFSET placeholder support in bytdb.~~
    Done — both shipped in bytdb v0.6.2 (adopted 2026-07-19).
+6. Follow-ups opened by item 4, both non-blocking: a SIGTERM → `CloseDB()` handler in
+   `church.ServeRWeb()` (today `defer db.CloseDB()` never runs on a pod kill, so the
+   replicator's final flush is skipped — harmless, since a restart with the PVC intact
+   re-ships from offset 0), and migrating `resource/dbbackup` off aws-sdk-go-v2 onto
+   `replicate/s3` to drop the AWS SDK dependency and leave one S3 client in the tree.

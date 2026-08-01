@@ -124,6 +124,22 @@ type EnvConfig struct {
 		// Retain is how many timestamped snapshots to keep (latest/ excluded).
 		// Default 72 — three days of hourly backups.
 		Retain int `yaml:"retain"`
+		// Replicate turns on continuous WAL shipping (bytdb/replicate) to the
+		// same bucket, under <prefix>/wal/. It rides this credential set rather
+		// than its own because WAL chunks and full snapshots have the identical
+		// blast radius — both are the whole database — and a second block would
+		// duplicate five fields and a k8s secret for no isolation gain.
+		//
+		// Opt-in on purpose: adopting a bytdb version that ships the feature
+		// must never silently start writing to a site's bucket. Effective only
+		// on the bytdb backend with endpoint/bucket/creds all set.
+		Replicate bool `yaml:"replicate"`
+		// ReplicateInterval is the ship cadence (time.ParseDuration syntax,
+		// e.g. "5s"), and so the upper bound on the replica's data-loss window.
+		// Empty uses the upstream default of 5s. Idle ticks cost one local
+		// LogState() call and zero requests, so shortening this is cheap in
+		// request terms; lengthening it trades RPO for fewer PUTs.
+		ReplicateInterval string `yaml:"replicate_interval"`
 	} `yaml:"backup"`
 	PG struct {
 		Host     string `yaml:"host"`

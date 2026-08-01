@@ -62,6 +62,24 @@ func envOverride(envCfg *EnvConfig) *EnvConfig {
 			envCfg.Backup.Retain = n
 		}
 	}
+	// WAL shipping. Only an affirmative value turns it on; anything else
+	// (including a typo) leaves it off, which is the safe direction — an
+	// unparseable flag must not start writing to the bucket. The env var is
+	// how the k8s Deployment enables replication per site, so the rollout is
+	// a manifest edit, not a config-file rebuild.
+	if v := strings.TrimSpace(os.Getenv("BACKUP_REPLICATE")); len(v) > 0 {
+		switch strings.ToLower(v) {
+		case "true", "1", "yes", "on":
+			envCfg.Backup.Replicate = true
+		case "false", "0", "no", "off":
+			envCfg.Backup.Replicate = false
+		}
+	}
+	// Left unvalidated here — db/replicate.go parses it and falls back to the
+	// upstream default on a bad value, so config loading stays total.
+	if v := strings.TrimSpace(os.Getenv("BACKUP_REPLICATE_INTERVAL")); len(v) > 0 {
+		envCfg.Backup.ReplicateInterval = v
+	}
 	// Bootstrap superadmin credentials — allows automated first-run setup
 	if adminUser := strings.TrimSpace(os.Getenv("BOOTSTRAP_ADMIN_USER")); len(adminUser) > 0 {
 		envCfg.Bootstrap.AdminUser = adminUser

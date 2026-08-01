@@ -1,13 +1,22 @@
 // Package dbbackup implements consistent database snapshots to S3-compatible
-// object storage — the interim replication story for bytdb sites until WAL
-// shipping (bytdb/replicate) exists: RPO equals the trigger cadence (the k8s
+// object storage: the SNAPSHOT tier, RPO = the trigger cadence (the k8s
 // CronJob runs hourly).
+//
+// Continuous WAL shipping (db/replicate.go, RPO ~5s) is the primary tier and
+// does not replace this one. Full snapshots are the independent check on a
+// WAL-chain bug — they are produced by different code, through a different
+// client, from a different mechanism (Engine.BackupTo, not log byte ranges) —
+// and latest/ remains how a migrated Postgres database is delivered to a new
+// site.
 //
 // Key layout in the bucket, per site (config Backup.Prefix):
 //
 //	<prefix>/<UTC timestamp>/church.db   immutable history, pruned to Retain
-//	<prefix>/latest/church.db            rolling pointer; what the Deployment's
-//	                                     restore-if-empty initContainer pulls
+//	<prefix>/latest/church.db            rolling pointer; the cold-start
+//	                                     restore's fallback when no WAL
+//	                                     generation exists yet
+//	<prefix>/wal/gen/...                 the other tier's keys; prune below
+//	                                     cannot match them, by shape
 //
 // The snapshot is uploaded once to its timestamped key, then server-side
 // copied over latest/ — S3 PUT and CopyObject are atomic per key, so latest/
