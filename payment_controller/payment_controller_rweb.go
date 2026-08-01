@@ -1,9 +1,12 @@
 package payment_controller
 
 import (
+	"encoding/json"
+	"fmt"
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
@@ -58,8 +61,23 @@ func CreatePaymentIntentRWeb(ctx rweb.Context) error {
 	email := strings.TrimSpace(req.FormValue("email"))
 	comment := strings.TrimSpace(req.FormValue("comment"))
 
+	// The recorder hard-requires a customer name — a nameless completed gift
+	// charges the card but fails to save locally (and pins the webhook in
+	// Stripe's retry loop). Enforce here like the mobile endpoint always has.
+	if fullname == "" {
+		return ctx.WriteJSON(map[string]string{"error": "Please provide your full name"})
+	}
+	if email != "" && !strings.Contains(email, "@") {
+		return ctx.WriteJSON(map[string]string{"error": "Please provide a valid email address"})
+	}
+	if len(comment) > payment.MaxCommentLen {
+		comment = comment[:payment.MaxCommentLen] // Stripe metadata caps at 500/value
+	}
+
 	amt, err := strconv.ParseFloat(strAmount, 64)
-	if err != nil {
+	// NaN/Inf pass ParseFloat but produce garbage cents; reject them with the
+	// bad-amount message rather than an opaque Stripe failure downstream.
+	if err != nil || math.IsNaN(amt) || math.IsInf(amt, 0) {
 		logger.LogErr(err, "Unable to parse donation amount", "amount", strAmount)
 		return ctx.WriteJSON(map[string]string{"error": "Please enter a valid giving amount"})
 	}
@@ -68,6 +86,20 @@ func CreatePaymentIntentRWeb(ctx rweb.Context) error {
 	amtCents := int64(math.Round(amt * 100.0))
 	if amtCents < payment.MinChargeCents {
 		return ctx.WriteJSON(map[string]string{"error": "The minimum giving amount is $0.50"})
+	}
+	if amtCents > payment.MaxChargeCents {
+		return ctx.WriteJSON(map[string]string{
+			"error": "That amount is above our online giving limit — please contact us to give directly",
+		})
+	}
+
+	// Same per-IP budget as the mobile endpoint — this route previously had no
+	// rate limit, leaving an open card-testing surface.
+	if !payment.AllowIntent(ctx.ClientIP()) {
+		logger.Log("Warn", "Web payment intent creation rate limited", "ip", ctx.ClientIP())
+		return ctx.WriteJSON(map[string]string{
+			"error": "Too many giving attempts. Please try again later.",
+		})
 	}
 
 	stripe.Key = config.Options.Stripe.PrivKey
@@ -88,6 +120,7 @@ func CreatePaymentIntentRWeb(ctx rweb.Context) error {
 	// Metadata is our server-side copy of the form fields (see func comment)
 	params.AddMetadata("customer_name", fullname)
 	params.AddMetadata("customer_email", email)
+	params.AddMetadata("source", "web") // mirrors the mobile endpoint's "mobile_app"
 	if comment != "" {
 		params.AddMetadata("comment", comment)
 	}
@@ -115,14 +148,37 @@ func CreatePaymentIntentRWeb(ctx rweb.Context) error {
 func PaymentReceiptRWeb(ctx rweb.Context) error {
 	receiptURL := ""
 
+	// Stripe appends redirect_status to the return_url; a failed confirmation
+	// still redirects here. Rendering "Thanks for your donation!" (and, worse,
+	// falling back to the *previous* gift's receipt from the session) on a
+	// failed payment misleads the giver — show the failure honestly instead.
+	if ctx.Request().QueryParam("redirect_status") == "failed" {
+		pg, err := page.PaymentReceipt(`{"failed": true}`)
+		if err != nil {
+			return err
+		}
+		return ctx.WriteHTML(string(base.RenderPageNewRWeb(pg, ctx)))
+	}
+
+	givenAmount, givenDate := "", ""
 	if piID := strings.TrimSpace(ctx.Request().QueryParam("payment_intent")); piID != "" {
-		url, err := finalizePayment(piID)
+		url, pi, err := finalizePayment(piID)
 		if err != nil {
 			logger.LogErr(err, "Error finalizing payment", "payment_intent", piID)
 			// Fall through and render the page anyway - the giver's payment succeeded
 			// on Stripe's side; our bookkeeping problem must not read as a failed gift.
 		}
 		receiptURL = url
+		if pi != nil {
+			// Show the gift on the receipt page itself — for many givers this page
+			// is the only confirmation they read.
+			cents := pi.AmountReceived
+			if cents == 0 {
+				cents = pi.Amount // processing (bank-debit) intents haven't "received" yet
+			}
+			givenAmount = fmt.Sprintf("$%d.%02d", cents/100, cents%100)
+			givenDate = time.Unix(pi.Created, 0).Format("January 2, 2006")
+		}
 
 		// Stash in the session too, so a later visit sans query param still finds it
 		if receiptURL != "" {
@@ -140,7 +196,18 @@ func PaymentReceiptRWeb(ctx rweb.Context) error {
 		}
 	}
 
-	pg, err := page.PaymentReceipt(receiptURL)
+	// The module accepts either a bare receipt URL or a JSON meta blob; send
+	// JSON so the amount/date reach the page when we have them.
+	meta := receiptURL
+	if givenAmount != "" {
+		if bts, jerr := json.Marshal(payment.ReceiptMeta{
+			URL: receiptURL, Amount: givenAmount, Date: givenDate,
+		}); jerr == nil {
+			meta = string(bts)
+		}
+	}
+
+	pg, err := page.PaymentReceipt(meta)
 	if err != nil {
 		logger.LogErr(err, "Error obtaining payment receipt")
 		return err
@@ -149,17 +216,18 @@ func PaymentReceiptRWeb(ctx rweb.Context) error {
 }
 
 // finalizePayment retrieves the intent from Stripe and records it if the payment
-// actually went through. Separated from the handler so a future webhook handler
-// (payment_intent.succeeded) can share it verbatim.
-func finalizePayment(piID string) (receiptURL string, err error) {
+// actually went through. Separated from the handler so the webhook handler
+// (payment_intent.succeeded) can share it verbatim. The retrieved intent is
+// returned so the receipt page can show the gift amount/date.
+func finalizePayment(piID string) (receiptURL string, pi *stripe.PaymentIntent, err error) {
 	stripe.Key = config.Options.Stripe.PrivKey
 
 	getParams := &stripe.PaymentIntentParams{}
 	getParams.AddExpand("latest_charge") // receipt fields + billing details live on the charge
 
-	pi, err := paymentintent.Get(piID, getParams)
+	pi, err = paymentintent.Get(piID, getParams)
 	if err != nil {
-		return "", serr.Wrap(err, "Stripe: unable to retrieve payment intent", "payment_intent", piID)
+		return "", nil, serr.Wrap(err, "Stripe: unable to retrieve payment intent", "payment_intent", piID)
 	}
 
 	// "processing" covers bank-debit style methods that settle later; record those too
@@ -167,11 +235,12 @@ func finalizePayment(piID string) (receiptURL string, err error) {
 	// is not money in motion and gets no local record.
 	if pi.Status != stripe.PaymentIntentStatusSucceeded &&
 		pi.Status != stripe.PaymentIntentStatusProcessing {
-		return "", serr.New("Payment intent not in a completed state",
+		return "", nil, serr.New("Payment intent not in a completed state",
 			"payment_intent", piID, "status", string(pi.Status))
 	}
 
-	return recordPaymentIntent(pi)
+	receiptURL, err = recordPaymentIntent(pi)
+	return receiptURL, pi, err
 }
 
 // Legacy token+Charges handler, superseded by CreatePaymentIntentRWeb above

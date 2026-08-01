@@ -17,6 +17,16 @@ import (
 // attribute, the app's input validation) is advisory only.
 const MinChargeCents = 50
 
+// MaxChargeCents caps a single online gift ($25,000). This is a typo/abuse
+// backstop, not a policy statement — a genuinely larger gift deserves a
+// personal conversation (see giving_contacts), not a card form.
+const MaxChargeCents = 2_500_000
+
+// MaxCommentLen bounds the giver's comment. It rides in Stripe metadata,
+// whose per-value limit is 500 chars — exceeding it fails the whole intent
+// creation with an opaque error, so trim well short of the cliff.
+const MaxCommentLen = 480
+
 // TxDescription labels the charge in Stripe's dashboard and on receipts.
 // Resolved at call time (not a package const) because this framework serves
 // multiple church sites from one binary family -- the old hardcoded

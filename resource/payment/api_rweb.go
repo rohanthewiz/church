@@ -75,13 +75,24 @@ func (l *intentRateLimiter) allow(ip string) bool {
 			kept = append(kept, t)
 		}
 	}
-	if len(kept) >= maxIntentsPerIP {
+	if len(kept) == 0 {
+		// Evict fully-expired keys: without this the map grows one entry per
+		// distinct client IP forever (spoofed XFF values included).
+		delete(l.stamps, ip)
+	} else {
 		l.stamps[ip] = kept
+	}
+	if len(kept) >= maxIntentsPerIP {
 		return false
 	}
 	l.stamps[ip] = append(kept, now)
 	return true
 }
+
+// AllowIntent exposes the limiter to the web giving controller so both
+// create-intent doors share one per-IP budget (the web route previously had
+// no rate limit at all — an open card-testing surface).
+func AllowIntent(ip string) bool { return intentLimiter.allow(ip) }
 
 // ---------------------------------------------------------------------------
 // POST /api/v1/payments/create-intent
@@ -126,6 +137,13 @@ func APICreateIntentRWeb(ctx rweb.Context) error {
 
 	if req.AmountCents < MinChargeCents {
 		return apiv1.Error(ctx, http.StatusBadRequest, "The minimum giving amount is $0.50")
+	}
+	if req.AmountCents > MaxChargeCents {
+		return apiv1.Error(ctx, http.StatusBadRequest,
+			"That amount is above our online giving limit — please contact us to give directly")
+	}
+	if len(req.Comment) > MaxCommentLen {
+		req.Comment = req.Comment[:MaxCommentLen]
 	}
 	// The web form lets fullname slide at intent creation (wallet flows can
 	// supply billing details later), but the recorder hard-requires a customer

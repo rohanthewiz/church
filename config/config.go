@@ -201,6 +201,26 @@ type EnvConfig struct {
 		AdminUser string `yaml:"admin_user"` // Superadmin username for auto-bootstrap
 		AdminPass string `yaml:"admin_pass"` // Superadmin password for auto-bootstrap
 	} `yaml:"bootstrap"`
+	// Mobile carries per-site values that only the mobile app consumes (via
+	// GET /api/v1/app-config). All optional: theme colors fall back to the
+	// framework's built-in palette for the site's theme name, and giving
+	// metadata falls back to sensible USD defaults.
+	Mobile struct {
+		LogoURL string `yaml:"logo_url"` // absolute or site-relative URL to a square-ish logo image
+		// ThemeColors override the built-in palette (hex strings like "#6b2531")
+		ThemeColors struct {
+			Primary   string `yaml:"primary"`   // structural color (app bars, nav)
+			Secondary string `yaml:"secondary"` // accent (buttons, highlights)
+			Surface   string `yaml:"surface"`   // page/card background
+		} `yaml:"theme_colors"`
+		// Giving sheet metadata. Merchant ids enable Apple/Google Pay in the
+		// Stripe payment sheet; empty leaves wallets off.
+		SuggestedAmountsCents []int64 `yaml:"suggested_amounts_cents"`
+		AppleMerchantID       string  `yaml:"apple_merchant_id"`
+		GooglePayMerchantID   string  `yaml:"google_pay_merchant_id"`
+		CountryCode           string  `yaml:"country_code"` // ISO-3166, default "US"
+		Currency              string  `yaml:"currency"`     // ISO-4217, default "usd"
+	} `yaml:"mobile"`
 	GivingContacts []string `yaml:"giving_contacts"` // typically used on the Giving form
 	Gmail          struct {
 		Account  string   `yaml:"account"`

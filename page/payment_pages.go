@@ -10,14 +10,16 @@ func PaymentForm() (*Page, error) {
 	title := "Payment Form"
 	pgdef := Presenter{
 		Title: title, Slug: stringops.Slugify(title),
-		IsAdmin: true,
+		// The giving page is public — IsAdmin was a page-def copy-paste that
+		// loaded bootstrap/summernote for donors and skipped public-page JS
+		IsAdmin: false,
 		AvailablePositions: []string{"center"}, //, "right"
 	}
 	modulePres1 := module.Presenter{
 		Opts: module.Opts{
 			Title:      "Show Payment",
 			ModuleType: payment.ModuleTypePaymentForm,
-			IsAdmin:    true,
+			IsAdmin:    false,
 			Published:    true,
 			IsMainModule: true,
 		},

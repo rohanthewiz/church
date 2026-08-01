@@ -110,3 +110,57 @@ func TestAppConfigContactsNeverNull(t *testing.T) {
 		t.Errorf("giving_contacts should be [] when unset, body: %s", resp.Body())
 	}
 }
+
+// theme_colors resolves from the built-in palette by theme name, with
+// per-field config overrides winning; unknown themes fall back to cobalt.
+func TestAppConfigThemeColors(t *testing.T) {
+	cfg := &config.EnvConfig{}
+	cfg.Theme = "sanctuary"
+	cfg.Mobile.ThemeColors.Secondary = "#123456" // override just one field
+	withConfig(t, cfg)
+
+	resp := appConfigServer().Request("GET", "/api/v1/app-config", nil, nil)
+	var got struct {
+		ThemeColors struct {
+			Primary   string `json:"primary"`
+			Secondary string `json:"secondary"`
+			Surface   string `json:"surface"`
+		} `json:"theme_colors"`
+	}
+	if err := json.Unmarshal(resp.Body(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.ThemeColors.Primary != "#8d545c" {
+		t.Errorf("primary = %q, want sanctuary's #8d545c", got.ThemeColors.Primary)
+	}
+	if got.ThemeColors.Secondary != "#123456" {
+		t.Errorf("secondary = %q, want the config override", got.ThemeColors.Secondary)
+	}
+	if got.ThemeColors.Surface != "#f7f4ed" {
+		t.Errorf("surface = %q, want sanctuary's #f7f4ed", got.ThemeColors.Surface)
+	}
+}
+
+// Giving metadata defaults: suggested amounts never null, USD/US fallbacks.
+func TestAppConfigGivingDefaults(t *testing.T) {
+	withConfig(t, &config.EnvConfig{})
+
+	resp := appConfigServer().Request("GET", "/api/v1/app-config", nil, nil)
+	var got struct {
+		Giving struct {
+			SuggestedAmountsCents []int64 `json:"suggested_amounts_cents"`
+			CountryCode           string  `json:"country_code"`
+			Currency              string  `json:"currency"`
+		} `json:"giving"`
+	}
+	if err := json.Unmarshal(resp.Body(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Giving.SuggestedAmountsCents) == 0 {
+		t.Error("suggested_amounts_cents should default to a non-empty list")
+	}
+	if got.Giving.CountryCode != "US" || got.Giving.Currency != "usd" {
+		t.Errorf("country/currency = %q/%q, want US/usd defaults",
+			got.Giving.CountryCode, got.Giving.Currency)
+	}
+}

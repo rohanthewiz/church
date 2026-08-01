@@ -23,10 +23,67 @@ import (
 type AppConfig struct {
 	ChurchName           string      `json:"church_name"`
 	Theme                string      `json:"theme"`
+	ThemeColors          ThemeColors `json:"theme_colors"`
+	LogoURL              string      `json:"logo_url"`
 	StripePublishableKey string      `json:"stripe_publishable_key"`
 	GivingContacts       []string    `json:"giving_contacts"`
+	Giving               GivingCfg   `json:"giving"`
 	Features             AppFeatures `json:"features"`
 	ServerVersion        string      `json:"server_version"`
+}
+
+// ThemeColors gives the app real colors to theme with — the bare theme *name*
+// is a CSS class the app can do nothing with. Values are hex strings.
+// Site config (mobile.theme_colors) overrides; otherwise the framework's
+// built-in palette for the theme name applies (the palettes the sites share —
+// see the site stylus _styl/themes/*.styl); unknown themes get cobalt's.
+type ThemeColors struct {
+	Primary   string `json:"primary"`   // structural (app bars, nav)
+	Secondary string `json:"secondary"` // accent (buttons, highlights)
+	Surface   string `json:"surface"`   // page/card background
+}
+
+// GivingCfg is the giving-sheet metadata for the mobile payment flow.
+// suggested_amounts_cents is never null; merchant ids empty = wallets off.
+type GivingCfg struct {
+	SuggestedAmountsCents []int64 `json:"suggested_amounts_cents"`
+	AppleMerchantID       string  `json:"apple_merchant_id"`
+	GooglePayMerchantID   string  `json:"google_pay_merchant_id"`
+	CountryCode           string  `json:"country_code"`
+	Currency              string  `json:"currency"`
+}
+
+// builtinThemeColors mirrors the anchor colors of the six shared site themes
+// (primary = theme-nav-bgcolor, secondary = theme-accent-bgcolor,
+// surface = theme-page-bgcolor). Kept here rather than derived because the
+// compiled site CSS is not parseable at runtime and the palettes are stable.
+var builtinThemeColors = map[string]ThemeColors{
+	"cobalt":     {Primary: "#9eaac2", Secondary: "#6794c3", Surface: "#f9f9f9"},
+	"sanctuary":  {Primary: "#8d545c", Secondary: "#6b2531", Surface: "#f7f4ed"},
+	"fellowship": {Primary: "#55a49d", Secondary: "#e2725b", Surface: "#f8f6f2"},
+	"graphite":   {Primary: "#565d64", Secondary: "#3a4046", Surface: "#f4f5f6"},
+	"horizon":    {Primary: "#24466e", Secondary: "#1d84b5", Surface: "#f6f9fb"},
+	"willow":     {Primary: "#7f8d6b", Secondary: "#66754f", Surface: "#f6f5f0"},
+}
+
+// resolveThemeColors applies the precedence: per-field config override >
+// built-in palette for the theme name > cobalt.
+func resolveThemeColors(theme string) ThemeColors {
+	tc, ok := builtinThemeColors[theme]
+	if !ok {
+		tc = builtinThemeColors["cobalt"]
+	}
+	over := config.Options.Mobile.ThemeColors
+	if over.Primary != "" {
+		tc.Primary = over.Primary
+	}
+	if over.Secondary != "" {
+		tc.Secondary = over.Secondary
+	}
+	if over.Surface != "" {
+		tc.Surface = over.Surface
+	}
+	return tc
 }
 
 // AppFeatures are per-site capability flags so one app binary can serve any
@@ -60,13 +117,35 @@ func APIAppConfigRWeb(ctx rweb.Context) error {
 		contacts = []string{}
 	}
 
+	amounts := opts.Mobile.SuggestedAmountsCents
+	if len(amounts) == 0 {
+		amounts = []int64{2500, 5000, 10000, 25000}
+	}
+	country := opts.Mobile.CountryCode
+	if country == "" {
+		country = "US"
+	}
+	currency := opts.Mobile.Currency
+	if currency == "" {
+		currency = "usd"
+	}
+
 	return ctx.WriteJSON(AppConfig{
 		// CopyrightOwner is the site's plain-text name (banner_inner_html is
 		// HTML and unusable as a label in a native UI).
 		ChurchName:           opts.CopyrightOwner,
 		Theme:                opts.Theme,
+		ThemeColors:          resolveThemeColors(opts.Theme),
+		LogoURL:              opts.Mobile.LogoURL,
 		StripePublishableKey: opts.Stripe.PubKey,
 		GivingContacts:       contacts,
+		Giving: GivingCfg{
+			SuggestedAmountsCents: amounts,
+			AppleMerchantID:       opts.Mobile.AppleMerchantID,
+			GooglePayMerchantID:   opts.Mobile.GooglePayMerchantID,
+			CountryCode:           country,
+			Currency:              currency,
+		},
 		Features: AppFeatures{
 			Giving:      opts.Stripe.PubKey != "" && opts.Stripe.PrivKey != "",
 			SermonAudio: opts.IDrive.Enabled,

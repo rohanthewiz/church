@@ -6,7 +6,15 @@ var stripe,
     elements;
 
 // PACKER START ModulePaymentForm_js
-$(document).ready(function() {
+// Vanilla bootstrapping (was $(document).ready): the giving flow must not
+// depend on the CDN-loaded jQuery — if that one request fails, giving dies.
+(function (init) {
+	if (document.readyState === 'loading') {
+		document.addEventListener('DOMContentLoaded', init);
+	} else {
+		init();
+	}
+})(function() {
     // Deferred-intent Payment Element flow:
     //   mount element -> giver fills form -> submit:
     //     elements.submit() -> POST /payments/create-intent (server creates the

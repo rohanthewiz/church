@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/db"
@@ -17,6 +18,19 @@ import (
 	"github.com/rohanthewiz/serr"
 	stripe "github.com/stripe/stripe-go/v86"
 )
+
+// recordMu serializes recordPaymentIntent. The webhook
+// (payment_intent.succeeded) and the receipt-page redirect fire at nearly the
+// same instant, and the lookup-then-insert idempotency below is not atomic —
+// without serialization both callers can miss the lookup and each insert a
+// row (two charge records + two receipt emails for one gift). The charges
+// table has no unique index on payment_token to backstop this, so a
+// process-level lock is the fix that works on both Postgres and bytdb.
+// A single global mutex (rather than per-intent locking) is deliberate:
+// donation volume is tiny, the critical section is one lookup + one upsert
+// (the receipt email happens outside it), and a global lock cannot get the
+// per-key lifecycle wrong.
+var recordMu sync.Mutex
 
 // chargeMeta is what we persist in the charges.meta JSON column.
 // The Stripe charge id lives here (not in receipt_number, which previously and
@@ -104,6 +118,10 @@ func recordPaymentIntent(pi *stripe.PaymentIntent) (receiptURL string, err error
 			"payment_intent", pi.ID)
 	}
 
+	// Serialize the lookup-then-upsert so the webhook and the receipt-page
+	// redirect (which race by design) cannot both take the insert path.
+	recordMu.Lock()
+
 	// Idempotency gate: if we already recorded this intent, route to the update path
 	// and remember that we must not re-send the receipt email.
 	existingId, alreadyRecorded, err := payment.FindChargeIdByPaymentToken(dbH, pi.ID)
@@ -118,6 +136,7 @@ func recordPaymentIntent(pi *stripe.PaymentIntent) (receiptURL string, err error
 	}
 
 	_, err = pres.Upsert(dbH)
+	recordMu.Unlock()
 	if err != nil {
 		return receiptURL, serr.Wrap(err, "Error saving charge record",
 			"payment_intent", pi.ID, "customer_name", pres.CustomerName)
@@ -125,7 +144,10 @@ func recordPaymentIntent(pi *stripe.PaymentIntent) (receiptURL string, err error
 	logger.Info("Charge recorded", "payment_intent", pi.ID, "already_recorded", fmt.Sprintf("%t", alreadyRecorded))
 
 	if !alreadyRecorded {
-		sendReceiptEmail(pres)
+		// Off the request path: the Gmail SMTP round-trip previously blocked
+		// both the giver's receipt page load and the webhook ack (a slow SMTP
+		// hop could push Stripe into retrying the event).
+		go sendReceiptEmail(pres)
 	}
 	return receiptURL, nil
 }

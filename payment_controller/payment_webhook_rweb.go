@@ -54,7 +54,7 @@ func StripeWebhookRWeb(ctx rweb.Context) error {
 		// Only the intent id is taken from the payload; finalizePayment re-retrieves
 		// the intent from Stripe with latest_charge expanded (the webhook payload does
 		// not expand it, and re-fetching also means we never act on a spoofed body).
-		if _, err = finalizePayment(pi.ID); err != nil {
+		if _, _, err = finalizePayment(pi.ID); err != nil {
 			logger.LogErr(err, "Stripe webhook: error finalizing payment", "payment_intent", pi.ID)
 			// Non-2xx makes Stripe retry with backoff (up to ~3 days) -- exactly what
 			// we want for transient DB/network trouble on our side.
