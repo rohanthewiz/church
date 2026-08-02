@@ -1,0 +1,48 @@
+# Build-context exclusions for deploy/docker/Dockerfile.
+#
+# BuildKit looks for "<dockerfile-path>.dockerignore" before falling back to
+# "<context>/.dockerignore". That matters here: the build context is the
+# workspace PARENT directory (~/projs/go/church), which is not a git repo, so
+# a .dockerignore placed there could not be version-controlled or reviewed.
+# Keeping it beside the Dockerfile puts it inside the church repo instead.
+#
+# Requires DOCKER_BUILDKIT=1 (or docker buildx) — the classic builder ignores
+# this file. deploy.sh enforces that.
+#
+# Without these rules the context is ~2.9 GB and, worse, carries each site's
+# live credentials into the build cache.
+
+# --- Never, under any circumstances -------------------------------------
+# Live site config: Stripe keys, SMTP passwords, object-store credentials.
+# These reach the pod through the <site>-config Secret, never through a layer.
+**/cfg/options.yml
+**/cfg/random_seeds.txt
+**/token.txt
+
+# --- Bulk: not build inputs ---------------------------------------------
+church_mobile/          # Flutter app, ~2.6 GB — unrelated to the server image
+*.zip                   # archived legacy projects (~53 MB)
+**/node_modules/        # SCSS/Stylus toolchain; dist/ is built before packaging
+**/sermons/             # cema/sermons is ~92 MB of media; served from IDrive e2
+**/dump.rdb             # leftover from the retired Redis session store
+**/.git/
+**/.idea/
+**/.DS_Store
+
+# --- Build/run artifacts that must not leak into the image --------------
+**/log/*
+!**/log/.keep
+# Locally-compiled site binaries: darwin/arm64 here, useless and confusing in
+# a linux image, and they would defeat the layer cache on every rebuild.
+ccswm/ccswm
+cema/cema
+# Admin-uploaded article images live on the data volume in k8s; a stale local
+# copy baked into the image would be shadowed by the mount anyway.
+**/dist/img/*
+!**/dist/img/.keep
+
+# --- Docs and scratch ----------------------------------------------------
+**/ai_docs/
+**/arch_test_scripts/
+**/*.md
+**/CLAUDE.md

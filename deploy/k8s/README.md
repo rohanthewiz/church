@@ -55,6 +55,32 @@ header to all sites, with Let's Encrypt TLS via cert-manager.
   `Recreate` means nothing else is serving anyway.
 - **Shared namespace `churches`** — same operator for all sites; naming
   (`ccswm-*`, `cema-*`) is isolation enough.
+- **Probes hit `/healthz`, and a `startupProbe` guards the restore** —
+  `/healthz` (`router_rweb.go`) takes no session, no DB round trip and no page
+  render, so a slow database can't be mistaken for a wedged process and
+  restarted. The `startupProbe` matters more than it looks: cold-start restore
+  from object storage runs *before* the app binds a port and may take up to two
+  minutes, and a liveness probe with a short initial delay would kill the pod
+  mid-recovery, repeatedly, precisely when recovery is the point. Readiness is
+  not wired to DB or replication health either — at one replica there is
+  nowhere for traffic to go, so failing readiness converts a degraded site into
+  a hard 503.
+
+### Uploaded images
+
+Article images pasted into the editor are written by `resource/chimage` to the
+CWD-relative `dist/img/` and referenced as `/assets/img/…`. The Deployment
+mounts that path from a subdirectory (`uploads`) of the same block volume as
+the database, so a redeploy no longer silently breaks the images in existing
+articles — which is what happened while they lived in the container's writable
+layer.
+
+Note the asymmetry, because it is a real limitation and not an oversight:
+**uploaded images are not shipped to object storage.** The WAL replication and
+snapshot tiers cover the database only. Images are protected by the
+`-retain` storage class and whatever Linode volume snapshots you schedule. The
+durable fix is to put them on IDrive e2 next to the sermon media, which is a
+code change in `resource/chimage`, not a manifest one.
 
 ## Bucket layout
 
@@ -124,62 +150,113 @@ non-bytdb backend, 401 bad token, 200 with
 `{key, latest_key, bytes, pruned, dur_millis}`.
 
 Configuration arrives as env from the `<site>-backup` secret (`OBJ_ENDPOINT`,
-`OBJ_BUCKET`, `OBJ_ACCESS_KEY`, `OBJ_SECRET_KEY`, `BACKUP_TOKEN`) plus
-`BACKUP_PREFIX` and `BACKUP_REPLICATE` set in the Deployment — or equivalently
-a `backup:` block in options.yml (see `config/config.go`). Gate ordering and
-JSON shapes for both endpoints are frozen by
+`OBJ_REGION`, `OBJ_BUCKET`, `OBJ_ACCESS_KEY`, `OBJ_SECRET_KEY`, `BACKUP_TOKEN`)
+plus `BACKUP_PREFIX` and `BACKUP_REPLICATE` set in the Deployment — or
+equivalently a `backup:` block in options.yml (see `config/config.go`). Gate
+ordering and JSON shapes for both endpoints are frozen by
 `resource/dbbackup/api_contract_test.go`.
+
+`OBJ_REGION` is required by `deploy.sh` rather than left to its default. Both
+S3 clients fall back to `us-east-1` when it is blank, and against a bucket in
+any other Linode region that fails SigV4 signing in the quietest way available:
+the site keeps serving, the error only reaches the log, and both the snapshot
+and WAL tiers simply stop producing copies.
 
 On-demand run: `kubectl -n churches create job --from=cronjob/ccswm-backup
 ccswm-backup-manual`, or curl the endpoint directly with the token.
 
-## Install order
+## Install
+
+`deploy/deploy.sh` runs the whole thing. Every phase is idempotent — re-running
+is the normal way to apply a change, not a recovery action.
 
 ```bash
-# 1. Cluster + kubectl context (Linode Cloud Manager or terraform). Two
-#    shared-CPU 4GB nodes is plenty for several sites.
-
-# 2. Ingress controller — creates the NodeBalancer; note its EXTERNAL-IP
-helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm install ingress-nginx ingress-nginx/ingress-nginx \
-  --namespace ingress-nginx --create-namespace
-kubectl get svc -n ingress-nginx ingress-nginx-controller  # EXTERNAL-IP
-
-# 3. DNS: A records for ccswm.org, www.ccswm.org, calvaryeastmetro.org,
-#    www.calvaryeastmetro.org → that EXTERNAL-IP. Do this BEFORE applying
-#    site manifests so HTTP-01 challenges succeed on first try.
-
-# 4. cert-manager
-helm repo add jetstack https://charts.jetstack.io
-helm install cert-manager jetstack/cert-manager \
-  --namespace cert-manager --create-namespace --set crds.enabled=true
-
-# 5. Base objects
-kubectl apply -f deploy/k8s/00-namespace.yaml
-kubectl apply -f deploy/k8s/01-clusterissuer.yaml
-
-# 6. Per-site secrets (never committed). Repeat per site:
-kubectl -n churches create secret generic ccswm-config \
-  --from-file=options.yml=../ccswm/cfg/options.yml
-kubectl -n churches create secret generic ccswm-backup \
-  --from-literal=OBJ_ENDPOINT=us-east-1.linodeobjects.com \
-  --from-literal=OBJ_BUCKET=church-backups \
-  --from-literal=OBJ_ACCESS_KEY=... \
-  --from-literal=OBJ_SECRET_KEY=... \
-  --from-literal=BACKUP_TOKEN="$(openssl rand -hex 32)"
-#    In options.yml for k8s: server.port 4000, use_tls false (TLS terminates
-#    at ingress), db.type bytdb (default). Stripe keys can ride in
-#    options.yml or as STRIPE_* env overrides.
-
-# 7. Images (context = parent dir; see deploy/docker/Dockerfile header)
-cd ~/projs/go/church
-docker build -f church/deploy/docker/Dockerfile --build-arg SITE=ccswm \
-  -t ghcr.io/rohanthewiz/ccswm:<tag> . && docker push ghcr.io/rohanthewiz/ccswm:<tag>
-
-# 8. Sites
-kubectl apply -f deploy/k8s/sites/ccswm.yaml
-kubectl apply -f deploy/k8s/sites/cema.yaml
+cp deploy/backup.env.sample deploy/backup.env   # fill in Linode Object Storage creds
+./deploy/deploy.sh all
 ```
+
+Phases, in the order `all` runs them (each also runnable on its own):
+
+| Phase | Does |
+|---|---|
+| `preflight` | Tooling, cluster context confirmation, manifests, build context |
+| `infra` | helm-installs ingress-nginx + cert-manager; prints the NodeBalancer IP |
+| `base` | Namespace + Let's Encrypt ClusterIssuer (needs cert-manager's CRDs) |
+| `seeds` | Generates `cfg/random_seeds.txt` where missing; never overwrites |
+| `secrets` | `<site>-config` and `<site>-backup`, validated before they are applied |
+| `images` | `docker build` + push, one image per site, tagged with the site's git SHA |
+| `sites` | DNS precheck → apply manifests with the pinned image → wait for rollout |
+| `verify` | Read-only: pod readiness, cert readiness, `/healthz`, replication lag |
+
+**The one manual step in the middle is DNS.** The NodeBalancer only exists after
+`infra`, and an Ingress applied before its domains resolve produces an HTTP-01
+challenge that cannot succeed — Let's Encrypt rate-limits failed authorizations
+(5/hour/hostname), so impatience here costs an hour. So either run the phases in
+two passes:
+
+```bash
+./deploy/deploy.sh preflight infra          # prints the NodeBalancer IP
+#   → point A records for every domain at that IP, let them propagate
+./deploy/deploy.sh base seeds secrets images sites verify
+```
+
+…or run `all` and answer `n` when the DNS precheck warns, then re-run `sites`
+once the records resolve. The precheck compares each `- host:` in the site
+manifest against `dig +short A`, so the manifests remain the single source of
+truth for which domains a site owns.
+
+Common follow-ups:
+
+```bash
+./deploy/deploy.sh images sites             # redeploy after a code change
+SITES=ccswm ./deploy/deploy.sh images sites # one site only
+./deploy/deploy.sh verify                   # health check, changes nothing
+./deploy/deploy.sh --yes all                # non-interactive (CI)
+```
+
+Overridable via environment: `SITES`, `NAMESPACE`, `REGISTRY`,
+`BACKUP_ENV_FILE`, `INGRESS_NGINX_VERSION`, `CERT_MANAGER_VERSION`,
+`ASSUME_YES`. The chart versions default to "whatever the repo serves today" —
+pin them once you know what you want to live with.
+
+### What each site actually needs to boot
+
+Three things beyond the image, and the first two are unforgiving:
+
+1. **`cfg/random_seeds.txt`** — `resource/auth`'s `init()` opens it and
+   `log.Fatal()`s when it can't. That runs before `main()`, so a site missing
+   this file is an unconditional crash loop, not a degraded mode. It ships in
+   the `<site>-config` Secret alongside `options.yml`, which is why that Secret
+   is mounted as a whole directory over `/app/cfg` rather than as a single-file
+   `subPath`. `deploy.sh seeds` generates one where absent; doing so is safe on
+   a live site, because the pool is entropy for *new* salts and tokens and each
+   user's salt is stored next to their hash.
+2. **`APP_ENV=production`** — `config.InitConfig` defaults to `development`
+   when it is unset, and would then read the wrong section of `options.yml`
+   entirely. Set in the Deployment.
+3. **`options.yml` with a `production:` section** — `deploy.sh secrets` refuses
+   to build the Secret without one, since `getOptionsForEnvironment` `log.Fatal`s
+   on a missing section.
+
+`server.port` and `use_tls` in that file are deliberately *not* checked: the
+Deployment overrides both with `SERVER_PORT=4000` and `USE_TLS=false`
+(`config/env_overrides.go`), so each site's own production section can keep its
+bare-metal values — ccswm's sample says port 80 with certbot paths, cema's says
+8088 — while the pod, its Service, and its probes all agree on 4000. TLS
+terminates at the ingress, which also owns the ACME challenge.
+
+### Image build
+
+CGO is required and the image is **not** static: `resource/chimage` imports
+`h2non/bimg`, a cgo binding to libvips, so the builder installs `vips-dev` and
+the runtime stage installs `vips`. With `CGO_ENABLED=0` the package does not
+compile at all.
+
+BuildKit is required too. The context is the workspace parent directory
+(~2.9 GB unfiltered, including `church_mobile/` and each site's live
+`options.yml`), and the exclusions live in `deploy/docker/Dockerfile.dockerignore`
+— a per-Dockerfile ignore file that only BuildKit honors. `deploy.sh` exports
+`DOCKER_BUILDKIT=1`; a hand-run `docker build` must do the same.
 
 ## Migration runbook: Postgres → bytdb per site
 
@@ -208,26 +285,40 @@ leaves this runbook unchanged.
    a short freeze beats building delta sync).
 4. **Final import** against live PG; upload the result to
    `s3://<bucket>/<site>/latest/church.db`.
-5. **Deploy** the site manifest. The app finds an empty volume, restores the
-   migrated file from `latest/` (no WAL generation exists yet), and boots on
-   it. Verify via `kubectl port-forward` before touching DNS. Within a few
-   seconds of serving, generations should appear:
-   `mc ls obj/<bucket>/<site>/wal/gen/` — and
-   `GET /api/admin/db/replication` should report a small `lag_seconds`.
-6. **Cut DNS** to the NodeBalancer IP. Old PG stack stays warm as rollback
-   (`db.type: postgres` in options.yml is the escape hatch) until confident;
-   then decommission.
+5. **Deploy** the site: `SITES=<site> ./deploy/deploy.sh secrets images sites`.
+   The app finds an empty volume, restores the migrated file from `latest/`
+   (no WAL generation exists yet), and boots on it. Answer `n` to the DNS
+   precheck if the domain still points at the old stack, then verify via
+   `kubectl port-forward` before touching DNS. Within a few seconds of
+   serving, generations should appear: `mc ls obj/<bucket>/<site>/wal/gen/` —
+   and `./deploy/deploy.sh verify` should report a small `lag_seconds`.
+6. **Cut DNS** to the NodeBalancer IP, then re-run
+   `SITES=<site> ./deploy/deploy.sh sites verify` so the Ingress applies with
+   DNS resolving and cert-manager issues on the first attempt. Old PG stack
+   stays warm as rollback (`db.type: postgres` in options.yml is the escape
+   hatch) until confident; then decommission.
 
 ## Operations quick reference
 
 ```bash
+./deploy/deploy.sh verify        # pods, certs, /healthz, replication lag, all sites
 kubectl -n churches get pods,pvc,ingress,cronjobs
 kubectl -n churches logs deploy/ccswm -f
 kubectl -n churches create job --from=cronjob/ccswm-backup ccswm-backup-manual  # on-demand backup
-# replication health (needs BACKUP_TOKEN):
+
+# The backup/replication token lives only in the cluster (deploy.sh mints it
+# once and reuses it thereafter):
+BACKUP_TOKEN=$(kubectl -n churches get secret ccswm-backup \
+  -o jsonpath='{.data.BACKUP_TOKEN}' | base64 -d)
 kubectl -n churches exec deploy/ccswm -- \
   wget -qO- --header="Authorization: Bearer $BACKUP_TOKEN" \
   http://localhost:4000/api/admin/db/replication
+
+# First-run superadmin: with no BOOTSTRAP_ADMIN_USER/PASS set, the app writes a
+# one-time bootstrap token to /app/token.txt in the pod. It lives on the
+# container's writable layer, so read it before the pod restarts:
+kubectl -n churches exec deploy/ccswm -- cat /app/token.txt
+
 # psql into a live site's embedded DB: pin db.listen (e.g. 127.0.0.1:5433)
 # in its options.yml, then:
 kubectl -n churches port-forward deploy/ccswm 5433:5433
@@ -273,7 +364,13 @@ place.
 
 ## Adding a site
 
-Copy `sites/ccswm.yaml`, replace `ccswm`→`<site>` and the domains, offset
-the backup schedule minute, create the two secrets, build/push the image
-(`--build-arg SITE=<site>` — add its module to the Dockerfile COPY list and
-go.work if new), point DNS at the same NodeBalancer IP, `kubectl apply`.
+1. Copy `sites/ccswm.yaml` → `sites/<site>.yaml`; replace `ccswm`→`<site>` and
+   the two domains, and offset the CronJob schedule minute so backups don't
+   stampede (ccswm is `:07`, cema `:37`).
+2. Add the module to `go.work` and to the Dockerfile's `COPY` list.
+3. Point DNS at the same NodeBalancer IP.
+4. `SITES=<site> ./deploy/deploy.sh seeds secrets images sites verify`.
+
+Everything else is derived: `deploy.sh` reads the domains straight out of the
+new manifest, generates the seed file if the site doesn't have one, and mints
+the site's backup token on first deploy.

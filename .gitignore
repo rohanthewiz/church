@@ -13,3 +13,9 @@ vendor/
 
 sqlboiler.toml
 test_scripts/event_form_preview/preview.html
+
+# Object-storage credentials consumed by deploy/deploy.sh to build the
+# <site>-backup Secrets. backup.env.sample is the committed template.
+deploy/backup.env
+deploy/backup.*.env
+!deploy/backup.env.sample

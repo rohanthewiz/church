@@ -11,9 +11,10 @@
 #     Object storage is the BACKUP target only (see the CronJob).
 #
 # Secrets expected in the `churches` namespace (created out-of-band, never
-# committed — see README):
-#   cema-config   key `options.yml`  — full site config file
-#   cema-backup   keys OBJ_ENDPOINT, OBJ_BUCKET, OBJ_ACCESS_KEY,
+# committed — `deploy/deploy.sh secrets` builds both):
+#   cema-config   keys `options.yml` AND `random_seeds.txt` — BOTH required;
+#                  the app cannot start without the seeds file (see below)
+#   cema-backup   keys OBJ_ENDPOINT, OBJ_REGION, OBJ_BUCKET, OBJ_ACCESS_KEY,
 #                  OBJ_SECRET_KEY, BACKUP_TOKEN
 ---
 apiVersion: v1
@@ -50,7 +51,7 @@ spec:
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
-        fsGroup: 1000 # block-storage volumes mount root-owned; fsGroup makes /data writable by the app user
+        fsGroup: 1000 # block-storage volumes mount root-owned; fsGroup makes /data writable by the app user, and the config Secret group-readable
       # RETIRED: seed-or-restore now happens in-app, in db/replicate.go, before
       # the engine opens the file. The move buys three things the initContainer
       # could not: it prefers the seconds-stale WAL replica over the hour-stale
@@ -88,9 +89,26 @@ spec:
       #       - {name: data, mountPath: /data}
       containers:
         - name: cema
-          image: ghcr.io/rohanthewiz/cema:latest # pin a tag/digest for real deploys
+          image: ghcr.io/rohanthewiz/cema:latest # pin a tag/digest for real deploys; deploy.sh passes the git SHA
           workingDir: /app # config loads from CWD-relative cfg/options.yml
           env:
+            # WITHOUT THIS the process reads the `development:` section of
+            # options.yml: config.InitConfig defaults AppEnv to "development"
+            # when APP_ENV is unset, and buildTLSCfg() additionally
+            # short-circuits on that value. Production config in a pod running
+            # as development is the kind of thing that looks fine until a
+            # credential or a domain differs between sections.
+            - {name: APP_ENV, value: production}
+            # Listener shape is owned by this file, not by options.yml, because
+            # containerPort / Service targetPort / probes below all have to name
+            # the same port. The sites' own production sections are written for
+            # bare metal — this site's own production section says port 8088,
+            # and ccswm's sample says 80 + use_tls with certbot paths. These
+            # overrides let both stay as-is for the non-k8s deployment story.
+            # TLS terminates at the ingress, which also owns the ACME challenge,
+            # so the app must serve plain HTTP here.
+            - {name: SERVER_PORT, value: "4000"}
+            - {name: USE_TLS, value: "false"}
             # Env overrides (config/env_overrides.go) beat options.yml, so the
             # DB location is pinned here where the volume mount is defined,
             # keeping the two in one file. bytdb is already the default type.
@@ -107,22 +125,56 @@ spec:
           # OBJ_* destination + BACKUP_TOKEN: the app now performs both the
           # snapshot (resource/dbbackup) and the WAL shipping + cold-start
           # restore (db/replicate.go), so it needs the same secret the CronJob
-          # uses — one secret, two consumers.
+          # uses — one secret, two consumers. OBJ_REGION must be in there and
+          # must match the bucket's actual region: both S3 clients default it
+          # to us-east-1, and a wrong region fails SigV4 signing in a way that
+          # only shows up as a logged error — backups and WAL shipping stop
+          # while the site keeps serving happily.
           envFrom:
             - secretRef: {name: cema-backup}
           ports:
             - {name: http, containerPort: 4000}
           volumeMounts:
             - {name: data, mountPath: /data}
-            - {name: config, mountPath: /app/cfg/options.yml, subPath: options.yml, readOnly: true}
+            # Admin-uploaded article images. resource/chimage writes them to
+            # the CWD-relative "dist/img/" and pages reference them as
+            # /assets/img/... — so without this mount every upload lives in the
+            # container's writable layer and every redeploy silently breaks the
+            # images in existing articles. Backed by a subdirectory of the same
+            # block volume rather than a second PVC: one device, one $1/mo,
+            # nothing extra to attach.
+            # NOTE: unlike the database, these files are NOT shipped to object
+            # storage. Their protection is the `-retain` storage class plus
+            # Linode volume snapshots — see README.
+            - {name: data, mountPath: /app/dist/img, subPath: uploads}
+            # The WHOLE cfg directory, not a single-file subPath: the app needs
+            # two files from this Secret, and the second one is not optional.
+            # resource/auth's init() opens cfg/random_seeds.txt and log.Fatal()s
+            # if it is missing — that runs before main(), so an incomplete
+            # Secret here is an unconditional crash loop with a one-line error.
+            - {name: config, mountPath: /app/cfg, readOnly: true}
+          # Probes hit /healthz (router_rweb.go): no session middleware, no DB
+          # query, no page render. Pointing them at "/" cost a full home-page
+          # build every tick and, worse, made "the DB is briefly slow" look
+          # identical to "the process is wedged" — a liveness restart loop.
+          #
+          # startupProbe is the one that matters for disaster recovery: on an
+          # empty volume the app restores from object storage BEFORE it binds a
+          # port, under a timeout of up to 2 minutes. Liveness with the old
+          # 15s initial delay would have killed the pod mid-restore, repeatedly,
+          # exactly when recovery was the point. 30 × 5s = 150s of headroom, and
+          # liveness/readiness stay parked until it passes.
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+            failureThreshold: 30
           readinessProbe:
-            httpGet: {path: /, port: http}
-            initialDelaySeconds: 3
+            httpGet: {path: /healthz, port: http}
             periodSeconds: 10
           livenessProbe:
-            httpGet: {path: /, port: http}
-            initialDelaySeconds: 15
+            httpGet: {path: /healthz, port: http}
             periodSeconds: 20
+            failureThreshold: 3
           resources:
             requests: {cpu: 100m, memory: 128Mi}
             limits: {memory: 512Mi} # no CPU limit: avoid throttling bursts (page builds); memory bounds the embedded engine
@@ -130,7 +182,11 @@ spec:
         - name: data
           persistentVolumeClaim: {claimName: cema-data}
         - name: config
-          secret: {secretName: cema-config}
+          secret:
+            secretName: cema-config
+            # 0440 + fsGroup 1000 above: readable by the app's group, not by
+            # anything else that might land in the pod.
+            defaultMode: 0440
 ---
 apiVersion: v1
 kind: Service
@@ -151,6 +207,14 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
     # Admin uploads (images via the editor) exceed nginx's 1m default
     nginx.ingress.kubernetes.io/proxy-body-size: 64m
+    # Server-Sent Events: /chat/stream (live chat + prayer wall, and the same
+    # endpoint the mobile app consumes). ingress-nginx defaults would break it
+    # two separate ways — response buffering holds events until the buffer
+    # fills, and the 60s read timeout drops an idle stream every minute. Both
+    # present as "chat works locally but not in production".
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: nginx
   tls:
@@ -201,7 +265,6 @@ spec:
             # can produce a consistent snapshot (Engine.BackupTo). So it asks
             # the app to do it: POST to the in-app backup endpoint, which
             # snapshots and uploads to object storage, then rotates `latest`.
-            # NOTE: this endpoint is the one code prerequisite — see README.
             - name: trigger-backup
               image: curlimages/curl:8.10.1
               command: ["/bin/sh", "-c"]
@@ -214,3 +277,6 @@ spec:
                 - name: BACKUP_TOKEN
                   valueFrom:
                     secretKeyRef: {name: cema-backup, key: BACKUP_TOKEN}
+              resources:
+                requests: {cpu: 10m, memory: 16Mi}
+                limits: {memory: 64Mi}

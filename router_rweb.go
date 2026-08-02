@@ -83,6 +83,24 @@ func ServeRWeb() {
 	}
 	s.StaticFiles("/media/", sermonsDir, 1)
 
+	// Liveness/readiness target for container orchestrators. Deliberately the
+	// cheapest possible handler: no session middleware, no DB round trip, no
+	// page render. Probes fire every few seconds for the life of the pod, and
+	// pointing them at "/" (as the first cut of the k8s manifests did) meant a
+	// full home-page build plus its queries on every tick — and, far worse for
+	// liveness, it made "the database is briefly slow" indistinguishable from
+	// "the process is wedged", which is how a probe turns a hiccup into a
+	// restart loop.
+	//
+	// Reporting DB health here is intentionally omitted rather than forgotten:
+	// each site runs a single replica over a ReadWriteOnce volume, so failing
+	// readiness cannot shift traffic anywhere — it only converts a degraded
+	// site into a hard 503 from the ingress. Same priority ordering the
+	// replication design settled on: serving outranks reporting.
+	s.Get("/healthz", func(ctx rweb.Context) error {
+		return ctx.WriteText("ok")
+	})
+
 	// Home page — wrapped in a group with the auth middleware so session/login
 	// state is available for rendering admin menus when the user is logged in.
 	home := s.Group("", authctlr.UseCustomContextRWeb)

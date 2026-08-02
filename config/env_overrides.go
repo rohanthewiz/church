@@ -14,6 +14,35 @@ func envOverride(envCfg *EnvConfig) *EnvConfig {
 	if logFormat := strings.TrimSpace(os.Getenv("LOG_FORMAT")); len(logFormat) > 0 {
 		envCfg.Log.Format = logFormat
 	}
+	// Listener shape. These two exist for containerized deploys, where the
+	// pod spec — not the config file — is the source of truth for which port
+	// the process binds and whether it terminates TLS itself:
+	//
+	//   containerPort / Service targetPort / probes  all name one port, and
+	//   under an ingress the app must serve plain HTTP (TLS terminates at the
+	//   ingress, which also owns the ACME challenge).
+	//
+	// Without these, matching the manifest meant hand-editing options.yml
+	// inside a Secret — a file the manifest cannot see and CI cannot check.
+	// Note the site's own production section is otherwise written for a
+	// bare-metal box (port 80/8088, use_tls true, certbot paths); the
+	// overrides let that stay untouched as the non-k8s deployment story.
+	if serverPort := strings.TrimSpace(os.Getenv("SERVER_PORT")); len(serverPort) > 0 {
+		envCfg.Server.Port = serverPort
+	}
+	// Affirmative-only parsing, matching BACKUP_REPLICATE below: an
+	// unparseable value leaves the config-file setting alone rather than
+	// guessing. Here that direction is deliberately *not* "safe by default" in
+	// the abstract — it just means a typo can't silently flip a bare-metal
+	// site to plain HTTP, since the yaml value still wins.
+	if useTLS := strings.TrimSpace(os.Getenv("USE_TLS")); len(useTLS) > 0 {
+		switch strings.ToLower(useTLS) {
+		case "true", "1", "yes", "on":
+			envCfg.Server.UseTLS = true
+		case "false", "0", "no", "off":
+			envCfg.Server.UseTLS = false
+		}
+	}
 	// DB backend selection — env overrides let a k8s manifest flip a site
 	// between bytdb and the Postgres fallback without editing options.yml.
 	if dbType := strings.TrimSpace(os.Getenv("DB_TYPE")); len(dbType) > 0 {
