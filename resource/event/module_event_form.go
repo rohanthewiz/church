@@ -51,6 +51,11 @@ func (m ModuleEventForm) getData() (pres Presenter, err error) {
 	if err = pres.LoadRecurrence(dbH, evt.ID); err != nil {
 		logger.LogErr(err, "Unable to load recurrence rule for event form", "event_id", pres.Id)
 	}
+	// The event's own point, in its own table for the same reason and loaded in
+	// the same place.
+	if err = pres.LoadPoint(dbH, evt.ID); err != nil {
+		logger.LogErr(err, "Unable to load location for event form", "event_id", pres.Id)
+	}
 	return pres, nil
 }
 
@@ -240,6 +245,39 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 							"required", "required", "value", evt.Location),
 					),
 				),
+				// The coordinates, under the name of the place they locate.
+				//
+				// Optional, and optional together: an event with neither is the
+				// ordinary case (it is at the church, and the church's own point
+				// is site configuration), and an event with one of the two is a
+				// form somebody was interrupted in — refused on save rather than
+				// half-applied, because the failure of guessing is a map of the
+				// prime meridian.
+				//
+				// type=text and not type=number: a number input on a phone
+				// offers a keypad with no minus sign on several platforms, and
+				// every coordinate west of Greenwich or south of the equator
+				// needs one. step=any would also round-trip a typed value
+				// through a locale-dependent parse; the string goes to the
+				// server exactly as typed and is parsed once, there.
+				b.DivClass("af-row").R(
+					b.DivClass("af-field").R(
+						b.Label("for", "event_latitude").T("Latitude (optional)"),
+						b.Input("name", "event_latitude", "id", "event_latitude", "type", "text",
+							"inputmode", "text", "placeholder", "38.7223",
+							"value", evt.Latitude),
+					),
+					b.DivClass("af-field").R(
+						b.Label("for", "event_longitude").T("Longitude (optional)"),
+						b.Input("name", "event_longitude", "id", "event_longitude", "type", "text",
+							"inputmode", "text", "placeholder", "-9.1393",
+							"value", evt.Longitude),
+					),
+				),
+				b.PClass("af-help").T(
+					"Leave both blank for an event at the church — the app shows the "+
+						"church's own map for those. Fill both in for an event somewhere "+
+						"else, and the app maps that point instead."),
 			),
 
 			b.DivClass("af-card").R(

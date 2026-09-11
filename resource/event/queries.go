@@ -2,6 +2,7 @@ package event
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/rohanthewiz/church/db"
@@ -72,7 +73,42 @@ func (p Presenter) UpsertEvent(exec db.Executor) error {
 	if err = p.upsertRecurrenceRule(exec, evt.ID); err != nil {
 		return serr.Wrap(err, "Event saved but its recurrence rule failed to save")
 	}
+	// The same treatment for the event's own point, and for the same reason: an
+	// admin who typed a coordinate must know if it did not stick, because the
+	// symptom otherwise is a map that silently shows the church instead.
+	if err = p.upsertEventPoint(exec, evt.ID); err != nil {
+		return serr.Wrap(err, "Event saved but its location failed to save")
+	}
 	return nil
+}
+
+// upsertEventPoint translates the presenter's two form strings into a point
+// row, or removes the row when both are blank.
+//
+// Both or neither, and a half-filled pair is an error rather than a silent
+// drop. A form with a latitude and no longitude is somebody who was
+// interrupted, and the one thing that must not happen is for the event to be
+// saved looking configured while its map points at the prime meridian.
+func (p Presenter) upsertEventPoint(exec db.Executor, eventID int64) error {
+	lat := strings.TrimSpace(p.Latitude)
+	lng := strings.TrimSpace(p.Longitude)
+	if lat == "" && lng == "" {
+		return DeleteEventPoint(exec, eventID)
+	}
+	if lat == "" || lng == "" {
+		return serr.New("an event location needs both a latitude and a longitude",
+			"latitude", lat, "longitude", lng)
+	}
+
+	pt := Point{EventID: eventID}
+	var err error
+	if pt.Latitude, err = strconv.ParseFloat(lat, 64); err != nil {
+		return serr.Wrap(err, "latitude must be a number", "latitude", lat)
+	}
+	if pt.Longitude, err = strconv.ParseFloat(lng, 64); err != nil {
+		return serr.Wrap(err, "longitude must be a number", "longitude", lng)
+	}
+	return UpsertEventPoint(exec, pt) // validates the range
 }
 
 // upsertRecurrenceRule translates the presenter's form-string recurrence

@@ -295,3 +295,112 @@ type locationWire struct {
 	Label      string   `json:"label"`
 	Aliases    []string `json:"aliases"`
 }
+
+// mapsWire is the shape the mobile app declares for the maps block. Spelled
+// out rather than aliased to Maps, for the reason locationWire is: a test that
+// shares the server's own type cannot catch a renamed JSON key, which is the
+// one change that breaks every client at once.
+type mapsWire struct {
+	Enabled   bool   `json:"enabled"`
+	Provider  string `json:"provider"`
+	StaticKey string `json:"static_key"`
+}
+
+func decodeMaps(t *testing.T) mapsWire {
+	t.Helper()
+	var got struct {
+		Maps mapsWire `json:"maps"`
+	}
+	body := locationBody(t)
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("response is not JSON: %v\nbody: %s", err, body)
+	}
+	return got.Maps
+}
+
+// A configured site hands the app a provider and a key, and says outright that
+// they are usable together.
+func TestAppConfigMaps(t *testing.T) {
+	cfg := &config.EnvConfig{}
+	cfg.Mobile.Maps.Provider = "google"
+	cfg.Mobile.Maps.StaticKey = "AIzaTestKey"
+	withConfig(t, cfg)
+
+	got := decodeMaps(t)
+	if !got.Enabled {
+		t.Fatalf("enabled = false with a provider and a key: %+v", got)
+	}
+	if got.Provider != "google" || got.StaticKey != "AIzaTestKey" {
+		t.Errorf("maps = %+v", got)
+	}
+}
+
+// Both halves are required, and neither is inferred from the other. A key with
+// no provider is a site that pasted a credential and stopped; a provider with
+// no key is a site that chose a service and has not signed up. Both are
+// half-finished, and a half-finished map is an empty grey frame the reader
+// cannot tell from a failed network.
+func TestAppConfigMapsNeedsBothAProviderAndAKey(t *testing.T) {
+	for _, c := range []struct {
+		provider, key, why string
+	}{
+		{"", "", "nothing configured at all"},
+		{"google", "", "a service chosen and not signed up for"},
+		{"", "AIzaTestKey", "a credential pasted with nowhere to send it"},
+	} {
+		cfg := &config.EnvConfig{}
+		cfg.Mobile.Maps.Provider = c.provider
+		cfg.Mobile.Maps.StaticKey = c.key
+		withConfig(t, cfg)
+
+		if got := decodeMaps(t); got.Enabled {
+			t.Errorf("enabled = true for %s: %+v", c.why, got)
+		}
+	}
+}
+
+// A provider this server cannot build a URL for is a typo, and it is answered
+// as "no maps" here rather than passed through for the client to fall through
+// on. One place says what is supported.
+func TestAppConfigMapsRejectsAnUnknownProvider(t *testing.T) {
+	cfg := &config.EnvConfig{}
+	cfg.Mobile.Maps.Provider = "openstreetmap"
+	cfg.Mobile.Maps.StaticKey = "whatever"
+	withConfig(t, cfg)
+
+	got := decodeMaps(t)
+	if got.Enabled {
+		t.Errorf("an unknown provider was advertised as usable: %+v", got)
+	}
+	if got.StaticKey != "" {
+		t.Errorf("a key was shipped for a provider nothing can use: %+v", got)
+	}
+}
+
+// The name is normalised the way a config file is written rather than the way
+// a switch statement is: an admin who typed "Google" chose the same service.
+func TestAppConfigMapsProviderIsCaseAndSpaceInsensitive(t *testing.T) {
+	cfg := &config.EnvConfig{}
+	cfg.Mobile.Maps.Provider = "  Google "
+	cfg.Mobile.Maps.StaticKey = " AIzaTestKey "
+	withConfig(t, cfg)
+
+	got := decodeMaps(t)
+	if !got.Enabled || got.Provider != "google" {
+		t.Errorf("maps = %+v, want the normalised provider", got)
+	}
+	if got.StaticKey != "AIzaTestKey" {
+		t.Errorf("static_key = %q, want it trimmed — a stray space in a URL key is a 403",
+			got.StaticKey)
+	}
+}
+
+// The block is present and non-null even for a site with no maps, which is the
+// contract's rule: the client maps it straight into a struct with no optional
+// fields.
+func TestAppConfigMapsBlockIsAlwaysPresent(t *testing.T) {
+	withConfig(t, &config.EnvConfig{})
+	if !strings.Contains(string(locationBody(t)), `"maps":{`) {
+		t.Error("the maps block must be present even when nothing is configured")
+	}
+}

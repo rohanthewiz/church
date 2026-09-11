@@ -33,6 +33,18 @@ var eventCols = []string{
 
 var recurrenceCols = []string{"event_id", "freq", "weekday", "week", "until"}
 
+var eventLocationCols = []string{"event_id", "latitude", "longitude"}
+
+// The sidecar-table probes, spelled once. Both are ordered expectations, so a
+// handler that stopped asking — or asked in a different order — fails here
+// rather than quietly serving events with no maps: EventPoints' error is
+// logged and not fatal, which is right for a live site and is exactly the
+// shape of failure a test can pass straight through.
+const (
+	recurrenceProbe = `SELECT event_id, freq, weekday, week, until FROM event_recurrences`
+	locationProbe   = `SELECT event_id, latitude, longitude FROM event_locations`
+)
+
 func eventRow(rows *sqlmock.Rows) *sqlmock.Rows {
 	return rows.AddRow(
 		int64(9), "Prayer Meeting", "prayer-meeting", true, "Weekly gathering", "<p>All welcome</p>",
@@ -46,8 +58,12 @@ func TestAPIEventsListContract(t *testing.T) {
 	// WindowedEvents: the window query, then the (empty) recurrence rules
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "events"`)).
 		WillReturnRows(eventRow(sqlmock.NewRows(eventCols)))
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT event_id, freq, weekday, week, until FROM event_recurrences`)).
+	mock.ExpectQuery(regexp.QuoteMeta(recurrenceProbe)).
 		WillReturnRows(sqlmock.NewRows(recurrenceCols))
+	// This event has no point of its own — the ordinary case, and the one the
+	// client turns into "show the church's map if the location names it".
+	mock.ExpectQuery(regexp.QuoteMeta(locationProbe)).
+		WillReturnRows(sqlmock.NewRows(eventLocationCols))
 
 	status, doc := apitest.GetJSON(t, newEventAPIServer(),
 		"/api/v1/events?from=2026-08-01&to=2026-08-31")
@@ -66,7 +82,18 @@ func TestAPIEventsListContract(t *testing.T) {
 	evt := events[0].(map[string]any)
 	apitest.WantKeys(t, evt, "id", "title", "slug", "summary", "event_date",
 		"event_time", "event_location", "contact_person", "contact_phone",
-		"contact_email", "contact_url", "categories", "recurring")
+		"contact_email", "contact_url", "categories", "recurring", "location")
+	// location is present and non-null even for an event that has none, which
+	// is the contract's rule (see EventLocationAPI): the client maps it into a
+	// struct with no optional fields.
+	loc, ok := evt["location"].(map[string]any)
+	if !ok {
+		t.Fatalf("location must be an object, got %T %v", evt["location"], evt["location"])
+	}
+	apitest.WantKeys(t, loc, "configured", "latitude", "longitude")
+	if loc["configured"] != false {
+		t.Errorf("an event with no point must report configured=false, got %v", loc["configured"])
+	}
 	if id, ok := evt["id"].(float64); !ok || id != 9 {
 		t.Errorf("id must be numeric 9, got %T %v", evt["id"], evt["id"])
 	}
@@ -93,8 +120,10 @@ func TestAPIEventsHasMore(t *testing.T) {
 	mock := apitest.MockDB(t)
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "events"`)).
 		WillReturnRows(eventRow(eventRow(sqlmock.NewRows(eventCols))))
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT event_id, freq, weekday, week, until FROM event_recurrences`)).
+	mock.ExpectQuery(regexp.QuoteMeta(recurrenceProbe)).
 		WillReturnRows(sqlmock.NewRows(recurrenceCols))
+	mock.ExpectQuery(regexp.QuoteMeta(locationProbe)).
+		WillReturnRows(sqlmock.NewRows(eventLocationCols))
 
 	status, doc := apitest.GetJSON(t, newEventAPIServer(),
 		"/api/v1/events?from=2026-08-01&to=2026-08-31&limit=1")
@@ -130,8 +159,11 @@ func TestAPIEventDetailRecurrenceContract(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "events"`)).
 		WithArgs(int64(9)).
 		WillReturnRows(eventRow(sqlmock.NewRows(eventCols)))
+	mock.ExpectQuery(regexp.QuoteMeta(locationProbe)).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows(eventLocationCols))
 	// Second Saturday monthly, open-ended (until NULL)
-	mock.ExpectQuery(regexp.QuoteMeta(`SELECT event_id, freq, weekday, week, until FROM event_recurrences`)).
+	mock.ExpectQuery(regexp.QuoteMeta(recurrenceProbe)).
 		WithArgs(int64(9)).
 		WillReturnRows(sqlmock.NewRows(recurrenceCols).AddRow(int64(9), "monthly", 6, 2, nil))
 
@@ -173,4 +205,96 @@ func TestAPIEventNotFoundIsJSON(t *testing.T) {
 
 	status, doc := apitest.GetJSON(t, newEventAPIServer(), "/api/v1/events/404")
 	apitest.WantError(t, status, 404, doc)
+}
+
+// An event with a point of its own, which is the half of the feature the
+// fallback exists for: an off-site event the church's own coordinates would
+// map to the wrong address entirely.
+//
+// The numbers are asserted as numbers rather than as strings. JSON has one
+// number type and the client reads these into a float64 pair, so a server that
+// ever quoted them would deserialize as zero — the Gulf of Guinea — which is
+// the one wrong answer that looks like a right one.
+func TestAPIEventDetailCarriesItsOwnPoint(t *testing.T) {
+	mock := apitest.MockDB(t)
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "events"`)).
+		WithArgs(int64(9)).
+		WillReturnRows(eventRow(sqlmock.NewRows(eventCols)))
+	mock.ExpectQuery(regexp.QuoteMeta(locationProbe)).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows(eventLocationCols).AddRow(int64(9), 38.7223, -9.1393))
+	mock.ExpectQuery(regexp.QuoteMeta(recurrenceProbe)).
+		WithArgs(int64(9)).
+		WillReturnRows(sqlmock.NewRows(recurrenceCols))
+
+	status, doc := apitest.GetJSON(t, newEventAPIServer(), "/api/v1/events/9")
+	if status != 200 {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	loc, ok := doc["location"].(map[string]any)
+	if !ok {
+		t.Fatalf("detail must carry a location object, got %T %v", doc["location"], doc["location"])
+	}
+	apitest.WantKeys(t, loc, "configured", "latitude", "longitude")
+	if loc["configured"] != true {
+		t.Errorf("an event with a point must report configured=true, got %v", loc["configured"])
+	}
+	lat, ok := loc["latitude"].(float64)
+	if !ok || lat != 38.7223 {
+		t.Errorf("latitude must be the number 38.7223, got %T %v", loc["latitude"], loc["latitude"])
+	}
+	lng, ok := loc["longitude"].(float64)
+	if !ok || lng != -9.1393 {
+		t.Errorf("longitude must be the number -9.1393, got %T %v", loc["longitude"], loc["longitude"])
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+// Every occurrence of a recurring series is held at the series' place. The
+// point belongs to the base event and an occurrence is not a row, so a series
+// whose base row sits outside the requested window must still carry its point
+// into every occurrence inside it.
+func TestAPIEventsExpandedOccurrencesCarryTheSeriesPoint(t *testing.T) {
+	mock := apitest.MockDB(t)
+	// The window query finds nothing: the series is anchored before it.
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "events"`)).
+		WillReturnRows(sqlmock.NewRows(eventCols))
+	mock.ExpectQuery(regexp.QuoteMeta(recurrenceProbe)).
+		WillReturnRows(sqlmock.NewRows(recurrenceCols).AddRow(int64(9), "weekly", 6, 0, nil))
+	// So the id that must reach the location query is the RULE's event id, not
+	// a row the window returned — there were none.
+	mock.ExpectQuery(regexp.QuoteMeta(locationProbe)).
+		WillReturnRows(sqlmock.NewRows(eventLocationCols).AddRow(int64(9), 10.5, -20.25))
+	// The base event, fetched by id for the expansion.
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT * FROM "events"`)).
+		WillReturnRows(eventRow(sqlmock.NewRows(eventCols)))
+
+	status, doc := apitest.GetJSON(t, newEventAPIServer(),
+		"/api/v1/events?from=2026-08-01&to=2026-08-31")
+	if status != 200 {
+		t.Fatalf("status = %d, want 200", status)
+	}
+	events := doc["events"].([]any)
+	if len(events) == 0 {
+		t.Fatal("the series should have produced occurrences in the window")
+	}
+	for i, raw := range events {
+		loc, ok := raw.(map[string]any)["location"].(map[string]any)
+		if !ok {
+			t.Fatalf("occurrence %d has no location object", i)
+		}
+		if loc["configured"] != true {
+			t.Errorf("occurrence %d lost the series point: %v", i, loc)
+		}
+		if lat, _ := loc["latitude"].(float64); lat != 10.5 {
+			t.Errorf("occurrence %d latitude = %v, want 10.5", i, loc["latitude"])
+		}
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
 }

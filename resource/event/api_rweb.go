@@ -44,8 +44,38 @@ type EventAPI struct {
 	RecurrenceDesc string   `json:"recurrence_desc,omitempty"`
 	Body           string   `json:"body,omitempty"`
 
+	// Location is the event's own point, when it has one. Always present and
+	// never null — see EventLocationAPI.
+	Location EventLocationAPI `json:"location"`
+
 	// Detail endpoint only: the structured rule, for edit UIs / calendar export
 	Recurrence *RecurrenceAPI `json:"recurrence,omitempty"`
+}
+
+// EventLocationAPI is the wire form of an event's own point: where THIS event
+// is, as opposed to where the church is.
+//
+// # Why a boolean rather than a null object or a null pair
+//
+// The same three reasons AppConfig.Location gives, and this is the second
+// place they apply, which is what makes them the contract's rule rather than
+// one DTO's habit. Every key is present and non-null so the client maps it
+// straight into a struct with no optional fields; the thing the client must
+// decide — draw THIS point or fall back to the church's — cannot be read off
+// the numbers, because 0,0 is the Gulf of Guinea and not an absence; and so
+// the server that knows says so outright, once.
+//
+// Configured is false for the great majority of events, which are held at the
+// church and carry no point of their own. That is not a gap in the data: the
+// church's point is site configuration, and repeating it on every event row
+// would be the same fact stored in two places with no mechanism keeping them
+// equal.
+type EventLocationAPI struct {
+	// Configured is false when the event has no point of its own. The other
+	// two fields are then zero and must not be used.
+	Configured bool    `json:"configured"`
+	Latitude   float64 `json:"latitude"`
+	Longitude  float64 `json:"longitude"`
 }
 
 // RecurrenceAPI is the wire form of a Recurrence rule.
@@ -79,6 +109,18 @@ func eventToAPI(evt *models.Event, includeBody bool) EventAPI {
 		e.Body = evt.Body.String
 	}
 	return e
+}
+
+// pointToAPI reads one event's point out of a batch, or reports that it has
+// none. A miss and an unreadable table produce the same answer here, which is
+// the right one: both mean "this event has no point of its own", and the
+// client's fallback is the same in each case.
+func pointToAPI(points map[int64]Point, eventID int64) EventLocationAPI {
+	pt, ok := points[eventID]
+	if !ok {
+		return EventLocationAPI{}
+	}
+	return EventLocationAPI{Configured: true, Latitude: pt.Latitude, Longitude: pt.Longitude}
 }
 
 // DefaultWindowDays bounds event listing when the caller gives no explicit
@@ -123,6 +165,26 @@ func WindowedEvents(from, to time.Time) ([]EventAPI, error) {
 		recByEventID[rec.EventID] = rec
 	}
 
+	// Every event that could appear in this response, in one query. The ids
+	// are the window's rows plus the base event of every rule — a series
+	// anchored before the window still produces occurrences inside it, so its
+	// base row may not be in evts at all.
+	//
+	// A failure here is logged and not fatal: a list of events with no maps is
+	// a usable list, and the alternative is a screen that shows nothing because
+	// a sidecar table was unreadable.
+	pointIDs := make([]int64, 0, len(evts)+len(recs))
+	for _, evt := range evts {
+		pointIDs = append(pointIDs, evt.ID)
+	}
+	for _, rec := range recs {
+		pointIDs = append(pointIDs, rec.EventID)
+	}
+	points, err := EventPoints(dbH, pointIDs)
+	if err != nil {
+		logger.LogErr(err, "could not load event locations for window; events will have none")
+	}
+
 	events := make([]EventAPI, 0, len(evts))
 	for _, evt := range evts {
 		dto := eventToAPI(evt, false)
@@ -130,6 +192,7 @@ func WindowedEvents(from, to time.Time) ([]EventAPI, error) {
 			dto.Recurring = true
 			dto.RecurrenceDesc = rec.Describe()
 		}
+		dto.Location = pointToAPI(points, evt.ID)
 		events = append(events, dto)
 	}
 
@@ -149,6 +212,9 @@ func WindowedEvents(from, to time.Time) ([]EventAPI, error) {
 		dto := eventToAPI(baseEvt, false)
 		dto.Recurring = true
 		dto.RecurrenceDesc = rec.Describe()
+		// Every occurrence of a series is held at the series' place: the point
+		// belongs to the base event, and an occurrence is not a row.
+		dto.Location = pointToAPI(points, baseEvt.ID)
 		for _, occ := range occurrences {
 			occDto := dto // copy; slices inside (Categories) are shared read-only
 			occDto.EventDate = occ.Format(timeutil.ISO8601Date)
@@ -237,6 +303,14 @@ func APIEventRWeb(ctx rweb.Context) error {
 	}
 
 	dto := eventToAPI(evt, true)
+	// One event, so one lookup rather than the window query's batch. Logged and
+	// not fatal for the same reason: an event detail with no map is a usable
+	// screen, and the client falls back to the church's own point.
+	if pt, found, err := GetEventPoint(dbH, evt.ID); err != nil {
+		logger.LogErr(err, "could not load location for event detail", "id", ctx.Request().Param("id"))
+	} else if found {
+		dto.Location = EventLocationAPI{Configured: true, Latitude: pt.Latitude, Longitude: pt.Longitude}
+	}
 	if rec, found, err := GetRecurrence(dbH, evt.ID); err != nil {
 		logger.LogErr(err, "could not load recurrence for event detail", "id", ctx.Request().Param("id"))
 	} else if found {

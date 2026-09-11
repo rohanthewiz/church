@@ -2,6 +2,7 @@ package event
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/rohanthewiz/church/config"
@@ -39,6 +40,38 @@ type Presenter struct {
 	RecurWeekday string // "0" (Sunday) .. "6" (Saturday)
 	RecurWeek    string // monthly: "1".."4" or "-1" (last)
 	RecurUntil   string // YYYY-MM-DD or "" for open-ended
+
+	// The event's own point, as it travels through the admin form. Strings
+	// because that is what a form field holds, and because "" is the only
+	// spelling of "not set" a text input has — a float64 pair has no such
+	// state, 0,0 being the Gulf of Guinea. Parsed and validated in UpsertEvent.
+	//
+	// Both or neither: one without the other is a half-typed form and is
+	// refused rather than guessed at. Populated from event_locations by
+	// LoadPoint — deliberately not in presenterFromModel, which runs per row
+	// in list views and would N+1 the table, exactly as the recurrence fields
+	// are not.
+	Latitude  string // "38.7223" or ""
+	Longitude string // "-9.1393" or ""
+}
+
+// LoadPoint fills the presenter's coordinate fields from the DB.
+// Call after presenterFromModel when editing a single event.
+//
+// Formatted shortest-round-trip rather than to a fixed number of places, so a
+// coordinate an admin typed comes back out of the form looking like the one
+// they typed. Nothing is lost: a float64's shortest form is exact.
+func (p *Presenter) LoadPoint(exec db.Executor, eventID int64) error {
+	pt, found, err := GetEventPoint(exec, eventID)
+	if err != nil {
+		return err
+	}
+	if !found {
+		return nil
+	}
+	p.Latitude = strconv.FormatFloat(pt.Latitude, 'f', -1, 64)
+	p.Longitude = strconv.FormatFloat(pt.Longitude, 'f', -1, 64)
+	return nil
 }
 
 // LoadRecurrence fills the presenter's recurrence fields from the DB.

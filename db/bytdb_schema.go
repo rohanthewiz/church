@@ -230,6 +230,17 @@ var bytdbTables = []tableDef{
 			)
 		)`,
 	}},
+	{name: "event_locations", ddl: []string{
+		`CREATE TABLE event_locations (
+			event_id bigint PRIMARY KEY REFERENCES events (id) ON DELETE CASCADE,
+			latitude double precision NOT NULL,
+			longitude double precision NOT NULL,
+			created_at timestamptz,
+			updated_at timestamptz,
+			CONSTRAINT chk_event_lat CHECK (latitude BETWEEN -90 AND 90),
+			CONSTRAINT chk_event_lng CHECK (longitude BETWEEN -180 AND 180)
+		)`,
+	}},
 	{name: "api_tokens", ddl: []string{
 		`CREATE TABLE api_tokens (
 			id bigserial PRIMARY KEY,

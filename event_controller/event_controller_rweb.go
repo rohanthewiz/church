@@ -80,6 +80,10 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 		RecurWeekday: strings.TrimSpace(ctx.Request().FormValue("recur_weekday")),
 		RecurWeek:    strings.TrimSpace(ctx.Request().FormValue("recur_week")),
 		RecurUntil:   strings.TrimSpace(ctx.Request().FormValue("recur_until")),
+		// The event's own point; parsed and validated in UpsertEvent, which is
+		// also where "one of the two is filled in" is refused.
+		Latitude:  strings.TrimSpace(ctx.Request().FormValue("event_latitude")),
+		Longitude: strings.TrimSpace(ctx.Request().FormValue("event_longitude")),
 	}
 	// set embedded fields etc
 	efs.Id = ctx.Request().FormValue("event_id")

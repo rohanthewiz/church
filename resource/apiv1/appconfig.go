@@ -1,6 +1,8 @@
 package apiv1
 
 import (
+	"strings"
+
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/rweb"
 )
@@ -30,6 +32,7 @@ type AppConfig struct {
 	Giving               GivingCfg   `json:"giving"`
 	Features             AppFeatures `json:"features"`
 	Location             Location    `json:"location"`
+	Maps                 Maps        `json:"maps"`
 	ServerVersion        string      `json:"server_version"`
 }
 
@@ -61,6 +64,61 @@ type Location struct {
 	// Aliases are the event_location strings that mean "at the church".
 	// Serializes as [] when unset, never null — same rule as giving_contacts.
 	Aliases []string `json:"aliases"`
+}
+
+// Maps is who renders the app's map images. See config.MobileMaps for the
+// values behind it and for why the key in it is public by construction.
+//
+// # Why the key ships in an unauthenticated payload
+//
+// Because it has to reach the phone, and because it is not a secret: a static
+// map is an image URL the phone fetches directly, so the key is inside every
+// such URL by construction. The same reasoning as StripePublishableKey,
+// reached from the other end — that one is designed to be public, this one is
+// unavoidably public. Both need their restrictions set at the provider.
+//
+// # Why an enabled boolean rather than "the key is non-empty"
+//
+// The same rule the Features flags follow: the client should not have to
+// re-derive a decision the server already made. "Has a provider AND a key"
+// is that decision, it has two parts, and a client that checked only one of
+// them would build a URL with an empty key — which Google answers with a
+// picture of an error tile.
+type Maps struct {
+	// Enabled is false when the site has no provider, no key, or a provider
+	// this server does not know. The other fields are then empty and the app
+	// draws no map at all.
+	Enabled bool `json:"enabled"`
+	// Provider is the service name the client switches on: "google", or ""
+	// when Enabled is false.
+	Provider string `json:"provider"`
+	// StaticKey is the key for the static-image endpoint, "" when disabled.
+	StaticKey string `json:"static_key"`
+}
+
+// knownMapProviders are the services the app can build a URL for. A provider
+// outside this set is a typo in config, and it is treated as "no maps" rather
+// than passed through: the client would switch on an unknown name and fall
+// through to no provider anyway, and doing it here means one place says so.
+var knownMapProviders = map[string]bool{"google": true}
+
+// resolveMaps turns the site's map configuration into the payload, or into an
+// explicit "no maps".
+//
+// Both halves are required, and neither is guessed from the other. A key with
+// no provider is a site that pasted a credential and stopped; a provider with
+// no key is a site that chose a service and has not signed up yet. Both are
+// half-finished, and a half-finished map is an empty grey frame on an event
+// screen — which is worse than no map, because a reader cannot tell it from a
+// failed network.
+func resolveMaps(opts *config.EnvConfig) Maps {
+	m := opts.Mobile.Maps
+	provider := strings.ToLower(strings.TrimSpace(m.Provider))
+	key := strings.TrimSpace(m.StaticKey)
+	if provider == "" || key == "" || !knownMapProviders[provider] {
+		return Maps{}
+	}
+	return Maps{Enabled: true, Provider: provider, StaticKey: key}
 }
 
 // ThemeColors gives the app real colors to theme with — the bare theme *name*
@@ -224,6 +282,7 @@ func APIAppConfigRWeb(ctx rweb.Context) error {
 			Currency:              currency,
 		},
 		Location: resolveLocation(opts),
+		Maps:     resolveMaps(opts),
 		Features: AppFeatures{
 			Giving:      opts.Stripe.PubKey != "" && opts.Stripe.PrivKey != "",
 			SermonAudio: opts.IDrive.Enabled,

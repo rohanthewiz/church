@@ -223,6 +223,9 @@ type EnvConfig struct {
 		// Location is where the church physically is, for the map the app
 		// draws on an event held there. Unset leaves the map off entirely.
 		Location MobileLocation `yaml:"location"`
+		// Maps is who renders those map images. Unset also leaves the map off
+		// entirely — a location with no provider has nothing to draw with.
+		Maps MobileMaps `yaml:"maps"`
 	} `yaml:"mobile"`
 	GivingContacts []string `yaml:"giving_contacts"` // typically used on the Giving form
 	Gmail          struct {
@@ -231,6 +234,42 @@ type EnvConfig struct {
 		Word     string   `yaml:"word"`
 		BCCs     []string `yaml:"bcc"`
 	} `yaml:"gmail"`
+}
+
+// MobileMaps is the service that renders the app's map images.
+//
+// # Why this is configuration and not a default
+//
+// Because there is no longer a keyless one to default to. The app's map widget
+// shipped pointed at staticmap.openstreetmap.de, the OpenStreetMap community's
+// static-image service, which has since been discontinued and whose host no
+// longer resolves — and every static-map service that still exists requires an
+// account. So a site that wants maps signs up for one, and a site that does
+// not gets no map row rather than a grey rectangle.
+//
+// # The key is public by construction
+//
+// A static map is an image URL the phone fetches directly, so the key travels
+// inside that URL and is visible to anyone who can read it — the same property
+// that makes Stripe's publishable key safe to ship here, arrived at the other
+// way round. It is not secret and it is not free: an unrestricted key is one
+// somebody else can spend.
+//
+// Restrict it in the Google Cloud console to the Maps Static API and to this
+// app's bundle ids before deploying it. That is the control; this file cannot
+// provide one.
+type MobileMaps struct {
+	// Provider names the service. "google" is the only one the app knows how
+	// to build a URL for; anything else (including "") means no maps.
+	//
+	// A name rather than a bare key so that a second provider is a value here
+	// and not a guess made from which key happens to be filled in.
+	Provider string `yaml:"provider"`
+
+	// StaticKey is the API key for the static-image endpoint. Empty means no
+	// maps whatever Provider says: a provider with no key renders nothing, and
+	// the app would rather show no map row than an empty frame.
+	StaticKey string `yaml:"static_key"`
 }
 
 // MobileLocation is the church's own point on a map, as the mobile app needs
