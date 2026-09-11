@@ -220,6 +220,9 @@ type EnvConfig struct {
 		GooglePayMerchantID   string  `yaml:"google_pay_merchant_id"`
 		CountryCode           string  `yaml:"country_code"` // ISO-3166, default "US"
 		Currency              string  `yaml:"currency"`     // ISO-4217, default "usd"
+		// Location is where the church physically is, for the map the app
+		// draws on an event held there. Unset leaves the map off entirely.
+		Location MobileLocation `yaml:"location"`
 	} `yaml:"mobile"`
 	GivingContacts []string `yaml:"giving_contacts"` // typically used on the Giving form
 	Gmail          struct {
@@ -228,6 +231,50 @@ type EnvConfig struct {
 		Word     string   `yaml:"word"`
 		BCCs     []string `yaml:"bcc"`
 	} `yaml:"gmail"`
+}
+
+// MobileLocation is the church's own point on a map, as the mobile app needs
+// it: a coordinate, a name to speak, and the event_location strings that mean
+// "here".
+//
+// # Why the coordinates are pointers
+//
+// Because zero is a place. Latitude 0 crosses Ecuador, Kenya and Indonesia;
+// longitude 0 crosses Ghana and, by definition, Greenwich. A float64 pair has
+// no third state to mean "nobody configured this", so the absence has to be
+// carried by something outside the number — and in YAML that is the pointer
+// being nil for a key that was never written.
+//
+// The distinction is load-bearing rather than pedantic: the app decides
+// whether to draw a map at all from it, and a sentinel of 0,0 would put every
+// unconfigured site's events in the Gulf of Guinea.
+//
+// Both coordinates are required together. One without the other is a
+// half-typed config, not a point, and is treated as unset.
+type MobileLocation struct {
+	Latitude  *float64 `yaml:"latitude"`
+	Longitude *float64 `yaml:"longitude"`
+
+	// Label is the place's spoken name — "Grace Chapel", "The Old Meeting
+	// House". It is what a screen reader announces for the map image, so it
+	// should read as a name and not as an address. Empty falls back to the
+	// site's own CopyrightOwner, which is the same string the app already
+	// shows as the church name.
+	Label string `yaml:"label"`
+
+	// Aliases are the event_location values that mean "at the church" —
+	// "Fellowship Hall", "Sanctuary", "Main Campus". An event whose location
+	// is one of these gets the map; anything else does not.
+	//
+	// A curated list rather than a guess, because the free-text location
+	// field holds both rooms inside the building and venues across town, and
+	// nothing about the string itself distinguishes them. The site's own name
+	// always counts as an alias without being listed.
+	//
+	// Matching is exact after trimming, lowercasing and collapsing internal
+	// whitespace — see the app's eventAtChurch, which is the one place the
+	// rule is applied.
+	Aliases []string `yaml:"aliases"`
 }
 
 type FTPConfig struct {

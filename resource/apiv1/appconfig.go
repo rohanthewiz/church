@@ -29,7 +29,38 @@ type AppConfig struct {
 	GivingContacts       []string    `json:"giving_contacts"`
 	Giving               GivingCfg   `json:"giving"`
 	Features             AppFeatures `json:"features"`
+	Location             Location    `json:"location"`
 	ServerVersion        string      `json:"server_version"`
+}
+
+// Location is where the church is, for the map the app draws on an event held
+// there. See config.MobileLocation for the values behind it.
+//
+// # Why there is a boolean rather than a null object
+//
+// Two reasons, and they pull the same way. The contract's rule is that every
+// key is present and non-null so the client maps it straight into a struct
+// with no optional fields (see the notes on AppConfig); and the thing the
+// client must decide — draw a map or not — cannot be read off the numbers,
+// because 0,0 is the Gulf of Guinea and not an absence. So the absence is
+// stated outright, once, by the server that knows it.
+//
+// A client that ignored Configured and rendered the coordinates anyway would
+// put an unconfigured site's events in the Atlantic, which is exactly the
+// failure the flag exists to make impossible to reach by accident.
+type Location struct {
+	// Configured is false when the site has set no coordinates, or set only
+	// one of the two, or set a pair outside the valid range. The other fields
+	// are then zero and must not be used.
+	Configured bool    `json:"configured"`
+	Latitude   float64 `json:"latitude"`
+	Longitude  float64 `json:"longitude"`
+	// Label is the place's spoken name, falling back to the site's own name
+	// so a configured location always has something to be called.
+	Label string `json:"label"`
+	// Aliases are the event_location strings that mean "at the church".
+	// Serializes as [] when unset, never null — same rule as giving_contacts.
+	Aliases []string `json:"aliases"`
 }
 
 // ThemeColors gives the app real colors to theme with — the bare theme *name*
@@ -106,6 +137,52 @@ type AppFeatures struct {
 	PrayerWall bool `json:"prayer_wall"`
 }
 
+// resolveLocation turns the site's configured point into the payload, or into
+// an explicit "not configured".
+//
+// # The range check is a typo check, not a projection
+//
+// A latitude of 300 is a mistyped 30, not a place, and there is nothing useful
+// to do with it: clamping would silently move the church to the pole and
+// serving it through would draw somebody else's map. So an out-of-range pair
+// is reported the same way an absent one is — the site looks unconfigured,
+// which is what it effectively is.
+//
+// Longitude is range-checked rather than wrapped for the same reason, even
+// though wrapping is the mathematically correct operation on a circle and is
+// what the app's map widget does with the value it finally gets. Wrapping is
+// right for a number that arrived from a computation; refusing is right for a
+// number somebody typed into a config file.
+func resolveLocation(opts *config.EnvConfig) Location {
+	loc := opts.Mobile.Location
+
+	aliases := loc.Aliases
+	if aliases == nil {
+		aliases = []string{}
+	}
+
+	if loc.Latitude == nil || loc.Longitude == nil {
+		return Location{Aliases: aliases}
+	}
+	lat, lng := *loc.Latitude, *loc.Longitude
+	if lat < -90 || lat > 90 || lng < -180 || lng > 180 {
+		return Location{Aliases: aliases}
+	}
+
+	label := loc.Label
+	if label == "" {
+		label = opts.CopyrightOwner
+	}
+
+	return Location{
+		Configured: true,
+		Latitude:   lat,
+		Longitude:  lng,
+		Label:      label,
+		Aliases:    aliases,
+	}
+}
+
 // APIAppConfigRWeb handles GET /api/v1/app-config.
 // Public and unauthenticated by design: the app needs this before any login,
 // and nothing in it is secret.
@@ -146,6 +223,7 @@ func APIAppConfigRWeb(ctx rweb.Context) error {
 			CountryCode:           country,
 			Currency:              currency,
 		},
+		Location: resolveLocation(opts),
 		Features: AppFeatures{
 			Giving:      opts.Stripe.PubKey != "" && opts.Stripe.PrivKey != "",
 			SermonAudio: opts.IDrive.Enabled,
