@@ -27,7 +27,18 @@ func AuthBootstrap() {
 	}
 	if !exists {
 		SuperToken = auth.RandomKey()
-		os.WriteFile("token.txt", []byte(SuperToken), os.ModePerm)
+		// Owner read/write only: whoever holds this token can create the
+		// superadmin. os.ModePerm (0777, minus umask) left it world-readable and
+		// executable. The explicit Chmod is not redundant: WriteFile applies perm
+		// only when it creates the file, and a token.txt from an earlier boot keeps
+		// its old mode through the overwrite.
+		if err := os.WriteFile(tokenFile, []byte(SuperToken), 0600); err != nil {
+			logger.LogErr(err, "Error writing superadmin token file", "file", tokenFile)
+			return
+		}
+		if err := os.Chmod(tokenFile, 0600); err != nil {
+			logger.LogErr(err, "Error restricting superadmin token file permissions", "file", tokenFile)
+		}
 		logger.Log("info", "superadmin token created in <project root>/"+tokenFile)
 	}
 }

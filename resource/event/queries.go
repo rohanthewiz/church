@@ -3,7 +3,6 @@ package event
 import (
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
@@ -46,6 +45,11 @@ func QueryEvents(exec db.Executor, condition, order string, limit int64, offset 
 
 // Given a Presenter, update or insert
 func (p Presenter) UpsertEvent(exec db.Executor) error {
+	// Refuse bad input before the first write; see Validate for why the order
+	// matters when the writes below span three tables without a transaction.
+	if err := p.Validate(); err != nil {
+		return err
+	}
 	evt, create, err := modelFromPresenter(exec, p)
 	if err != nil {
 		return serr.Wrap(err)
@@ -95,20 +99,14 @@ func (p Presenter) upsertEventPoint(exec db.Executor, eventID int64) error {
 	if lat == "" && lng == "" {
 		return DeleteEventPoint(exec, eventID)
 	}
-	if lat == "" || lng == "" {
-		return serr.New("an event location needs both a latitude and a longitude",
-			"latitude", lat, "longitude", lng)
+	// Parsing and the both-or-neither rule live in parsePoint so Validate can
+	// apply them before any write; here the result is only re-derived.
+	pt, _, err := p.parsePoint()
+	if err != nil {
+		return err
 	}
-
-	pt := Point{EventID: eventID}
-	var err error
-	if pt.Latitude, err = strconv.ParseFloat(lat, 64); err != nil {
-		return serr.Wrap(err, "latitude must be a number", "latitude", lat)
-	}
-	if pt.Longitude, err = strconv.ParseFloat(lng, 64); err != nil {
-		return serr.Wrap(err, "longitude must be a number", "longitude", lng)
-	}
-	return UpsertEventPoint(exec, pt) // validates the range
+	pt.EventID = eventID
+	return UpsertEventPoint(exec, pt) // validates the range again, at the DB boundary
 }
 
 // upsertRecurrenceRule translates the presenter's form-string recurrence
@@ -119,27 +117,13 @@ func (p Presenter) upsertRecurrenceRule(exec db.Executor, eventID int64) error {
 		return DeleteRecurrence(exec, eventID)
 	}
 
-	weekday, err := strconv.Atoi(p.RecurWeekday)
+	// Parsing lives in parseRecurrence so Validate can run it before any write
+	rec, _, err := p.parseRecurrence()
 	if err != nil {
-		return serr.Wrap(err, "recurrence weekday must be numeric", "weekday", p.RecurWeekday)
+		return err
 	}
-	rec := Recurrence{
-		EventID: eventID,
-		Freq:    p.RecurFreq,
-		Weekday: time.Weekday(weekday),
-	}
-	if p.RecurFreq == RecurMonthly {
-		// The form always submits a week value; it is only meaningful for monthly
-		if rec.Week, err = strconv.Atoi(p.RecurWeek); err != nil {
-			return serr.Wrap(err, "recurrence week must be numeric", "week", p.RecurWeek)
-		}
-	}
-	if p.RecurUntil != "" {
-		if rec.Until, err = time.Parse("2006-01-02", p.RecurUntil); err != nil {
-			return serr.Wrap(err, "recurrence until must be YYYY-MM-DD", "until", p.RecurUntil)
-		}
-	}
-	return UpsertRecurrence(exec, rec) // validates the assembled rule
+	rec.EventID = eventID
+	return UpsertRecurrence(exec, rec) // validates the assembled rule again, at the DB boundary
 }
 
 func DeleteEventById(exec db.Executor, id string) error {

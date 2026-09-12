@@ -3,7 +3,6 @@ package menu_controller
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -71,13 +70,21 @@ func EditMenuRWeb(ctx rweb.Context) error {
 	return ctx.WriteHTML(buf.String())
 }
 
+// UpsertMenuRWeb saves the admin menu form. Refusals before the write (expired
+// token, missing or malformed items JSON) flash back to the form; a failed
+// write flashes on the menus list. Neither is a bare 500 page.
 func UpsertMenuRWeb(ctx rweb.Context) error {
-	if !app.VerifyFormToken(ctx.Request().FormValue("csrf")) { // Check that this token is present and valid in the in-process kvstore
-		err := errors.New("Your form is expired. Go back to the form, refresh the page and try again")
-		return err
-	}
 	mnu := menu.MenuDef{}
 	mnu.Id = strings.TrimSpace(ctx.Request().FormValue("menu_id"))
+	formURL := "/admin/menus/new"
+	if mnu.Id != "" && mnu.Id != "0" {
+		formURL = "/admin/menus/edit/" + mnu.Id
+	}
+
+	if !app.VerifyFormToken(ctx.Request().FormValue("csrf")) { // Check that this token is present and valid in the in-process kvstore
+		return app.RedirectRWebWarn(ctx, formURL,
+			"Your form has expired and was not saved. Please refresh the form and try again.")
+	}
 	mnu.Title = strings.TrimSpace(ctx.Request().FormValue("menu_title"))
 	// slugs are updated on the backend only //mnu.Slug = strings.TrimSpace(ctx.Request().FormValue("menu_slug"))
 	if ctx.Request().FormValue("published") == "on" {
@@ -91,14 +98,20 @@ func UpsertMenuRWeb(ctx rweb.Context) error {
 	// We are only interested in the Items portions of that though
 	formJson := strings.TrimSpace(ctx.Request().FormValue("items"))
 	logger.Debug("Form data", "json", formJson)
+	// "items" is filled by the form's preSubmit() script, so an empty value
+	// means the script did not run (a JS error, or a post not made from the
+	// form), not that the admin wants an empty menu.
 	if formJson == "" {
-		err := errors.New("No items received for menu")
-		return serr.Wrap(err)
+		logger.LogErr(serr.New("No items received for menu"), "menu_id", mnu.Id)
+		return app.RedirectRWebError(ctx, formURL,
+			"No menu items were received, so the menu was not saved. Please reload the form and try again.")
 	}
 	form := menu.FormMenuObject{}
 	err := json.Unmarshal([]byte(formJson), &form)
 	if err != nil {
-		return serr.Wrap(err, "error unmarshaling menu items")
+		logger.LogErr(serr.Wrap(err, "error unmarshaling menu items"), "menu_id", mnu.Id)
+		return app.RedirectRWebError(ctx, formURL,
+			"The menu items could not be read, so the menu was not saved. Please reload the form and try again.")
 	}
 	for _, item := range form.Items {
 		menuItemDef := menu.MenuItemDef{
@@ -120,12 +133,12 @@ func UpsertMenuRWeb(ctx rweb.Context) error {
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
-		return serr.Wrap(err)
+		return app.RedirectRWebError(ctx, formURL, "The menu could not be saved: the database is unavailable.")
 	}
 	err = menu.UpsertMenu(dbH, mnu)
 	if err != nil {
-		logger.LogErr(serr.Wrap(err, "Error in event upsert"))
-		return serr.Wrap(err)
+		logger.LogErr(serr.Wrap(err, "Error in menu upsert"))
+		return app.RedirectRWebError(ctx, "/admin/menus", "Error saving the menu. Please check it below and try again.")
 	}
 	msg := "Created"
 	if mnu.Id != "0" && mnu.Id != "" {

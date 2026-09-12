@@ -2,7 +2,6 @@ package page_controller
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -116,13 +115,21 @@ func EditPageRWeb(ctx rweb.Context) error {
 	return ctx.WriteHTML(buf.String())
 }
 
+// UpsertPageRWeb saves the admin page form. Refusals before the write (expired
+// token, missing modules JSON) flash back to the form; a failed write flashes
+// on the pages list. Neither is a bare 500 page.
 func UpsertPageRWeb(ctx rweb.Context) error {
-	if !app.VerifyFormToken(ctx.Request().FormValue("csrf")) { // Check that this token is present and valid in the in-process kvstore
-		err := errors.New("Your form is expired. Go back to the form, refresh the page and try again")
-		return err
-	}
 	pg := page.Presenter{}
 	pg.Id = strings.TrimSpace(ctx.Request().FormValue("page_id"))
+	formURL := "/admin/pages/new"
+	if pg.Id != "" && pg.Id != "0" {
+		formURL = "/admin/pages/edit/" + pg.Id
+	}
+
+	if !app.VerifyFormToken(ctx.Request().FormValue("csrf")) { // Check that this token is present and valid in the in-process kvstore
+		return app.RedirectRWebWarn(ctx, formURL,
+			"Your form has expired and was not saved. Please refresh the form and try again.")
+	}
 	pg.Title = strings.TrimSpace(ctx.Request().FormValue("page_title"))
 	pg.Slug = strings.TrimSpace(ctx.Request().FormValue("page_slug"))
 	pg.AvailablePositions = stringops.StringSplitAndTrim(ctx.Request().FormValue("available_positions"), ",")
@@ -141,9 +148,12 @@ func UpsertPageRWeb(ctx rweb.Context) error {
 	// We are only interested in the Modules portions of that though
 	formJson := strings.TrimSpace(ctx.Request().FormValue("modules"))
 	logger.Log("Debug", "Data from form", "json", formJson)
+	// "modules" is filled by the form's preSubmit() script; empty means the
+	// script did not run, not that the admin wants a page with no modules.
 	if formJson == "" {
-		err := errors.New("No modules received for page")
-		return serr.Wrap(err)
+		logger.LogErr(serr.New("No modules received for page"), "page_id", pg.Id)
+		return app.RedirectRWebError(ctx, formURL,
+			"No page modules were received, so the page was not saved. Please reload the form and try again.")
 	}
 	pg.Modules = page.ModulePresentersFromJson(formJson)
 
@@ -157,12 +167,12 @@ func UpsertPageRWeb(ctx rweb.Context) error {
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
-		return err
+		return app.RedirectRWebError(ctx, formURL, "The page could not be saved: the database is unavailable.")
 	}
 	pgUrl, err := page.UpsertPage(dbH, pg)
 	if err != nil {
-		logger.LogErr(err, "Error in event upsert", "page presenter", fmt.Sprintf("%#v", pg))
-		return err
+		logger.LogErr(err, "Error in page upsert", "page presenter", fmt.Sprintf("%#v", pg))
+		return app.RedirectRWebError(ctx, "/admin/pages", "Error saving the page. Please check it below and try again.")
 	}
 
 	msg := "Created"

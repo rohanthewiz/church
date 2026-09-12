@@ -1,6 +1,8 @@
 package context
 
 import (
+	"net/url"
+
 	"github.com/rohanthewiz/church/resource/session"
 	"github.com/rohanthewiz/rweb"
 	"github.com/rohanthewiz/serr"
@@ -59,7 +61,16 @@ func SetFormReferrerRWeb(ctx rweb.Context) error {
 		return serr.Wrap(err, "unable to get session")
 	}
 	
-	sess.FormReferrer = ctx.Request().Header("Referer")
+	// A form whose referrer is the form itself is a reload, or the redirect
+	// back after a refused save (the browser keeps the POSTing form as Referer
+	// across the 303). Recording that would make the next successful save
+	// "return" to the form instead of to the list the admin came from, so the
+	// earlier referrer is kept.
+	referer := ctx.Request().Header("Referer")
+	if u, err := url.Parse(referer); err == nil && referer != "" && u.Path == ctx.Request().Path() {
+		return nil
+	}
+	sess.FormReferrer = referer
 	return sess.Save(sess.Key)
 }
 

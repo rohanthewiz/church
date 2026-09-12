@@ -1,7 +1,6 @@
 package event_controller
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
@@ -58,12 +57,32 @@ func EditEventRWeb(ctx rweb.Context) error {
 	return ctx.WriteHTML(string(base.RenderPageSingleRWeb(pg, ctx)))
 }
 
+// UpsertEventRWeb saves the admin event form.
+//
+// Failures come back to the admin as a flash, never a bare 500. Where they land
+// depends on what is known about the DB state:
+//
+//	expired token / refused input ──► the form again   (nothing was written)
+//	server fault                  ──► the events list  (a partial write is possible)
+//
+// Refused input is safe to send back to the form because event.Validate runs
+// before the first write. A server fault may arrive after the events row was
+// inserted (recurrence and location rows follow it, untransacted), so returning
+// to the "new" form would invite a duplicate; the list shows what exists.
+// The redirect re-renders the form from the DB, so typed-but-unsaved values are
+// not carried back.
 func UpsertEventRWeb(ctx rweb.Context) error {
+	id := strings.TrimSpace(ctx.Request().FormValue("event_id"))
+	formURL := "/admin/events/new"
+	if id != "" && id != "0" {
+		formURL = "/admin/events/edit/" + id
+	}
+
 	csrf := ctx.Request().FormValue("csrf")
 	// At the action func (example UpsertEvent), check that this token is present and valid in the in-process kvstore
 	if !app.VerifyFormToken(csrf) {
-		err := errors.New("Your form is expired. Go back to the form, refresh the page and try again")
-		return err
+		return app.RedirectRWebWarn(ctx, formURL,
+			"Your form has expired and was not saved. Please refresh the form and try again.")
 	}
 	// apparently embedded fields cannot be set immediately in a literal struct
 	// we'll set those after efs is created
@@ -105,12 +124,17 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
-		return err
+		return app.RedirectRWebError(ctx, formURL, "The event could not be saved: the database is unavailable.")
 	}
 	err = efs.UpsertEvent(dbH)
 	if err != nil {
+		if msg, isInput := event.UserMessage(err); isInput {
+			// The admin's mistake, not ours: no error log, just the reason
+			return app.RedirectRWebError(ctx, formURL, msg+". The event was not saved.")
+		}
 		logger.LogErr(err, "Error in event upsert", "event_presenter", fmt.Sprintf("%#v", efs))
-		return err
+		return app.RedirectRWebError(ctx, "/admin/events",
+			"Error saving the event. It may be partly saved; check it below before trying again.")
 	}
 	msg := "Created"
 	if efs.Id != "0" && efs.Id != "" {

@@ -26,10 +26,14 @@ func init() {
 	for scanner.Scan() { // splits on lines by default
 		line := scanner.Text(); count++
 		trimedLine := strings.TrimSpace(line)
-		if count < 50 { fmt.Printf("'%s',", trimedLine) }
+		// The seeds are secret input to RandomKey (session keys, the superadmin
+		// bootstrap token), so none of them are echoed. Printing even a prefix put
+		// them in stdout on every boot, which in k8s means pod logs and whatever
+		// log shipping sits behind them. The count alone is enough to confirm the
+		// file loaded.
 		randStrings = append(randStrings, trimedLine)
 	}
-	fmt.Printf(" ...\n%d seeds read from random seeds file\n", count)
+	fmt.Printf("%d seeds read from random seeds file\n", count)
 	if err := scanner.Err(); err != nil {
 		log.Fatal("Error when reading random seeds file")
 	}
