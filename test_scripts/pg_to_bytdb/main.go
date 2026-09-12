@@ -33,6 +33,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/rohanthewiz/church/db"
@@ -140,6 +141,18 @@ func copyTable(src, dst *sql.DB, table string) (n int64, copied bool, err error)
 	if err != nil {
 		return 0, false, serr.Wrap(err, "error reading source columns")
 	}
+	// lib/pq scans a Postgres `date` into time.Time, and re-sending that
+	// time.Time encodes a full RFC3339 timestamp, which bytdb's date parser
+	// rejects ("invalid input syntax for type date" on event_recurrences.until).
+	// Flag date columns so their values go back out as plain YYYY-MM-DD.
+	colTypes, err := rows.ColumnTypes()
+	if err != nil {
+		return 0, false, serr.Wrap(err, "error reading source column types")
+	}
+	isDate := make([]bool, len(colTypes))
+	for i, ct := range colTypes {
+		isDate[i] = strings.EqualFold(ct.DatabaseTypeName(), "DATE")
+	}
 	placeholders := make([]string, len(cols))
 	for i := range cols {
 		placeholders[i] = fmt.Sprintf("$%d", i+1)
@@ -181,6 +194,8 @@ func copyTable(src, dst *sql.DB, table string) (n int64, copied bool, err error)
 			// through untouched.
 			if b, ok := v.([]byte); ok {
 				args[i] = string(b)
+			} else if t, ok := v.(time.Time); ok && isDate[i] {
+				args[i] = t.Format("2006-01-02")
 			} else {
 				args[i] = v
 			}
