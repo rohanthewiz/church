@@ -14,6 +14,12 @@ func envOverride(envCfg *EnvConfig) *EnvConfig {
 	if logFormat := strings.TrimSpace(os.Getenv("LOG_FORMAT")); len(logFormat) > 0 {
 		envCfg.Log.Format = logFormat
 	}
+	// Site time zone. The name is TIME_ZONE, not TZ, on purpose: TZ is read
+	// by the Go runtime (and libc) before config loads, and an unset time_zone
+	// must keep honoring it. Validated in InitConfig (applyTimeZone), not here.
+	if tz := strings.TrimSpace(os.Getenv("TIME_ZONE")); len(tz) > 0 {
+		envCfg.TimeZone = tz
+	}
 	// Listener shape. These two exist for containerized deploys, where the
 	// pod spec — not the config file — is the source of truth for which port
 	// the process binds and whether it terminates TLS itself:

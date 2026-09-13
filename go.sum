@@ -114,6 +114,8 @@ github.com/rohanthewiz/bytdb/pgwire v0.8.0 h1:cH4fNeb+9i9WPWVusq+ctG2vKabS6iYs09
 github.com/rohanthewiz/bytdb/pgwire v0.8.0/go.mod h1:6biDrQgYFuZsezfOSbqyo8wWI+eOyufG9nBCl92gUE0=
 github.com/rohanthewiz/element v0.5.6 h1:ngtHqe7asrJavAotQVNBK2veXgnGEIfcCzm7AYVJFHM=
 github.com/rohanthewiz/element v0.5.6/go.mod h1:YZnKqWX2lSsR+zi06x3vhViYVoOSx8xHQjUMTmM/FLo=
+github.com/rohanthewiz/element v0.7.0 h1:vLPrti03a7EevsBVeM8TAWsMLmg8UM8owXwe5Vf1rI0=
+github.com/rohanthewiz/element v0.7.0/go.mod h1:YZnKqWX2lSsR+zi06x3vhViYVoOSx8xHQjUMTmM/FLo=
 github.com/rohanthewiz/gmail_send v1.0.0 h1:GxgZf6vF/iozP2YhYg3sgSWJCl2lrc/XNnhOpSRpUuY=
 github.com/rohanthewiz/gmail_send v1.0.0/go.mod h1:p8Gj8BFnaR72GK0hy3q4nuj4v2lkvrubesBeMaQu9C0=
 github.com/rohanthewiz/logger v1.3.0 h1:cJoocqUvv5wsHcjlW7wupMTruyBCUHuu8J380u5fyFs=

@@ -17,7 +17,7 @@ require (
 	github.com/pkg/errors v0.8.0
 	github.com/rohanthewiz/bytdb v0.8.0
 	github.com/rohanthewiz/bytdb/pgwire v0.8.0
-	github.com/rohanthewiz/element v0.5.6
+	github.com/rohanthewiz/element v0.7.0
 	github.com/rohanthewiz/gmail_send v1.0.0
 	github.com/rohanthewiz/logger v1.3.0
 	github.com/rohanthewiz/roftp v0.2.0

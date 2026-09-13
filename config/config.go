@@ -7,6 +7,12 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
+	// Embedded zoneinfo (~450KB). time.LoadLocation reads the host's zoneinfo
+	// first and only falls back to this copy. A minimal image without tzdata
+	// would otherwise fail to boot once time_zone is set. The Docker image
+	// installs tzdata anyway; this covers scratch images and bare hosts.
+	_ "time/tzdata"
 
 	"gopkg.in/yaml.v2"
 )
@@ -51,7 +57,14 @@ type EnvConfig struct {
 	BannerExt       string `yaml:"banner_ext"`
 	CopyrightOwner  string `yaml:"copyright_owner"`
 	AppTimeout      int64  `yaml:"app_timeout"` // App max time in minutes
-	Server          struct {
+	// TimeZone is the site's IANA zone name (e.g. "America/Chicago"). The
+	// church keeps local time: a Sunday service is at 10:00 where the church
+	// is, and the treasurer's months end at local midnight. Empty keeps the
+	// process zone (the TZ env var, else the host's zone). Set it anywhere the
+	// process zone is not the church's, notably k8s pods, which run in UTC.
+	// Override with the TIME_ZONE env var. See applyTimeZone.
+	TimeZone string `yaml:"time_zone"`
+	Server   struct {
 		Domain   string `yaml:"domain"`
 		Port     string `yaml:"port"`
 		UseTLS   bool   `yaml:"use_tls"`
@@ -353,7 +366,46 @@ func InitConfig(version, commitHash, buildStamp string) {
 	}
 	env_cfg := getOptionsForEnvironment(configData)
 	env_cfg = envOverride(env_cfg) // Override some settings with environment variables
+
+	// A bad zone name is fatal, like the rest of config loading. The
+	// alternative, falling back to UTC, would silently put evening events and
+	// year-end gifts on the wrong day.
+	if err = applyTimeZone(env_cfg.TimeZone); err != nil {
+		log.Fatal("Error - invalid time_zone ", err.Error(),
+			" - tip: use an IANA name such as 'America/Chicago' (see `ls /usr/share/zoneinfo`)")
+	}
 	Options = env_cfg
+}
+
+// applyTimeZone makes the named IANA zone the process-wide local zone by
+// replacing time.Local. An empty name leaves time.Local untouched.
+//
+// Why replace time.Local rather than carry a *time.Location through the code:
+// everything that already means "church-local" gets there through time.Local.
+//
+//	time.Now()                        → stamped with time.Local
+//	giving report month/year cuts     → now.Location()          (time.Local)
+//	event / sermon presenters         → time.LoadLocation("Local") (returns time.Local)
+//	time.Date(..., time.Local)        → smoke scripts, recurrence anchors
+//
+// A threaded location would mean changing each of those call sites and every
+// future one; one assignment at startup covers them all, and is equivalent to
+// the TZ env var but lives in the site's config. It is safe here because
+// InitConfig runs from the site's init(), before any goroutine reads the clock.
+// Times created earlier keep their old zone pointer, which is why this must
+// not be called after startup.
+func applyTimeZone(name string) error {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return nil
+	}
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		return err
+	}
+	time.Local = loc
+	log.Println("config.TimeZone is", loc.String())
+	return nil
 }
 
 // cfg holds the unmarshalled data of our Options.yml file
