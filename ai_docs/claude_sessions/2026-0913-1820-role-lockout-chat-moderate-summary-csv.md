@@ -20,15 +20,34 @@ The user asked for these items from the previous `## Next`:
 | 21 | Fix docs that call bytdb the default |
 | 30 | Duplicate article/sermon title error |
 
-All are done. Everything is committed and pushed except church_mobile. Nothing
-was checked in a browser.
+All are done. Nothing was checked in a browser.
 
-| Repo | Branch | Commit |
-|---|---|---|
-| church | `master` | `de76881` Role-manager lockout guard, SuperAdmin-only /debug, chat.moderate permission, giving summary CSV; roles smoke becomes a Go test |
-| ccswm | `master` | `3d611ee` Re-pin church to de76881 |
-| cema | `feature/site-themes` | `9c40ebe` Re-pin church to de76881 so GOWORK=off builds work |
-| church_mobile | `roh/use-grmob` | **uncommitted**: `lib/src/models/user.dart`, new `test/user_model_test.dart` |
+| Repo | Branch | Commit | Pushed |
+|---|---|---|---|
+| church | `master` | `de76881` Role-manager lockout guard, SuperAdmin-only /debug, chat.moderate permission, giving summary CSV; roles smoke becomes a Go test | yes |
+| ccswm | `master` | `3d611ee` Re-pin church to de76881 | yes |
+| cema | `feature/site-themes` | `9c40ebe` Re-pin church to de76881 so GOWORK=off builds work | yes |
+| church_mobile | `roh/use-grmob` | `8a71947` Moderation controls follow the server's can_moderate, with the role rule as fallback | yes |
+
+## After the session doc was first saved
+
+The user asked for four more steps:
+
+- **church_mobile:** committed the `can_moderate` change (`8a71947`) on
+  `roh/use-grmob`.
+  - Fast-forwarded local `master` to that branch. `master` had no commits of
+    its own, so this brought in 26 commits.
+  - Pushed `master` (`745886c..8a71947`). The branch itself was pushed too.
+- **church_mobile:** discarded the stray CocoaPods output: the `#include?`
+  lines in `ios/Flutter/{Debug,Release}.xcconfig` and the untracked
+  `ios/Podfile`. The repo is clean and in sync with `origin/master`.
+- **cema:** fast-forwarded local `master` to `feature/site-themes`
+  (`9c40ebe`), bringing in 8 branch commits.
+  - `GOWORK=off go build` passes on `master`.
+  - **Not pushed.** Local `master` is 9 ahead of `origin/master`: the 8 branch
+    commits plus `50b3046` (Stripe sample-config doc), which was already
+    unpushed before the merge.
+  - The working copy is now on `master`.
 
 ## Behaviour
 
@@ -234,9 +253,10 @@ pre-check was added.
   `ServeRWeb` that called a nonexistent `registerPublicRoutes`. It was repaired
   by removing the inserted block and appending `RegisterDebugRoutes` at the end
   of the file. Re-read `router_rweb.go` around line 110 if it ever looks odd.
-- **church_mobile has `ios/Flutter/{Debug,Release}.xcconfig` changes and an
-  untracked `ios/Podfile`.** They were not present at the start and probably
-  came from `flutter test` / pub tooling. They were left untouched.
+- **Flutter tooling can leave CocoaPods output in church_mobile.** After
+  `flutter test` / pub get, `ios/Flutter/{Debug,Release}.xcconfig` gained
+  `#include?` Pods lines and an untracked `ios/Podfile` appeared. This session
+  discarded them; expect them again after future runs.
 - **zsh globbing:** `grep --include=*.go` fails with "no matches found". Quote
   it as `--include='*.go'`.
 - **No `timeout` binary on macOS** in this shell.
@@ -245,12 +265,9 @@ pre-check was added.
 
 ## Next
 
-1. **New:** commit the church_mobile `can_moderate` change on its branch:
-   - `lib/src/models/user.dart`
-   - `test/user_model_test.dart`
-
-   Then decide what to do with the `ios/Flutter/*.xcconfig` diffs and
-   `ios/Podfile`: keep them, or `git checkout` them if they are tooling noise.
+1. **New:** push cema `master` (`git push origin master` in cema; 9 commits
+   ahead, including the church re-pin, site themes and the `pg:` fix). Decide
+   whether `feature/site-themes` can then be deleted.
 2. **New:** extend `test_scripts/roles_pg_check` to run `LocksOutRoleManagers`
    and `CanModerate` on local Postgres, still rolled back.
 3. **New:** browser click-through of this session's UI:
@@ -266,8 +283,8 @@ pre-check was added.
 5. **New:** mobile moderation UI for a permission-only moderator. Check on a
    device or emulator that chat pin/delete and prayer answered controls appear
    once the server sends `can_moderate: true`.
-6. **Recurring:** after each church push a site depends on, re-pin ccswm, and
-   cema on the branch to be merged. Otherwise their `GOWORK=off` builds lag.
+6. **Recurring:** after each church push a site depends on, re-pin ccswm and
+   cema (now on cema `master`). Otherwise their `GOWORK=off` builds lag.
    Docker and workspace builds are unaffected.
 7. There is no CI in church. Add one that runs `go test ./...` (which now
    includes the admin routes smoke test) and a `GOWORK=off go build` of each
@@ -304,9 +321,8 @@ pre-check was added.
 16. Add "+" / delete visibility by permission to the other admin list modules
     (articles, sermons, events, pages, menus). Handlers already refuse; this is
     UI polish.
-17. cema's `pg:` fix (`12049cf`), element bump, `time_zone` sample, and now the
-    church re-pin (`9c40ebe`) are only on `feature/site-themes`. Merge to cema's
-    main branch before building cema from there.
+17. cema's `feature/site-themes` is now merged into local `master` (see item
+    1 for the push). Build cema from `master` from here on.
 18. Boot cema locally with no `db.type` against Postgres. Confirm there is no
     `bytdb serving` line and that pages render (recipe in `2026-0912-1718-…`,
     minus `DB_TYPE=postgres`).
