@@ -110,7 +110,7 @@ spec:
             - {name: USE_TLS, value: "false"}
             # Env overrides (config/env_overrides.go) beat options.yml, so the
             # DB location is pinned here where the volume mount is defined,
-            # keeping the two in one file. bytdb is already the default type.
+            # keeping the two in one file. DB_TYPE is required: Postgres is the default.
             - {name: DB_TYPE, value: bytdb}
             - {name: DB_FILE, value: /data/church.db}
             # Site's key prefix in the shared backup bucket (→ ccswm/<ts>/church.db)

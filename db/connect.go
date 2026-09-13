@@ -35,9 +35,10 @@ var bytdbEngine *bytdb.Engine
 var bytdbServer *pgwire.Server
 var bytdbAddr string // actual listen address (resolves the :0 ephemeral port)
 
-// BytDB is the default backend: embedded and WAL-durable, it lets each
-// site deploy as one self-contained binary (single pod + block-storage
-// volume). Postgres remains a supported fallback for existing installs.
+// Postgres is the default backend (an empty DBType resolves to it).
+// BytDB — embedded and WAL-durable, one self-contained binary per site
+// (single pod + block-storage volume) — must be selected explicitly;
+// the k8s manifests pin it with DB_TYPE=bytdb.
 var DBTypes = dbTypes{"postgres", "mysql", "bytdb"}
 
 type dbTypes struct {
@@ -61,6 +62,12 @@ type DBOpts struct {
 }
 
 func InitDB(opts DBOpts) error {
+	// Resolve the default once, up front, so every later check (openDB,
+	// retries from Db()) sees a concrete driver name — sql.Open("") would
+	// otherwise fail with an unhelpful "unknown driver" error.
+	if opts.DBType == "" {
+		opts.DBType = DBTypes.Postgres
+	}
 	dbOpts = &opts
 	err := openDB()
 	if err != nil {
@@ -107,9 +114,9 @@ func openDB() error {
 	if dbOpts == nil {
 		return serr.Wrap(errors.New("Please call InitDB before using database"))
 	}
-	// Empty DBType intentionally falls through to bytdb — the default backend.
-	// Selecting Postgres (or MySQL) must be explicit in config.
-	if dbOpts.DBType == "" || dbOpts.DBType == DBTypes.BytDB {
+	// Only an explicit bytdb selection takes the embedded path. An empty
+	// DBType was already resolved to Postgres (the default) in InitDB.
+	if dbOpts.DBType == DBTypes.BytDB {
 		return openBytDB()
 	}
 	opts := fmt.Sprintf("host=%s dbname=%s user=%s password=%s port=%s sslmode=disable",

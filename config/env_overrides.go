@@ -44,7 +44,7 @@ func envOverride(envCfg *EnvConfig) *EnvConfig {
 		}
 	}
 	// DB backend selection — env overrides let a k8s manifest flip a site
-	// between bytdb and the Postgres fallback without editing options.yml.
+	// between Postgres (the default) and bytdb without editing options.yml.
 	if dbType := strings.TrimSpace(os.Getenv("DB_TYPE")); len(dbType) > 0 {
 		envCfg.DB.Type = dbType
 	}

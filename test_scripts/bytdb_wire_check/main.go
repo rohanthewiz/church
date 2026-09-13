@@ -63,10 +63,11 @@ func main() {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	// Boot the same path a site binary takes: empty DBType selects bytdb,
-	// InitDB bootstraps the consolidated schema and starts pgwire.
-	err = db.InitDB(db.DBOpts{File: filepath.Join(tmpDir, "church.db")})
-	check("InitDB (bytdb default, schema bootstrap, pgwire up)", err)
+	// Boot the same path a bytdb site binary takes: DBType must name bytdb
+	// explicitly (empty now means Postgres), InitDB bootstraps the
+	// consolidated schema and starts pgwire.
+	err = db.InitDB(db.DBOpts{DBType: db.DBTypes.BytDB, File: filepath.Join(tmpDir, "church.db")})
+	check("InitDB (bytdb, schema bootstrap, pgwire up)", err)
 	if err != nil {
 		os.Exit(1)
 	}
