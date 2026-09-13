@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rohanthewiz/church"
 	"github.com/rohanthewiz/church/app"
@@ -214,6 +215,54 @@ func main() {
 	lastBody = string(r.Body())
 	expect("Administrator reads giving records", r.Status() == 200 &&
 		strings.Contains(string(r.Body()), "Giving Records"), fmt.Sprintf("status %d", r.Status()))
+
+	// ---- Giving by month, year navigation, CSV export ----
+	now := time.Now()
+	for i, g := range []struct {
+		at    time.Time
+		name  string
+		cents int64
+	}{
+		{time.Date(now.Year(), now.Month(), 1, 10, 0, 0, 0, time.Local), "<b>Kim</b>", 250000},
+		{time.Date(now.Year()-1, time.March, 5, 10, 0, 0, 0, time.Local), "Lee", 1000},
+	} {
+		_, err := dbH.Exec(`INSERT INTO charges (created_at, customer_name, payment_token, paid, amount_paid)
+			VALUES ($1, $2, $3, true, $4)`, g.at, g.name, "smoke_tok_"+strconv.Itoa(i), g.cents)
+		must("seed charge", err)
+	}
+	thisMonth := now.Format("January 2006")
+	r = s.Request("GET", "/admin/giving", ann, nil)
+	lastBody = string(r.Body())
+	body = string(r.Body())
+	expect("giving defaults to YTD grouped by month with a link back one year", r.Status() == 200 &&
+		strings.Contains(body, "Year to date") && strings.Contains(body, thisMonth) &&
+		strings.Contains(body, "$2,500.00") && strings.Contains(body, fmt.Sprintf("?year=%d", now.Year()-1)),
+		fmt.Sprintf("status %d", r.Status()))
+	expect("giving escapes donor-supplied names", !strings.Contains(body, "<b>Kim</b>") &&
+		strings.Contains(body, "&lt;b&gt;Kim&lt;/b&gt;"), "raw donor markup reached the page")
+
+	r = s.Request("GET", fmt.Sprintf("/admin/giving?year=%d", now.Year()-1), ann, nil)
+	lastBody = string(r.Body())
+	body = string(r.Body())
+	expect("previous year is the earliest: no further back link, a forward link", r.Status() == 200 &&
+		strings.Contains(body, "Full year") && strings.Contains(body, "$10.00") &&
+		!strings.Contains(body, fmt.Sprintf("?year=%d", now.Year()-2)) &&
+		strings.Contains(body, fmt.Sprintf("?year=%d", now.Year())), fmt.Sprintf("status %d", r.Status()))
+
+	r = s.Request("GET", "/admin/giving/csv", ann, nil)
+	lastBody = string(r.Body())
+	body = string(r.Body())
+	expect("CSV export downloads with headings", r.Status() == 200 &&
+		strings.HasPrefix(r.Header("Content-Type"), "text/csv") &&
+		strings.Contains(r.Header("Content-Disposition"), fmt.Sprintf("giving-%d-ytd.csv", now.Year())) &&
+		strings.Contains(body, "Date,Month,Name,Email,Amount,Refunded,Net,Status") &&
+		strings.Contains(body, "2500.00") && !strings.Contains(body, "Lee"),
+		fmt.Sprintf("status %d type %q disp %q", r.Status(), r.Header("Content-Type"), r.Header("Content-Disposition")))
+
+	r = s.Request("GET", "/admin/giving/csv", uman, nil)
+	lastBody = string(r.Body())
+	expect("CSV export is refused without charges.read", r.Status() == 303 && !strings.Contains(string(r.Body()), "Date,Month"),
+		fmt.Sprintf("status %d", r.Status()))
 
 	// ---- No escalation ----
 	annID := strconv.FormatInt(ids["ann"], 10)

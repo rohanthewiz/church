@@ -32,6 +32,33 @@ func RenderPageNewRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 	return
 }
 
+// RenderPageListWithOptsRWeb renders like RenderPageListRWeb but hands the
+// main module its own options instead of offset/limit, e.g. a report's
+// {"year": "2025"}. It shares the production panic recovery, which a direct
+// template.Page call in a controller would skip.
+func RenderPageListWithOptsRWeb(pg *page.Page, ctx rweb.Context, mainOpts map[string]string) (out []byte) {
+	defer func() {
+		if config.AppEnv != config.Environments.Production {
+			return
+		}
+		if p := recover(); p != nil {
+			logPanic(p)
+			out = []byte(recoverMsg)
+		}
+	}()
+	buf := new(bytes.Buffer)
+	template.Page(buf, pg, flash.GetOrNewRWeb(ctx),
+		map[string]map[string]string{
+			pg.MainModuleSlug(): mainOpts,
+			"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
+				// What the viewer may do, so admin modules offer only permitted actions
+				authz.ParamKey: authz.ParamValue(ctx)},
+		}, IsLoggedInRWeb(ctx),
+	)
+	out = buf.Bytes()
+	return
+}
+
 func RenderPageListRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 	defer func() {
 		if config.AppEnv != config.Environments.Production {

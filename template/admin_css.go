@@ -30,6 +30,8 @@ package template
 //	.af-footer / .af-submit      form footer bar with primary action
 //	.af-btn / --danger / --ghost small action buttons (module/menu-item rows)
 //	.af-dash*                    admin home dashboard cards
+//	.af-toolbar / .af-yearnav    report toolbar with year navigation
+//	.af-table(-wrap)             read-only data tables (giving report)
 //
 // Layout down to phones: field grids collapse to one column at 640px; the
 // 420px block tightens paddings so cards remain comfortable at a 6.5"
@@ -155,6 +157,30 @@ const AdminCSS = `
 	color: var(--af-accent); }
 .af-dash__desc { font-size: 0.85rem; color: var(--af-text-faint); line-height: 1.35; }
 .af-dash__actions { margin-top: 0.55rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+/* Toolbar above a report: navigation on the left, actions on the right */
+.af-toolbar { display: flex; align-items: center; justify-content: space-between;
+	gap: 0.6rem; flex-wrap: wrap; margin: 0.4rem 0 1rem; }
+.af-yearnav { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.af-yearnav__label { font-weight: 600; font-size: 1.05rem; }
+.af-yearnav__period { font-weight: 400; font-size: 0.85rem; color: var(--af-text-faint);
+	margin-left: 0.4rem; }
+a.af-btn { text-decoration: none; }
+/* Read-only data tables. The wrapper scrolls sideways on phones so the
+   page itself never overflows. */
+.af-table-wrap { overflow-x: auto; min-width: 0; }
+.af-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.af-table th { text-align: left; font-size: 0.75rem; font-weight: 600;
+	letter-spacing: 0.04em; text-transform: uppercase; color: var(--af-text-soft);
+	border-bottom: 1px solid var(--af-card-border); padding: 0.35rem 0.5rem;
+	white-space: nowrap; }
+.af-table td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #eef2ee;
+	vertical-align: top; }
+.af-table .af-num { text-align: right; white-space: nowrap;
+	font-variant-numeric: tabular-nums; }
+.af-table td.af-wraptext { max-width: 16rem; overflow-wrap: anywhere; }
+.af-table tfoot td { font-weight: 600; border-top: 2px solid var(--af-card-border);
+	border-bottom: none; }
+.af-table tr.af-muted td { color: var(--af-text-faint); }
 
 /* Phones: single-column field grids first, then tighter card chrome */
 @media (max-width: 640px) {

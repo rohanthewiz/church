@@ -333,6 +333,9 @@ func RegisterAdminRoutes(s *rweb.Server) {
 
 	// Giving records (read-only: charges are written by Stripe, not admins)
 	ad.Get("/giving", req(authz.ChargesRead, payment_controller.AdminListGivingRWeb))
+	// CSV export of the year shown on /giving (same ?year=). It exposes the
+	// same donor data as the page, so it takes the same permission.
+	ad.Get("/giving/csv", req(authz.ChargesRead, payment_controller.AdminGivingCSVRWeb))
 
 	// Admin Articles
 	ad.Get("/articles", req(authz.ArticlesRead, article_controller.AdminListArticlesRWeb))

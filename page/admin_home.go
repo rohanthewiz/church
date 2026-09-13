@@ -59,7 +59,7 @@ func (m *ModuleAdminDashboard) Render(params map[string]map[string]string, logge
 			"/admin/users", "/admin/users/new", authz.UsersRead, authz.UsersCreate},
 		{"Roles", "Define roles from any combination of permissions, then assign them to users.",
 			"/admin/roles", "/admin/roles/new", authz.RolesRead, authz.RolesCreate},
-		{"Giving", "Read-only giving records received through Stripe.",
+		{"Giving", "Giving received through Stripe, by month for each year, with CSV export.",
 			"/admin/giving", "", authz.ChargesRead, ""},
 		// Utility screens: the permission their route requires stands in for
 		// "read", since there is no list behind them.

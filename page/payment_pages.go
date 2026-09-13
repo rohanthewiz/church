@@ -67,7 +67,9 @@ func PaymentReceipt(meta string) (*Page, error) {
 //}
 
 // GivingList is the hardwired, read-only admin list of giving records
-// (charges), gated by charges.read.
+// (charges), gated by charges.read. It shows one calendar year grouped by
+// month (?year=, default year to date), so it has no Limit: paging would
+// split a month's gifts and its subtotal across pages.
 func GivingList() (*Page, error) {
 	title := "Giving Records"
 	pgdef := Presenter{Title: title, Slug: stringops.Slugify(title), IsAdmin: true}
@@ -78,7 +80,6 @@ func GivingList() (*Page, error) {
 			IsAdmin:      true,
 			Published:    true,
 			IsMainModule: true,
-			Limit:        50,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modPres}
