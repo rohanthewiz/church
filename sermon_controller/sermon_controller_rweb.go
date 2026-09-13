@@ -21,6 +21,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/church/util/fileops"
@@ -37,7 +38,9 @@ func NewSermonRWeb(ctx rweb.Context) error {
 	}
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
-		"_global": {"user_agent": ctx.UserAgent()},
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
+			// What the viewer may do, so admin modules offer only permitted actions
+			authz.ParamKey: authz.ParamValue(ctx)},
 	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
@@ -177,6 +180,40 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 		msg, _ := inputerr.UserMessage(err) // Validate returns only InputErrors
 		return app.RedirectRWebError(ctx, formURL, msg+". The sermon was not saved.")
 	}
+
+	// The DB handle is fetched here, before the audio copy, because resolving
+	// the publish flag reads the stored value. A refusal at this point must
+	// cost no file, for the same reason Validate runs first (see above).
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return app.RedirectRWebError(ctx, formURL, "The sermon could not be saved: the database is unavailable.")
+	}
+
+	// Publishing is its own permission, resolved field by field rather than by
+	// refusing the save: someone who may edit but not publish can still save
+	// their edits, and the flag keeps its stored value (false on create). See
+	// authz.ResolveFlag.
+	actor, ok := authz.ActorFrom(ctx)
+	if !ok {
+		// Admin routes always run behind AdminGuardRWeb, so no actor means a
+		// wiring bug. Fail closed rather than publish unchecked.
+		return app.RedirectRWebError(ctx, formURL, "Your permissions could not be confirmed. The sermon was not saved.")
+	}
+	submittedFlag := serPres.Published
+	serPres.Published, err = authz.ResolveFlag(dbH, actor, authz.SermonsPublish, authz.FlagSermonPublished, serPres.Id, submittedFlag)
+	if err != nil {
+		logger.LogErr(err, "Error resolving sermon published flag", "sermon_id", serPres.Id)
+		return app.RedirectRWebError(ctx, formURL, "Error saving the sermon. It was not saved.")
+	}
+	// The form renders the switch disabled (with the stored value in a hidden
+	// field) for anyone lacking the permission, so a difference here means a
+	// stale form or a hand-built post. Say what happened instead of silently
+	// ignoring the box.
+	flagNote := ""
+	if serPres.Published != submittedFlag {
+		flagNote = " Publishing needs the sermons.publish permission, so the published setting was left as it was."
+	}
 	serYear := serPres.GetYear()
 
 	// Here we don't want to always err if form file is just not set
@@ -233,12 +270,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 		}
 	}
 
-	// Save it
-	dbH, err := db.Db()
-	if err != nil {
-		logger.LogErr(err, "Could not obtain DB handle")
-		return app.RedirectRWebError(ctx, formURL, "The sermon could not be saved: the database is unavailable.")
-	}
+	// Save it (dbH was obtained above, before the audio copy)
 	slug, err := serPres.Upsert(dbH)
 	// fmt.Printf("*|* serPres --> %#v\n", serPres)
 	if err != nil {
@@ -274,7 +306,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	if sess != nil && sess.FormReferrer != "" {
 		redirectTo = sess.FormReferrer // return to the form caller
 	}
-	return app.RedirectRWeb(ctx, redirectTo, "Sermon "+msg)
+	return app.RedirectRWeb(ctx, redirectTo, "Sermon "+msg+flagNote)
 }
 
 func DeleteSermonRWeb(ctx rweb.Context) error {

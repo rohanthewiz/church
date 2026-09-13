@@ -7,6 +7,7 @@ import (
 	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -62,6 +63,10 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 		}
 		action = "/update/" + ser.Id
 	}
+
+	// Publishing is gated by its own permission; the handler re-checks it
+	// (authz.ResolveFlag), so this only decides what the switch offers.
+	canPublish := authz.FromParams(params).Can(authz.SermonsPublish)
 
 	b := element.NewBuilder()
 
@@ -170,15 +175,29 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 			b.DivClass("af-footer").R(
 				b.LabelClass("af-switch").R(
 					b.Wrap(func() {
-						if ser.Published || operation == "Create" {
-							b.Input("type", "checkbox", "name", "published", "checked", "checked")
-						} else {
-							b.Input("type", "checkbox", "name", "published")
+						attrs := []string{"type", "checkbox", "name", "published"}
+						if ser.Published || (operation == "Create" && canPublish) {
+							attrs = append(attrs, "checked", "checked")
 						}
+						if !canPublish {
+							attrs = append(attrs, "disabled", "disabled")
+						}
+						b.Input(attrs...)
 					}),
 					b.SpanClass("af-slider").T(""),
 					b.SpanClass("af-switch-text").T("Published"),
 				),
+				b.Wrap(func() {
+					if !canPublish {
+						// A disabled checkbox posts nothing, which the handler would read as
+						// "unpublish". The stored value rides a hidden field instead, so a
+						// save by someone without the permission leaves it untouched.
+						if ser.Published {
+							b.Input("type", "hidden", "name", "published", "value", "on")
+						}
+						b.SpanClass("af-help").T("Publishing requires the sermons.publish permission.")
+					}
+				}),
 				b.InputClass("af-submit", "type", "submit", "value", operation),
 			),
 		),

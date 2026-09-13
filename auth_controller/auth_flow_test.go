@@ -21,6 +21,7 @@ import (
 	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/resource/apiv1/apitest"
 	"github.com/rohanthewiz/church/resource/auth"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/session"
 	"github.com/rohanthewiz/rweb"
 )
@@ -38,9 +39,17 @@ func newWebAuthServer() *rweb.Server {
 	s := apitest.NewServer()
 	s.Post("/auth", AuthHandlerRWeb)
 	ad := s.Group("/admin", UseCustomContextRWeb, AdminGuardRWeb)
-	ad.Get("/home", func(ctx rweb.Context) error {
+	// Every admin route is wrapped in a permission decorator, as in the router:
+	// the group guard alone cannot stop a handler from running.
+	ad.Get("/home", RequireAdmin(func(ctx rweb.Context) error {
 		return ctx.WriteHTML("admin home")
-	})
+	}))
+	ad.Get("/articles", Require(authz.ArticlesRead, func(ctx rweb.Context) error {
+		return ctx.WriteHTML("articles list")
+	}))
+	ad.Post("/articles/delete/:id", Require(authz.ArticlesDelete, func(ctx rweb.Context) error {
+		return ctx.WriteHTML("deleted")
+	}))
 	return s
 }
 
@@ -94,6 +103,9 @@ func TestWebLoginSuccessGrantsAdminSession(t *testing.T) {
 	cookie := sessionCookie(t, resp)
 
 	// The cookie must actually work: the same session passes the AdminGuard.
+	// kim is a SuperAdmin, so permission resolution stops after the users
+	// read (LoadActor never consults a SuperAdmin's roles).
+	expectActor(mock, 42, authz.SuperAdminRole)
 	resp2 := s.Request("GET", "/admin/home", []rweb.Header{{Key: "Cookie", Value: cookie}}, nil)
 	if resp2.Status() != http.StatusOK || !strings.Contains(string(resp2.Body()), "admin home") {
 		t.Errorf("session cookie should pass AdminGuard: status=%d body=%s", resp2.Status(), resp2.Body())
@@ -161,6 +173,12 @@ func TestAdminGuardRedirectsAnonymous(t *testing.T) {
 	if loc := resp.Header("Location"); loc != "/login" {
 		t.Errorf("anonymous admin access should redirect to /login, got %q", loc)
 	}
+	// rweb runs the route handler when group middleware returns nil without
+	// calling Next(), and a redirect returns nil. Before the Require
+	// decorators, the admin handler's body rode along behind the 303.
+	if strings.Contains(string(resp.Body()), "admin home") {
+		t.Errorf("anonymous request must not run the admin handler, body: %s", resp.Body())
+	}
 }
 
 // A cookie whose key has no session in the kvstore (expired/forged) is anonymous.
@@ -172,6 +190,10 @@ func TestAdminGuardRejectsStaleCookie(t *testing.T) {
 	if resp.Status() != http.StatusSeeOther || resp.Header("Location") != "/login" {
 		t.Errorf("stale session cookie should redirect to /login, got %d %q",
 			resp.Status(), resp.Header("Location"))
+	}
+	// Same fall-through leak check as TestAdminGuardRedirectsAnonymous.
+	if strings.Contains(string(resp.Body()), "admin home") {
+		t.Errorf("stale-cookie request must not run the admin handler, body: %s", resp.Body())
 	}
 }
 
@@ -191,5 +213,126 @@ func TestWebLoginMissingCSRFRedirectsToLogin(t *testing.T) {
 	if resp.Status() != http.StatusSeeOther || resp.Header("Location") != "/login" {
 		t.Errorf("missing csrf should 303 to /login, got %d %q",
 			resp.Status(), resp.Header("Location"))
+	}
+}
+
+// ---- Role-based admin authorization ----
+
+// expectActor arms the mock for authz.LoadActor's first two reads: the
+// enabled user (id, legacy role) and their role assignments. roleIDs empty
+// means no role_permissions query follows (LoadActor skips it). A SuperAdmin
+// stops after the users read, since its roles are never consulted.
+func expectActor(mock sqlmock.Sqlmock, userID int64, legacyRole int, roleIDs ...int64) {
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, role FROM users WHERE username = $1 AND enabled = $2`)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "role"}).AddRow(userID, legacyRole))
+	if legacyRole == authz.SuperAdminRole {
+		return
+	}
+	rows := sqlmock.NewRows([]string{"role_id"})
+	for _, id := range roleIDs {
+		rows.AddRow(id)
+	}
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT role_id FROM user_roles WHERE user_id = $1`)).
+		WillReturnRows(rows)
+}
+
+// expectRolePerms arms the role_permissions read that follows expectActor
+// when the user holds roles.
+func expectRolePerms(mock sqlmock.Sqlmock, roleID int64, perms ...authz.Permission) {
+	rows := sqlmock.NewRows([]string{"role_id", "permission"})
+	for _, p := range perms {
+		rows.AddRow(roleID, string(p))
+	}
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT role_id, permission FROM role_permissions WHERE role_id IN (`)).
+		WillReturnRows(rows)
+}
+
+// signedIn plants a session for username directly in the kvstore (skipping
+// the login round trip) and returns the Cookie header that presents it.
+func signedIn(t *testing.T, username string) []rweb.Header {
+	t.Helper()
+	key := auth.RandomKey()
+	if err := (session.Session{Username: username}).Save(key); err != nil {
+		t.Fatalf("could not save session: %v", err)
+	}
+	return []rweb.Header{{Key: "Cookie", Value: session.CookieName + "=" + key}}
+}
+
+// A signed-in member with no roles (e.g. a chat participant) is a user of the
+// site, not of its admin: sent home, and the handler never runs.
+func TestAdminGuardRejectsMemberWithoutRoles(t *testing.T) {
+	mock := apitest.MockDB(t)
+	expectActor(mock, 7, 9)
+
+	resp := newWebAuthServer().Request("GET", "/admin/home", signedIn(t, "mem"), nil)
+	if resp.Status() != http.StatusSeeOther || resp.Header("Location") != "/" {
+		t.Errorf("member without roles should 303 to /, got %d %q", resp.Status(), resp.Header("Location"))
+	}
+	if strings.Contains(string(resp.Body()), "admin home") {
+		t.Errorf("member request must not run the admin handler, body: %s", resp.Body())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+// A session whose user was disabled or deleted since sign-in no longer holds.
+func TestAdminGuardRejectsDisabledUser(t *testing.T) {
+	mock := apitest.MockDB(t)
+	mock.ExpectQuery(regexp.QuoteMeta(`SELECT id, role FROM users WHERE username = $1 AND enabled = $2`)).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "role"}))
+
+	resp := newWebAuthServer().Request("GET", "/admin/home", signedIn(t, "gone"), nil)
+	if resp.Status() != http.StatusSeeOther || resp.Header("Location") != "/login" {
+		t.Errorf("disabled user should 303 to /login, got %d %q", resp.Status(), resp.Header("Location"))
+	}
+	if strings.Contains(string(resp.Body()), "admin home") {
+		t.Errorf("disabled user must not run the admin handler, body: %s", resp.Body())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+// Per-route permissions: articles.read opens the list but not the delete.
+func TestRequireEnforcesPermission(t *testing.T) {
+	mock := apitest.MockDB(t)
+	s := newWebAuthServer()
+	cookie := signedIn(t, "reader")
+
+	expectActor(mock, 11, 7, 3)
+	expectRolePerms(mock, 3, authz.ArticlesRead)
+	resp := s.Request("GET", "/admin/articles", cookie, nil)
+	if resp.Status() != http.StatusOK || !strings.Contains(string(resp.Body()), "articles list") {
+		t.Errorf("articles.read should open the list: status=%d body=%s", resp.Status(), resp.Body())
+	}
+
+	// Permissions are re-resolved per request, hence a second set of reads.
+	expectActor(mock, 11, 7, 3)
+	expectRolePerms(mock, 3, authz.ArticlesRead)
+	resp = s.Request("POST", "/admin/articles/delete/1", cookie, nil)
+	if resp.Status() != http.StatusSeeOther || resp.Header("Location") != "/admin/home" {
+		t.Errorf("delete without articles.delete should 303 to /admin/home, got %d %q",
+			resp.Status(), resp.Header("Location"))
+	}
+	if strings.Contains(string(resp.Body()), "deleted") {
+		t.Errorf("denied delete must not run the handler, body: %s", resp.Body())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
+	}
+}
+
+// SuperAdmin (legacy role 99) bypasses permission checks with no roles at all.
+func TestRequireSuperAdminBypass(t *testing.T) {
+	mock := apitest.MockDB(t)
+	expectActor(mock, 1, authz.SuperAdminRole)
+
+	resp := newWebAuthServer().Request("POST", "/admin/articles/delete/1", signedIn(t, "root"), nil)
+	if resp.Status() != http.StatusOK || !strings.Contains(string(resp.Body()), "deleted") {
+		t.Errorf("superadmin should pass any permission: status=%d body=%s", resp.Status(), resp.Body())
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Error(err)
 	}
 }

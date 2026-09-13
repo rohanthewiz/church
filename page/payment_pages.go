@@ -65,3 +65,22 @@ func PaymentReceipt(meta string) (*Page, error) {
 //	pgdef.Modules = []module.Presenter{modPres}
 //	return  pageFromPresenter(pgdef), nil
 //}
+
+// GivingList is the hardwired, read-only admin list of giving records
+// (charges), gated by charges.read.
+func GivingList() (*Page, error) {
+	title := "Giving Records"
+	pgdef := Presenter{Title: title, Slug: stringops.Slugify(title), IsAdmin: true}
+	modPres := module.Presenter{
+		Opts: module.Opts{
+			Title:        "Giving Records",
+			ModuleType:   payment.ModuleTypeGivingList,
+			IsAdmin:      true,
+			Published:    true,
+			IsMainModule: true,
+			Limit:        50,
+		},
+	}
+	pgdef.Modules = []module.Presenter{modPres}
+	return pageFromPresenter(pgdef), nil
+}

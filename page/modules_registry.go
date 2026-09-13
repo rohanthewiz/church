@@ -12,6 +12,7 @@ import (
 	"github.com/rohanthewiz/church/resource/prayerwall"
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/resource/sermoncleanup"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/church/standalone_modules/easy_tabs"
 	"github.com/rohanthewiz/church/standalone_modules/slick_carousel"
@@ -89,6 +90,15 @@ func RegisterModules() {
 	addToRegistry(user.ModuleTypeUserForm, "user", user.NewModuleUserForm)
 	moduleContentBy[user.ModuleTypeUserForm] = content.ModuleContentByForm
 
+	singularToPlural["role"] = "roles"
+	addToRegistry(authz.ModuleTypeRolesList, "role", authz.NewModuleRolesList)
+	addToRegistry(authz.ModuleTypeRoleForm, "role", authz.NewModuleRoleForm)
+	moduleContentBy[authz.ModuleTypeRoleForm] = content.ModuleContentByForm
+
+	// Admin-only, read-only giving records; hardwired into its admin page
+	addToRegistry(payment.ModuleTypeGivingList, "giving", payment.NewModuleGivingList)
+	moduleContentBy[payment.ModuleTypeGivingList] = content.ModuleContentByPagination
+
 	singularToPlural["menu"] = "menus"
 	addToRegistry(menu.ModuleTypeMenusList, "menu", menu.NewModuleMenusList)
 	moduleContentBy[menu.ModuleTypeMenusList] = content.ModuleContentByPagination
@@ -130,6 +140,8 @@ func availableModuleTypes() (types []string) {
 			strings.Contains(lwrModType, "page") ||
 			strings.Contains(lwrModType, "menu") ||
 			strings.Contains(lwrModType, "cleanup") ||
+			strings.Contains(lwrModType, "role") ||
+			strings.Contains(lwrModType, "giving") ||
 			strings.Contains(lwrModType, "dashboard") {
 			continue
 		}

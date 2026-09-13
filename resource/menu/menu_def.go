@@ -104,6 +104,8 @@ func hardwiredMenuDef(slug string) (MenuDef, bool) {
 				{Label: "Sermons", Url: "/admin/sermons"},
 				{Label: "Events", Url: "/admin/events"},
 				{Label: "Users", Url: "/admin/users"},
+				{Label: "Roles", Url: "/admin/roles"},
+				{Label: "Giving", Url: "/admin/giving"},
 				{Label: "Logout", Url: "/admin/logout"},
 			},
 		}, true

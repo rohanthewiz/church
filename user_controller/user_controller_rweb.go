@@ -11,6 +11,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/apitoken"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/church/util/inputerr"
 	"github.com/rohanthewiz/logger"
@@ -84,16 +85,68 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		return app.RedirectRWebError(ctx, formURL, "Please choose a role. The user was not saved.")
 	}
 	efs.Role = int(role)
-	if ctx.Request().FormValue("enabled") == "on" {
-		efs.Enabled = true
-	}
+	submittedEnabled := ctx.Request().FormValue("enabled") == "on"
 
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
 		return app.RedirectRWebError(ctx, formURL, "The user could not be saved: the database is unavailable.")
 	}
-	err = efs.UpsertUser(dbH)
+
+	// ---- Authorization beyond the route permission ----
+	// Every refusal here happens before any write.
+	actor, ok := authz.ActorFrom(ctx)
+	if !ok { // unreachable behind Require; fail closed
+		return app.RedirectRWebError(ctx, formURL, "Could not confirm your permissions. The user was not saved.")
+	}
+	isUpdate := efs.Id != "" && efs.Id != "0"
+	var userID int64
+	if isUpdate {
+		if userID, err = strconv.ParseInt(efs.Id, 10, 64); err != nil {
+			return app.RedirectRWebError(ctx, "/admin/users", "That user could not be found. Nothing was saved.")
+		}
+		// No editing someone more powerful: a password reset on their
+		// account would hand over everything they hold.
+		canManage, err := authz.CanManageUser(dbH, actor, userID)
+		if err != nil {
+			logger.LogErr(err, "Error checking user management permission", "user_id", efs.Id)
+			return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+		}
+		if !canManage {
+			return app.RedirectRWebError(ctx, formURL,
+				"This person can do things you can't, so you can't change their account. The user was not saved.")
+		}
+	}
+	if efs.Role == authz.SuperAdminRole && !actor.IsSuper() {
+		return app.RedirectRWebError(ctx, formURL, "Only a SuperAdmin can make someone a SuperAdmin. The user was not saved.")
+	}
+	enabled, err := authz.ResolveFlag(dbH, actor, authz.UsersEnable, authz.FlagUserEnabled, efs.Id, submittedEnabled)
+	if err != nil {
+		logger.LogErr(err, "Error resolving user enabled flag", "user_id", efs.Id)
+		return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+	}
+	efs.Enabled = enabled
+
+	// Current assignments are read before the save so the role step below
+	// can tell "kept because locked" from "newly ticked".
+	currentRoles := map[int64]bool{}
+	if isUpdate {
+		ids, err := authz.RoleIDsForUser(dbH, userID)
+		if err != nil {
+			logger.LogErr(err, "Error loading user roles", "user_id", efs.Id)
+			return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+		}
+		for _, id := range ids {
+			currentRoles[id] = true
+		}
+	}
+	allRoles, err := authz.ListRoles(dbH)
+	if err != nil {
+		logger.LogErr(err, "Error listing roles for user save")
+		return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+	}
+
+	savedID, err := efs.UpsertUserID(dbH)
 	if err != nil {
 		if msg, isInput := inputerr.UserMessage(err); isInput {
 			// The admin's mistake, not ours: no error log, just the reason
@@ -106,6 +159,29 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		logger.LogErr(err, "Error in user upsert", "user_presenter", fmt.Sprintf("%#v", logged))
 		return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
 	}
+	// ---- Role assignment ----
+	// Roles the actor can grant (a subset of their own permissions) follow
+	// the form. Roles they can't grant keep their current state whatever was
+	// posted: their checkboxes were disabled, and a disabled box posts
+	// nothing, which must not read as "remove".
+	var finalRoles []int64
+	for _, r := range allRoles {
+		field := authz.RoleFieldPrefix + strconv.FormatInt(r.ID, 10)
+		if actor.CanGrant(r.Perms) {
+			if ctx.Request().FormValue(field) == "on" {
+				finalRoles = append(finalRoles, r.ID)
+			}
+		} else if currentRoles[r.ID] {
+			finalRoles = append(finalRoles, r.ID)
+		}
+	}
+	if err := authz.SetUserRoles(dbH, savedID, finalRoles); err != nil {
+		// The account itself saved; say exactly what didn't.
+		logger.LogErr(err, "Error saving user roles", "user_id", strconv.FormatInt(savedID, 10))
+		return app.RedirectRWebError(ctx, "/admin/users/edit/"+strconv.FormatInt(savedID, 10),
+			"The user was saved, but their roles could not be updated. Please check them and save again.")
+	}
+
 	msg := "Created"
 	if efs.Id != "0" && efs.Id != "" {
 		msg = "Updated"
@@ -139,6 +215,22 @@ func DeleteUserRWeb(ctx rweb.Context) error {
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
 		return app.RedirectRWeb(ctx, "/admin/users", "Error deleting user")
+	}
+	// Same rule as editing: no deleting someone more powerful than yourself.
+	actor, ok := authz.ActorFrom(ctx)
+	if !ok {
+		return app.RedirectRWebError(ctx, "/admin/users", "Could not confirm your permissions. Nothing was deleted.")
+	}
+	if userID, convErr := strconv.ParseInt(ctx.Request().PathParam("id"), 10, 64); convErr == nil {
+		canManage, err := authz.CanManageUser(dbH, actor, userID)
+		if err != nil {
+			logger.LogErr(err, "Error checking user management permission", "user_id", ctx.Request().PathParam("id"))
+			return app.RedirectRWebError(ctx, "/admin/users", "Error deleting user")
+		}
+		if !canManage {
+			return app.RedirectRWebError(ctx, "/admin/users",
+				"That person can do things you can't, so you can't delete their account.")
+		}
 	}
 	err = user.DeleteUserById(dbH, ctx.Request().PathParam("id"))
 	msg := "User with id: " + ctx.Request().PathParam("id") + " deleted"

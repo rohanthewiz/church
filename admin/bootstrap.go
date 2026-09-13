@@ -10,6 +10,7 @@ import (
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/content"
 	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/resource/sermon"
@@ -33,9 +34,26 @@ type bootstrapMenuItem struct {
 // Every step is idempotent — existing resources are never overwritten.
 func Bootstrap() {
 	bootstrapSuperAdmin()
+	bootstrapRoles()
 	bootstrapMenus()
 	bootstrapHomePage()
 	bootstrapWelcomeArticle()
+}
+
+// bootstrapRoles creates the default roles (Administrator, Publisher, Editor)
+// on a site's first boot with roles support, assigning them to existing users
+// by legacy role. A failure is logged, not fatal: the site still serves, and
+// SuperAdmin (which needs no role) can still reach the admin area. The likely
+// cause on Postgres is the roles migration not having been run.
+func bootstrapRoles() {
+	dbH, err := theDB.Db()
+	if err != nil {
+		logger.LogErr(err, "Bootstrap: error obtaining DB handle for roles")
+		return
+	}
+	if err := authz.EnsureDefaultRoles(dbH); err != nil {
+		logger.LogErr(err, "Bootstrap: could not ensure default roles")
+	}
 }
 
 // bootstrapSuperAdmin creates a superadmin user from environment variables
@@ -120,6 +138,8 @@ func bootstrapMenus() {
 				{Label: "Sermons", Url: "/admin/sermons"},
 				{Label: "Events", Url: "/admin/events"},
 				{Label: "Users", Url: "/admin/users"},
+				{Label: "Roles", Url: "/admin/roles"},
+				{Label: "Giving", Url: "/admin/giving"},
 				{Label: "Logout", Url: "/admin/logout"},
 			},
 		},

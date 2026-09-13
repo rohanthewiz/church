@@ -9,6 +9,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/pack/packed"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -148,6 +149,27 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 		)
 	}
 
+	// lockedSwitch is namedSwitch for a flag the viewer may not change: the
+	// checkbox is disabled, and because a disabled input posts nothing (which
+	// the handler would read as "off") the stored value rides a hidden field.
+	// The handler re-checks the permission regardless (authz.ResolveFlag).
+	lockedSwitch := func(label, name string, on bool) {
+		b.LabelClass("af-switch").R(
+			b.Wrap(func() {
+				if on {
+					b.Input("type", "checkbox", "name", name, "checked", "checked", "disabled", "disabled")
+					b.Input("type", "hidden", "name", name, "value", "on")
+				} else {
+					b.Input("type", "checkbox", "name", name, "disabled", "disabled")
+				}
+			}),
+			b.SpanClass("af-slider").T(""),
+			b.SpanClass("af-switch-text").T(label+" (publishing requires pages.publish)"),
+		)
+	}
+
+	canPublish := authz.FromParams(params).Can(authz.PagesPublish)
+
 	b.DivClass("af-wrap").R(
 		b.Style().T(pageFormCSS),
 		b.H3("class", "af-page-title").T(operation+" "+m.Name.Singular),
@@ -188,7 +210,11 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 				),
 				b.DivClass("pf-switches", "style", "margin-top:0.8rem").R(
 					b.Wrap(func() {
-						namedSwitch("Publish Page", "published", pg.Published)
+						if canPublish {
+							namedSwitch("Publish Page", "published", pg.Published)
+						} else {
+							lockedSwitch("Publish Page", "published", pg.Published)
+						}
 						namedSwitch("Make this the Home Page", "is_home", pg.IsHome)
 					}),
 				),

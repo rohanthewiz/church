@@ -7,6 +7,7 @@ import (
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/rweb"
 )
@@ -23,7 +24,9 @@ func RenderPageNewRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 	}()
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
-		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx)},
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
+			// What the viewer may do, so admin modules offer only permitted actions
+			authz.ParamKey: authz.ParamValue(ctx)},
 	}, IsLoggedInRWeb(ctx))
 	out = buf.Bytes()
 	return
@@ -44,7 +47,9 @@ func RenderPageListRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 		map[string]map[string]string{
 			pg.MainModuleSlug(): {
 				"offset": ctx.Request().QueryParam("offset"), "limit": ctx.Request().QueryParam("limit")},
-			"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx)},
+			"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
+			// What the viewer may do, so admin modules offer only permitted actions
+			authz.ParamKey: authz.ParamValue(ctx)},
 		}, IsLoggedInRWeb(ctx),
 	)
 	out = buf.Bytes()
@@ -74,7 +79,7 @@ func RenderPageSingleRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 		// discussion strip derives its per-article channel from it.
 		// username likewise lets modules tailor controls to the viewer.
 		"_global": {"user_agent": ctx.UserAgent(), "item_id": ctx.Request().PathParam("id"),
-			"username": cctx.GetUsernameFromRWeb(ctx)},
+			"username": cctx.GetUsernameFromRWeb(ctx), authz.ParamKey: authz.ParamValue(ctx)},
 	}, IsLoggedInRWeb(ctx))
 	out = buf.Bytes()
 	return

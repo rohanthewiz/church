@@ -12,16 +12,24 @@ import (
 )
 
 func (p Presenter) UpsertUser(exec db.Executor) error {
+	_, err := p.UpsertUserID(exec)
+	return err
+}
+
+// UpsertUserID is UpsertUser that also returns the saved user's id. A create
+// only learns its id from the insert, and role assignment (authz.SetUserRoles)
+// has to follow the save.
+func (p Presenter) UpsertUserID(exec db.Executor) (int64, error) {
 	usr, create, err := modelFromPresenter(exec, p)
 	if err != nil {
 		LogErr(err, "Error in user from presenter")
-		return err
+		return 0, err
 	}
 	if create {
 		err = usr.Insert(exec)
 		if err != nil {
 			LogErr(err, "Error inserting user into DB")
-			return err
+			return 0, err
 		} else {
 			LogAsync("Info", "Successfully created user")
 		}
@@ -33,7 +41,7 @@ func (p Presenter) UpsertUser(exec db.Executor) error {
 			LogAsync("Info", "Successfully updated user")
 		}
 	}
-	return err
+	return usr.ID, err
 }
 
 // Returns a user model for id `id` or a new user model

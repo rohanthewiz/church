@@ -2,12 +2,14 @@ package user
 
 import (
 	"fmt"
+	"html"
 	"sort"
 	"strconv"
 
 	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -74,10 +76,49 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 	}
 	sort.Ints(roleNums)
 
+	// ---- Authorization context for the form ----
+	// What the viewer may change here. All of it is re-checked by
+	// user_controller.UpsertUserRWeb; the form only avoids offering what
+	// would be refused.
+	actor := authz.FromParams(params)
+	var roles []authz.Role
+	assigned := map[int64]bool{}
+	manageable := true // may the viewer edit this user at all (authz.CanManageUser)
+	if dbH, err := db.Db(); err != nil {
+		LogErr(err, "Could not obtain DB handle for user form roles")
+	} else {
+		if roles, err = authz.ListRoles(dbH); err != nil {
+			LogErr(err, "Error listing roles for user form")
+		}
+		if isUpdate {
+			if uid, err := strconv.ParseInt(usr.Id, 10, 64); err == nil {
+				ids, err := authz.RoleIDsForUser(dbH, uid)
+				if err != nil {
+					LogErr(err, "Error loading user roles for form", "user_id", usr.Id)
+				}
+				for _, id := range ids {
+					assigned[id] = true
+				}
+				if manageable, err = authz.CanManageUser(dbH, actor, uid); err != nil {
+					LogErr(err, "Error checking whether viewer can manage user", "user_id", usr.Id)
+					manageable = false // fail closed: lock the form
+				}
+			}
+		}
+	}
+	canEnable := manageable && actor.Can(authz.UsersEnable)
+
 	b := element.NewBuilder()
 
 	b.DivClass("af-wrap").R(
+		b.Style().T(userFormCSS),
 		b.H3("class", "af-page-title").T(operation+" "+m.Name.Singular),
+		b.Wrap(func() {
+			if !manageable {
+				b.DivClass("af-card uf-locked").T("This person can do things you can't (or is a SuperAdmin), " +
+					"so you can't change their account. Ask an administrator who holds those permissions.")
+			}
+		}),
 		b.Form("method", "post", "action",
 			"/admin/"+m.Name.Plural+action, "onSubmit", "return preSubmit();").R(
 			b.Input("type", "hidden", "name", "user_id", "value", usr.Id),
@@ -135,10 +176,16 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 				b.DivClass("af-card__title").T("Access"),
 				b.DivClass("af-row").R(
 					b.DivClass("af-field").R(
-						b.Label("for", "role").T("Role"),
+						b.Label("for", "role").T("Base Role"),
 						b.Select("name", "role", "id", "role").R(
 							b.Wrap(func() {
 								for _, n := range roleNums {
+									// SuperAdmin bypasses every permission, so only a
+									// SuperAdmin may hand it out. It stays listed on a
+									// SuperAdmin's own record so the select shows the truth.
+									if n == authz.SuperAdminRole && !actor.IsSuper() && usr.Role != n {
+										continue
+									}
 									valStr := strconv.Itoa(n)
 									attrs := []string{"value", valStr}
 									if n == usr.Role {
@@ -148,24 +195,70 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 								}
 							}),
 						),
-						b.PClass("af-help").T("Lower numbers carry more privilege; SuperAdmin (99) is the exception."),
+						b.PClass("af-help").T("Drives chat and prayer-wall moderation and the role the mobile app shows. "+
+							"Admin screen access comes from Roles below, except SuperAdmin (99), which can do everything."),
 					),
 					b.DivClass("af-field").R(
 						b.Label().T("Status"),
 						b.LabelClass("af-switch", "style", "margin-top:0.3rem").R(
 							b.Wrap(func() {
+								attrs := []string{"type", "checkbox", "name", "enabled"}
 								if usr.Enabled {
-									b.Input("type", "checkbox", "name", "enabled", "checked", "checked")
-								} else {
-									b.Input("type", "checkbox", "name", "enabled")
+									attrs = append(attrs, "checked", "checked")
 								}
+								// Without users.enable the switch is shown but inert; the
+								// handler keeps the stored value (authz.ResolveFlag).
+								if !canEnable {
+									attrs = append(attrs, "disabled", "disabled")
+								}
+								b.Input(attrs...)
 							}),
 							b.SpanClass("af-slider").T(""),
 							b.SpanClass("af-switch-text").T("User enabled"),
 						),
 						b.PClass("af-help").T("Disabling a user also signs them out of the mobile app (their API tokens are revoked)."),
+						b.Wrap(func() {
+							if !canEnable {
+								b.PClass("af-help").T("Enabling or disabling users requires the users.enable permission.")
+							}
+						}),
 					),
 				),
+			),
+
+			b.DivClass("af-card").R(
+				b.DivClass("af-card__title").T("Roles"),
+				b.PClass("af-help").T("Roles decide which admin screens this person can use. They can hold "+
+					"several, and get every permission those roles grant. Roles holding permissions you don't "+
+					"have are locked."),
+				b.Wrap(func() {
+					if len(roles) == 0 {
+						b.PClass("af-help").T("No roles are defined yet. Create them under Role Management.")
+						return
+					}
+					b.DivClass("uf-roles").R(
+						b.Wrap(func() {
+							for _, r := range roles {
+								field := authz.RoleFieldPrefix + strconv.FormatInt(r.ID, 10)
+								attrs := []string{"type", "checkbox", "name", field, "id", field}
+								if assigned[r.ID] {
+									attrs = append(attrs, "checked", "checked")
+								}
+								if !manageable || !actor.CanGrant(r.Perms) {
+									attrs = append(attrs, "disabled", "disabled")
+								}
+								b.LabelClass("uf-role", "for", field).R(
+									b.Input(attrs...),
+									b.Span().R(
+										// element writes text verbatim, so stored text is escaped
+										b.SpanClass("uf-role__name").T(html.EscapeString(r.Name)),
+										b.SpanClass("uf-role__perms").T(html.EscapeString(authz.Summary(r.Perms))),
+									),
+								)
+							}
+						}),
+					)
+				}),
 			),
 
 			b.DivClass("af-card").R(
@@ -219,7 +312,13 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 
 			b.DivClass("af-footer").R(
 				b.AClass("af-btn", "href", "/admin/"+m.Name.Plural).T("Cancel"),
-				b.Input("type", "submit", "class", "af-submit", "value", operation),
+				b.Wrap(func() {
+					if manageable {
+						b.Input("type", "submit", "class", "af-submit", "value", operation)
+					} else {
+						b.Input("type", "submit", "class", "af-submit", "value", operation, "disabled", "disabled")
+					}
+				}),
 			),
 		),
 
@@ -255,3 +354,13 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 	)
 	return b.String()
 }
+
+const userFormCSS = `
+.uf-roles { display: grid; gap: 0.55rem; }
+.uf-role { display: flex; gap: 0.6rem; align-items: flex-start; cursor: pointer; }
+.uf-role input[type=checkbox] { margin-top: 0.2rem; width: 1.05rem; height: 1.05rem; }
+.uf-role input[disabled] { cursor: not-allowed; }
+.uf-role__name { display: block; font-weight: 600; }
+.uf-role__perms { display: block; font-size: 0.85em; opacity: 0.75; }
+.uf-locked { padding: 0.6rem 0.8rem; border-left: 3px solid #d9534f; }
+`

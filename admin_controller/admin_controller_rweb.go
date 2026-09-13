@@ -12,6 +12,7 @@ import (
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/logger"
@@ -27,7 +28,9 @@ func AdminHandlerRWeb(ctx rweb.Context) error {
 	}
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
-		"_global": {"user_agent": ctx.UserAgent()},
+		// The dashboard shows only the areas the viewer's permissions open
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
+			authz.ParamKey: authz.ParamValue(ctx)},
 	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }

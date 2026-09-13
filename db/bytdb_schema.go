@@ -285,6 +285,41 @@ var bytdbTables = []tableDef{
 		`CREATE INDEX idx_prayer_requests_created_at ON prayer_requests (created_at)`,
 		`CREATE INDEX idx_prayer_requests_user_id ON prayer_requests (user_id)`,
 	}},
+	// Role-based admin access (resource/authz). Mirrors
+	// 20260913160000_CreateRolesTables.sql. role_permissions and user_roles
+	// both reference roles, so roles comes first.
+	{name: "roles", ddl: []string{
+		`CREATE TABLE roles (
+			id bigserial PRIMARY KEY,
+			name text NOT NULL,
+			description text NOT NULL DEFAULT '',
+			created_at timestamptz,
+			updated_at timestamptz,
+			updated_by text NOT NULL DEFAULT ''
+		)`,
+		`CREATE UNIQUE INDEX idx_roles_name ON roles (name)`,
+	}},
+	{name: "role_permissions", ddl: []string{
+		`CREATE TABLE role_permissions (
+			id bigserial PRIMARY KEY,
+			role_id bigint NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
+			permission text NOT NULL
+		)`,
+		`CREATE UNIQUE INDEX idx_role_permissions_role_perm ON role_permissions (role_id, permission)`,
+	}},
+	{name: "user_roles", ddl: []string{
+		`CREATE TABLE user_roles (
+			id bigserial PRIMARY KEY,
+			user_id bigint NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+			role_id bigint NOT NULL REFERENCES roles (id) ON DELETE CASCADE,
+			created_at timestamptz
+		)`,
+		`CREATE UNIQUE INDEX idx_user_roles_user_role ON user_roles (user_id, role_id)`,
+		// Index both FK columns: bytdb's cascade probes the child per deleted
+		// parent key (see the file comment).
+		`CREATE INDEX idx_user_roles_user_id ON user_roles (user_id)`,
+		`CREATE INDEX idx_user_roles_role_id ON user_roles (role_id)`,
+	}},
 }
 
 // ensureBytDBSchema creates any missing tables (with their indexes) on

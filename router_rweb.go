@@ -20,6 +20,7 @@ import (
 	"github.com/rohanthewiz/church/resource/payment"
 	"github.com/rohanthewiz/church/resource/apiv1"
 	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/calendar"
 	"github.com/rohanthewiz/church/resource/chat"
 	"github.com/rohanthewiz/church/resource/dbbackup"
@@ -27,6 +28,7 @@ import (
 	"github.com/rohanthewiz/church/resource/feed"
 	"github.com/rohanthewiz/church/resource/prayerwall"
 	"github.com/rohanthewiz/church/resource/sermon"
+	"github.com/rohanthewiz/church/role_controller"
 	"github.com/rohanthewiz/church/sermon_controller"
 	"github.com/rohanthewiz/church/user_controller"
 	"github.com/rohanthewiz/element"
@@ -110,24 +112,24 @@ func ServeRWeb() {
 	// and dump internal render diagnostics, so they must not be reachable by
 	// anonymous visitors (any GET could flip debug mode on a production site).
 	dbg := s.Group("/debug", authctlr.UseCustomContextRWeb, authctlr.AdminGuardRWeb)
-	dbg.Get("/set", func(ctx rweb.Context) error {
+	dbg.Get("/set", authctlr.RequireAdmin(func(ctx rweb.Context) error {
 		element.DebugSet()
 		return ctx.WriteHTML("<h3>Debug mode set.</h3> <a href='/'>Home</a>")
-	})
+	}))
 
-	dbg.Get("/show", func(ctx rweb.Context) error {
+	dbg.Get("/show", authctlr.RequireAdmin(func(ctx rweb.Context) error {
 		return ctx.WriteHTML(element.DebugShow())
-	})
+	}))
 
-	dbg.Get("/clear", func(ctx rweb.Context) error {
+	dbg.Get("/clear", authctlr.RequireAdmin(func(ctx rweb.Context) error {
 		element.DebugClear()
 		return ctx.WriteHTML("<h3>Debug mode is off.</h3> <a href='/'>Home</a>")
-	})
+	}))
 
-	dbg.Get("/clear-issues", func(ctx rweb.Context) error {
+	dbg.Get("/clear-issues", authctlr.RequireAdmin(func(ctx rweb.Context) error {
 		element.DebugClearIssues()
 		return ctx.WriteHTML("<h3>Issues cleared (debug mode still active).</h3> <a href='/'>Home</a> | <a href='/debug/show'>View Debug</a>")
-	})
+	}))
 
 	// Authentication routes
 	s.Get("/login", authctlr.LoginHandlerRWeb)
@@ -282,70 +284,101 @@ func ServeRWeb() {
 		return basectlr.SendAudioFileRWeb(ctx, filename, byts)
 	})
 
-	// Admin group uses authentication middleware
-	ad := s.Group(config.AdminPrefix, authctlr.UseCustomContextRWeb, authctlr.AdminGuardRWeb)
-
-	ad.Get("/home", admin_controller.AdminHandlerRWeb)
-	ad.Get("/logout", authctlr.LogoutHandlerRWeb)
-
-	// Admin Users
-	ad.Get("/users", user_controller.ListUsersRWeb)
-	ad.Get("/users/new", user_controller.NewUserRWeb)
-	ad.Post("/users", user_controller.UpsertUserRWeb) // create
-	ad.Get("/users/edit/:id", user_controller.EditUserRWeb)
-	ad.Post("/users/update/:id", user_controller.UpsertUserRWeb) // update
-	// Deletes are POSTs (CSRF-token checked in the handlers): GET deletes are
-	// trivially forgeable via <img src>, and link prefetchers can fire them.
-	ad.Post("/users/delete/:id", user_controller.DeleteUserRWeb)
-
-	// Admin Articles
-	ad.Get("/articles", article_controller.AdminListArticlesRWeb)
-	ad.Get("/articles/new", article_controller.NewArticleRWeb)
-	ad.Post("/articles", article_controller.UpsertArticleRWeb) // create
-	ad.Get("/articles/edit/:id", article_controller.EditArticleRWeb)
-	ad.Post("/articles/update/:id", article_controller.UpsertArticleRWeb) // update
-	ad.Post("/articles/delete/:id", article_controller.DeleteArticleRWeb)
-
-	// Admin Sermons
-	ad.Get("/sermons", sermon_controller.AdminListSermonsRWeb)
-	ad.Get("/sermons/new", sermon_controller.NewSermonRWeb)
-	ad.Get("/sermons/import", sermon_controller.ImportRWeb)      // confirmation screen
-	ad.Post("/sermons/import", sermon_controller.ImportRunRWeb) // runs the import (CSRF checked)
-	ad.Post("/sermons", sermon_controller.UpsertSermonRWeb) // create
-	ad.Get("/sermons/edit/:id", sermon_controller.EditSermonRWeb)
-	ad.Post("/sermons/update/:id", sermon_controller.UpsertSermonRWeb) // update
-	ad.Post("/sermons/delete/:id", sermon_controller.DeleteSermonRWeb)
-	// Local sermon-cache cleanup tool (lists copies safe to delete, batch-deletes them)
-	ad.Get("/sermons/cleanup", sermon_controller.AdminSermonCleanupRWeb)
-	ad.Post("/sermons/cleanup", sermon_controller.AdminSermonCleanupRunRWeb)
-
-	// Admin Events
-	ad.Get("/events", event_controller.AdminListEventsRWeb)
-	ad.Get("/events/new", event_controller.NewEventRWeb)
-	ad.Post("/events", event_controller.UpsertEventRWeb) // create
-	ad.Get("/events/edit/:id", event_controller.EditEventRWeb)
-	ad.Post("/events/update/:id", event_controller.UpsertEventRWeb) // update
-	ad.Post("/events/delete/:id", event_controller.DeleteEventRWeb)
-
-	// Admin Pages
-	ad.Get("/pages", page_controller.AdminListPagesRWeb)
-	ad.Get("/pages/new", page_controller.NewPageRWeb)
-	ad.Post("/pages", page_controller.UpsertPageRWeb)       // create
-	ad.Get("/pages/:id", page_controller.AdminShowPageRWeb) // preview
-	ad.Get("/pages/edit/:id", page_controller.EditPageRWeb)
-	ad.Post("/pages/update/:id", page_controller.UpsertPageRWeb) // update
-	ad.Post("/pages/delete/:id", page_controller.DeletePageRWeb)
-
-	// Admin Menus
-	ad.Get("/menus", menu_controller.AdminListMenusRWeb)
-	ad.Get("/menus/new", menu_controller.NewMenuRWeb)
-	ad.Post("/menus", menu_controller.UpsertMenuRWeb) // create
-	ad.Get("/menus/edit/:id", menu_controller.EditMenuRWeb)
-	ad.Post("/menus/update/:id", menu_controller.UpsertMenuRWeb) // update
-	ad.Post("/menus/delete/:id", menu_controller.DeleteMenuRWeb)
+	// Admin area (permission-guarded); see RegisterAdminRoutes
+	RegisterAdminRoutes(s)
 
 	// Start the server
 	if err := s.Run(); err != nil {
 		logger.LogErr(err, "failed to start server")
 	}
+}
+
+// RegisterAdminRoutes wires the permission-guarded admin area onto s. It is
+// split out of ServeRWeb so checks (test_scripts/roles_smoke) drive exactly
+// the production wiring, not a copy of it that could drift.
+func RegisterAdminRoutes(s *rweb.Server) {
+	// Admin group. AdminGuardRWeb resolves the signed-in admin and their
+	// permissions; it cannot by itself stop a handler from running (see the
+	// note above auth_controller.AdminGuardRWeb), so EVERY admin route is
+	// wrapped in Require(permission) or RequireAdmin. A route added here
+	// without one is reachable by anyone.
+	//
+	// Convention: list = read, new form + create POST = create,
+	// edit form + update POST = update, delete POST = delete. Publish/enable
+	// are field-level and resolved inside the upsert handlers
+	// (authz.ResolveFlag).
+	ad := s.Group(config.AdminPrefix, authctlr.UseCustomContextRWeb, authctlr.AdminGuardRWeb)
+	req := authctlr.Require
+
+	ad.Get("/home", authctlr.RequireAdmin(admin_controller.AdminHandlerRWeb))
+	ad.Get("/logout", authctlr.RequireAdmin(authctlr.LogoutHandlerRWeb))
+
+	// Admin Users
+	ad.Get("/users", req(authz.UsersRead, user_controller.ListUsersRWeb))
+	ad.Get("/users/new", req(authz.UsersCreate, user_controller.NewUserRWeb))
+	ad.Post("/users", req(authz.UsersCreate, user_controller.UpsertUserRWeb)) // create
+	ad.Get("/users/edit/:id", req(authz.UsersUpdate, user_controller.EditUserRWeb))
+	ad.Post("/users/update/:id", req(authz.UsersUpdate, user_controller.UpsertUserRWeb)) // update
+	// Deletes are POSTs (CSRF-token checked in the handlers): GET deletes are
+	// trivially forgeable via <img src>, and link prefetchers can fire them.
+	ad.Post("/users/delete/:id", req(authz.UsersDelete, user_controller.DeleteUserRWeb))
+
+	// Role Management
+	ad.Get("/roles", req(authz.RolesRead, role_controller.ListRolesRWeb))
+	ad.Get("/roles/new", req(authz.RolesCreate, role_controller.NewRoleRWeb))
+	ad.Post("/roles", req(authz.RolesCreate, role_controller.UpsertRoleRWeb)) // create
+	ad.Get("/roles/edit/:id", req(authz.RolesUpdate, role_controller.EditRoleRWeb))
+	ad.Post("/roles/update/:id", req(authz.RolesUpdate, role_controller.UpsertRoleRWeb)) // update
+	ad.Post("/roles/delete/:id", req(authz.RolesDelete, role_controller.DeleteRoleRWeb))
+
+	// Giving records (read-only: charges are written by Stripe, not admins)
+	ad.Get("/giving", req(authz.ChargesRead, payment_controller.AdminListGivingRWeb))
+
+	// Admin Articles
+	ad.Get("/articles", req(authz.ArticlesRead, article_controller.AdminListArticlesRWeb))
+	ad.Get("/articles/new", req(authz.ArticlesCreate, article_controller.NewArticleRWeb))
+	ad.Post("/articles", req(authz.ArticlesCreate, article_controller.UpsertArticleRWeb)) // create
+	ad.Get("/articles/edit/:id", req(authz.ArticlesUpdate, article_controller.EditArticleRWeb))
+	ad.Post("/articles/update/:id", req(authz.ArticlesUpdate, article_controller.UpsertArticleRWeb)) // update
+	ad.Post("/articles/delete/:id", req(authz.ArticlesDelete, article_controller.DeleteArticleRWeb))
+
+	// Admin Sermons
+	ad.Get("/sermons", req(authz.SermonsRead, sermon_controller.AdminListSermonsRWeb))
+	ad.Get("/sermons/new", req(authz.SermonsCreate, sermon_controller.NewSermonRWeb))
+	ad.Get("/sermons/import", req(authz.SermonsCreate, sermon_controller.ImportRWeb))     // confirmation screen
+	ad.Post("/sermons/import", req(authz.SermonsCreate, sermon_controller.ImportRunRWeb)) // runs the import (CSRF checked)
+	ad.Post("/sermons", req(authz.SermonsCreate, sermon_controller.UpsertSermonRWeb))     // create
+	ad.Get("/sermons/edit/:id", req(authz.SermonsUpdate, sermon_controller.EditSermonRWeb))
+	ad.Post("/sermons/update/:id", req(authz.SermonsUpdate, sermon_controller.UpsertSermonRWeb)) // update
+	ad.Post("/sermons/delete/:id", req(authz.SermonsDelete, sermon_controller.DeleteSermonRWeb))
+	// Local sermon-cache cleanup tool (lists copies safe to delete, batch-deletes them).
+	// It removes local cached copies, never sermons, so it rides update rather
+	// than delete.
+	ad.Get("/sermons/cleanup", req(authz.SermonsUpdate, sermon_controller.AdminSermonCleanupRWeb))
+	ad.Post("/sermons/cleanup", req(authz.SermonsUpdate, sermon_controller.AdminSermonCleanupRunRWeb))
+
+	// Admin Events
+	ad.Get("/events", req(authz.EventsRead, event_controller.AdminListEventsRWeb))
+	ad.Get("/events/new", req(authz.EventsCreate, event_controller.NewEventRWeb))
+	ad.Post("/events", req(authz.EventsCreate, event_controller.UpsertEventRWeb)) // create
+	ad.Get("/events/edit/:id", req(authz.EventsUpdate, event_controller.EditEventRWeb))
+	ad.Post("/events/update/:id", req(authz.EventsUpdate, event_controller.UpsertEventRWeb)) // update
+	ad.Post("/events/delete/:id", req(authz.EventsDelete, event_controller.DeleteEventRWeb))
+
+	// Admin Pages
+	ad.Get("/pages", req(authz.PagesRead, page_controller.AdminListPagesRWeb))
+	ad.Get("/pages/new", req(authz.PagesCreate, page_controller.NewPageRWeb))
+	ad.Post("/pages", req(authz.PagesCreate, page_controller.UpsertPageRWeb))     // create
+	ad.Get("/pages/:id", req(authz.PagesRead, page_controller.AdminShowPageRWeb)) // preview
+	ad.Get("/pages/edit/:id", req(authz.PagesUpdate, page_controller.EditPageRWeb))
+	ad.Post("/pages/update/:id", req(authz.PagesUpdate, page_controller.UpsertPageRWeb)) // update
+	ad.Post("/pages/delete/:id", req(authz.PagesDelete, page_controller.DeletePageRWeb))
+
+	// Admin Menus
+	ad.Get("/menus", req(authz.MenusRead, menu_controller.AdminListMenusRWeb))
+	ad.Get("/menus/new", req(authz.MenusCreate, menu_controller.NewMenuRWeb))
+	ad.Post("/menus", req(authz.MenusCreate, menu_controller.UpsertMenuRWeb)) // create
+	ad.Get("/menus/edit/:id", req(authz.MenusUpdate, menu_controller.EditMenuRWeb))
+	ad.Post("/menus/update/:id", req(authz.MenusUpdate, menu_controller.UpsertMenuRWeb)) // update
+	ad.Post("/menus/delete/:id", req(authz.MenusDelete, menu_controller.DeleteMenuRWeb))
 }

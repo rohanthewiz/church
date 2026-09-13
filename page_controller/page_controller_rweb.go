@@ -11,6 +11,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/logger"
@@ -66,7 +67,9 @@ func NewPageRWeb(ctx rweb.Context) error {
 	}
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
-		"_global": {"user_agent": ctx.UserAgent()},
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
+			// What the viewer may do, so admin modules offer only permitted actions
+			authz.ParamKey: authz.ParamValue(ctx)},
 	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
@@ -84,7 +87,9 @@ func AdminShowPageRWeb(ctx rweb.Context) error {
 	}
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
-		"_global": {"user_agent": ctx.UserAgent()},
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
+			// What the viewer may do, so admin modules offer only permitted actions
+			authz.ParamKey: authz.ParamValue(ctx)},
 	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
@@ -97,7 +102,9 @@ func AdminListPagesRWeb(ctx rweb.Context) error {
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
 		pg.MainModuleSlug(): {"offset": ctx.Request().QueryParam("offset"), "limit": ctx.Request().QueryParam("limit")},
-		"_global":           {"user_agent": ctx.UserAgent()},
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
+			// What the viewer may do, so admin modules offer only permitted actions
+			authz.ParamKey: authz.ParamValue(ctx)},
 	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
@@ -110,7 +117,9 @@ func EditPageRWeb(ctx rweb.Context) error {
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
 		pg.MainModuleSlug(): {"id": ctx.Request().PathParam("id")},
-		"_global":           {"user_agent": ctx.UserAgent()},
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
+			// What the viewer may do, so admin modules offer only permitted actions
+			authz.ParamKey: authz.ParamValue(ctx)},
 	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
@@ -169,6 +178,31 @@ func UpsertPageRWeb(ctx rweb.Context) error {
 		logger.LogErr(err, "Could not obtain DB handle")
 		return app.RedirectRWebError(ctx, formURL, "The page could not be saved: the database is unavailable.")
 	}
+
+	// Publishing is its own permission, resolved field by field rather than by
+	// refusing the save: someone who may edit but not publish can still save
+	// their edits, and the flag keeps its stored value (false on create). See
+	// authz.ResolveFlag.
+	actor, ok := authz.ActorFrom(ctx)
+	if !ok {
+		// Admin routes always run behind AdminGuardRWeb, so no actor means a
+		// wiring bug. Fail closed rather than publish unchecked.
+		return app.RedirectRWebError(ctx, formURL, "Your permissions could not be confirmed. The page was not saved.")
+	}
+	submittedFlag := pg.Published
+	pg.Published, err = authz.ResolveFlag(dbH, actor, authz.PagesPublish, authz.FlagPagePublished, pg.Id, submittedFlag)
+	if err != nil {
+		logger.LogErr(err, "Error resolving page published flag", "page_id", pg.Id)
+		return app.RedirectRWebError(ctx, formURL, "Error saving the page. It was not saved.")
+	}
+	// The form renders the switch disabled (with the stored value in a hidden
+	// field) for anyone lacking the permission, so a difference here means a
+	// stale form or a hand-built post. Say what happened instead of silently
+	// ignoring the box.
+	flagNote := ""
+	if pg.Published != submittedFlag {
+		flagNote = " Publishing needs the pages.publish permission, so the published setting was left as it was."
+	}
 	pgUrl, err := page.UpsertPage(dbH, pg)
 	if err != nil {
 		logger.LogErr(err, "Error in page upsert", "page presenter", fmt.Sprintf("%#v", pg))
@@ -179,7 +213,7 @@ func UpsertPageRWeb(ctx rweb.Context) error {
 	if pg.Id != "0" && pg.Id != "" {
 		msg = "Updated"
 	}
-	return app.RedirectRWeb(ctx, "/admin/pages", "Page "+msg+" - Page URL -> "+pgUrl)
+	return app.RedirectRWeb(ctx, "/admin/pages", "Page "+msg+" - Page URL -> "+pgUrl+flagNote)
 }
 
 func DeletePageRWeb(ctx rweb.Context) error {

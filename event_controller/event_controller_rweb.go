@@ -9,6 +9,7 @@ import (
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/logger"
@@ -126,6 +127,31 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 		logger.LogErr(err, "Could not obtain DB handle")
 		return app.RedirectRWebError(ctx, formURL, "The event could not be saved: the database is unavailable.")
 	}
+
+	// Publishing is its own permission, resolved field by field rather than by
+	// refusing the save: someone who may edit but not publish can still save
+	// their edits, and the flag keeps its stored value (false on create). See
+	// authz.ResolveFlag.
+	actor, ok := authz.ActorFrom(ctx)
+	if !ok {
+		// Admin routes always run behind AdminGuardRWeb, so no actor means a
+		// wiring bug. Fail closed rather than publish unchecked.
+		return app.RedirectRWebError(ctx, formURL, "Your permissions could not be confirmed. The event was not saved.")
+	}
+	submittedFlag := efs.Published
+	efs.Published, err = authz.ResolveFlag(dbH, actor, authz.EventsPublish, authz.FlagEventPublished, efs.Id, submittedFlag)
+	if err != nil {
+		logger.LogErr(err, "Error resolving event published flag", "event_id", efs.Id)
+		return app.RedirectRWebError(ctx, formURL, "Error saving the event. It was not saved.")
+	}
+	// The form renders the switch disabled (with the stored value in a hidden
+	// field) for anyone lacking the permission, so a difference here means a
+	// stale form or a hand-built post. Say what happened instead of silently
+	// ignoring the box.
+	flagNote := ""
+	if efs.Published != submittedFlag {
+		flagNote = " Publishing needs the events.publish permission, so the published setting was left as it was."
+	}
 	err = efs.UpsertEvent(dbH)
 	if err != nil {
 		if msg, isInput := event.UserMessage(err); isInput {
@@ -145,7 +171,7 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 	if sess != nil && sess.FormReferrer != "" {
 		redirectTo = sess.FormReferrer // return to the form caller
 	}
-	return app.RedirectRWeb(ctx, redirectTo, "Event "+msg)
+	return app.RedirectRWeb(ctx, redirectTo, "Event "+msg+flagNote)
 }
 
 func DeleteEventRWeb(ctx rweb.Context) error {

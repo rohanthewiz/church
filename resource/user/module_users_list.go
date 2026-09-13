@@ -1,10 +1,14 @@
 package user
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/rohanthewiz/church/app"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -68,6 +72,36 @@ func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn b
 		return ""
 	}
 
+	// Roles column and row locking (admin renders only). A row is locked when
+	// the viewer couldn't manage that user: a SuperAdmin, or someone holding
+	// permissions the viewer lacks (the authz.CanManageUser rule, computed from
+	// two whole-table reads rather than per row). A failed read degrades to
+	// "no roles shown, rows locked" rather than an empty page.
+	actor := authz.FromParams(params)
+	var roleNames map[int64][]string
+	var userPerms map[int64]authz.Set
+	accessLoaded := false
+	if m.Opts.IsAdmin {
+		if dbH, err := db.Db(); err != nil {
+			logger.LogErr(err, "Could not obtain DB handle for user roles")
+		} else if roleNames, err = authz.RoleNamesByUser(dbH); err != nil {
+			logger.LogErr(err, "Error loading user role names")
+		} else if userPerms, err = authz.PermsByUser(dbH); err != nil {
+			logger.LogErr(err, "Error loading user permissions")
+		} else {
+			accessLoaded = true
+		}
+	}
+	manageable := func(usr Presenter, uid int64) bool {
+		if actor.IsSuper() {
+			return true
+		}
+		if !accessLoaded || usr.Role == authz.SuperAdminRole {
+			return false
+		}
+		return actor.CanGrant(userPerms[uid])
+	}
+
 	// Grid setup. The old grid defined Enabled twice for admins — collapsed
 	// to a single column here. Editing is reached via the First Name link,
 	// so there is no separate edit column (matching the old behavior).
@@ -89,7 +123,8 @@ func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn b
 		g.Columns = append(g.Columns,
 			grid.Column{Header: "Username", Popup: true},
 			grid.Column{Header: "Email Address", Popup: true},
-			grid.Column{Header: "Role", Popup: true},
+			grid.Column{Header: "Base Role", Popup: true},
+			grid.Column{Header: "Roles", Popup: true},
 			grid.Column{Header: "Updated By", Popup: true},
 			grid.Column{Header: "Actions", NoSort: true, NoFilter: true, Shrink: true}, // edit
 			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true},        // delete
@@ -111,15 +146,30 @@ func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn b
 			grid.Link(usr.Firstname, m.GetEditURL()+usr.Id),
 		)
 		if m.Opts.IsAdmin {
+			uid, _ := strconv.ParseInt(usr.Id, 10, 64)
+			canManage := manageable(usr, uid)
+
+			// An explicit edit action: the first-name link alone was too
+			// easy to miss as the only way into the editor
+			editCell := grid.EditLinkNamed(m.GetEditURL()+usr.Id, usr.Username)
+			if !actor.Can(authz.UsersUpdate) {
+				editCell = grid.Text("")
+			} else if !canManage {
+				editCell = grid.Text("locked")
+			}
+			deleteCell := grid.Text("")
+			if actor.Can(authz.UsersDelete) && canManage {
+				deleteCell = grid.DeleteLinkNamed(m.GetDeleteURL()+usr.Id, usr.Username)
+			}
+
 			row = append(row,
 				grid.Text(usr.Username),
 				grid.Text(usr.EmailAddress),
 				grid.Text(RoleToString[usr.Role]),
+				grid.Text(strings.Join(roleNames[uid], ", ")),
 				grid.Text(usr.UpdatedBy),
-				// An explicit edit action: the first-name link alone was too
-				// easy to miss as the only way into the editor
-				grid.EditLinkNamed(m.GetEditURL()+usr.Id, usr.Username),
-				grid.DeleteLinkNamed(m.GetDeleteURL()+usr.Id, usr.Username),
+				editCell,
+				deleteCell,
 			)
 		}
 		g.Rows = append(g.Rows, row)
@@ -131,7 +181,7 @@ func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn b
 		b.DivClass("ch-module-heading").R(
 			b.T(m.Opts.Title),
 			b.Wrap(func() {
-				if m.Opts.IsAdmin {
+				if m.Opts.IsAdmin && actor.Can(authz.UsersCreate) {
 					b.A("class", "btn-add", "href", m.GetNewURL(), "title", "Add User").T("+")
 				}
 			}),
