@@ -1,7 +1,6 @@
 package user
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -9,6 +8,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/resource/auth"
+	"github.com/rohanthewiz/church/util/inputerr"
 	"github.com/rohanthewiz/serr"
 	"gopkg.in/nullbio/null.v6"
 )
@@ -69,7 +69,9 @@ func modelFromPresenter(exec db.Executor, pres Presenter) (usrmod *models.User, 
 	}
 	if pres.Password != "" {  // we are setting or changing a password
 		if pres.Password != pres.PasswordConfirmation {
-			return usrmod, createOp, serr.Wrap(errors.New("Password and password confirmation do not match"))
+			// An InputError, so the controller shows this on the form. Refused
+			// before any write.
+			return usrmod, createOp, serr.Wrap(inputerr.New("Password and password confirmation do not match", nil))
 		}
 		salt := auth.GenSalt("MyRandomString$%@!@") // todo rand source
 		usrmod.EncryptedSalt = null.NewString(salt, true)

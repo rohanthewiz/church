@@ -9,6 +9,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/resource/content"
+	"github.com/rohanthewiz/church/util/inputerr"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 	"gopkg.in/nullbio/null.v6"
@@ -93,8 +94,9 @@ func modelFromPresenter(exec db.Executor, pres Presenter) (model *models.Article
 			model.Slug = pres.Slug  // pass in slug only on create - slug has unique constraint
 		}
 	} else {
-		msg := "Article title is a required field when creating articles"
-		return model, create_op, serr.Wrap(errors.New(msg))
+		// An InputError, so the controller shows this on the form instead of a
+		// generic failure. Refused before any write.
+		return model, create_op, serr.Wrap(inputerr.New("An article needs a title", nil))
 	}
 	model.Published = pres.Published
 	model.Summary = strings.TrimSpace(pres.Summary)

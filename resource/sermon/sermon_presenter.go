@@ -1,7 +1,6 @@
 package sermon
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/resource/content"
+	"github.com/rohanthewiz/church/util/inputerr"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 	"gopkg.in/nullbio/null.v6"
@@ -111,13 +111,10 @@ func modelFromPresenter(exec db.Executor, ser Presenter) (sermod *models.Sermon,
 			sermod.Slug = null.NewString(ser.Slug, true)
 		}
 	} else {
-		msg := "Sermon title is a required field when creating sermons"
-		return sermod, create_op, serr.Wrap(errors.New(msg))
+		return sermod, create_op, serr.Wrap(inputerr.New(sermonTitleRequired, nil))
 	}
-	zone, _ := time.Now().Zone()  // server timezone should be good enough? I hope!
-	datetimez := ser.DateTaught + " 11:00 " + zone
-	fmt.Println("[Debug] datetimez:", datetimez)  // debug
-	dte, err := time.Parse(config.IncomingDateTimeFormat, datetimez)
+	// Same parse as Validate, so a date Validate accepted cannot be refused here
+	dte, err := ser.dateTaught()
 	if err != nil {
 		return sermod, create_op, serr.Wrap(err, "Error parsing sermon date")
 	}

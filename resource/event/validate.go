@@ -1,48 +1,24 @@
 package event
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/util/inputerr"
 )
 
 // InputError is a refusal of what the admin typed, as opposed to a failure of
-// the server. The controller distinguishes the two with errors.As: an
-// InputError's message is written for the admin and goes straight into the
-// flash on the form, while any other error is logged and replaced with a
-// generic message (a pq error has no business on screen).
-//
-// A type rather than serr's SetUserMsg because serr.UserMsgFromErr only looks
-// at the outermost error, and these travel up through serr.Wrap. errors.As
-// walks the Unwrap chain, so the classification survives wrapping.
-type InputError struct {
-	Msg string // shown to the admin verbatim
-	Err error  // underlying parse/validation error, kept for the log
-}
+// the server. The type now lives in util/inputerr so article, sermon and user
+// saves share it; the alias keeps this package's API (and its callers) as-is.
+type InputError = inputerr.InputError
 
-func (e *InputError) Error() string {
-	if e.Err != nil {
-		return e.Msg + ": " + e.Err.Error()
-	}
-	return e.Msg
-}
-
-func (e *InputError) Unwrap() error { return e.Err }
-
-func inputErr(msg string, err error) error { return &InputError{Msg: msg, Err: err} }
+func inputErr(msg string, err error) error { return inputerr.New(msg, err) }
 
 // UserMessage returns the admin-facing text when err is (or wraps) an
 // InputError; ok=false means the error is a server fault.
-func UserMessage(err error) (msg string, ok bool) {
-	var ie *InputError
-	if errors.As(err, &ie) {
-		return ie.Msg, true
-	}
-	return "", false
-}
+func UserMessage(err error) (msg string, ok bool) { return inputerr.UserMessage(err) }
 
 // Validate checks everything in the presenter that can be refused without the
 // database, and must run before any write.

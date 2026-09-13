@@ -1,7 +1,6 @@
 package user_controller
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/apitoken"
 	"github.com/rohanthewiz/church/resource/user"
+	"github.com/rohanthewiz/church/util/inputerr"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
 )
@@ -42,11 +42,20 @@ func EditUserRWeb(ctx rweb.Context) error {
 }
 
 func UpsertUserRWeb(ctx rweb.Context) error {
+	// An expired token is routine (a form left open too long), so send the admin
+	// back to the same form with a warning rather than a bare 500. Nothing has
+	// been written yet. The form re-renders from the DB, so unsaved edits
+	// (including a typed password) are lost.
+	id := strings.TrimSpace(ctx.Request().FormValue("user_id"))
+	formURL := "/admin/users/new"
+	if id != "" && id != "0" {
+		formURL = "/admin/users/edit/" + id
+	}
 	csrf := ctx.Request().FormValue("csrf")
 	// Check token valid against the in-process kvstore
 	if !app.VerifyFormToken(csrf) {
-		err := errors.New("Your form is expired. Go back to the form, refresh the page and try again")
-		return err
+		return app.RedirectRWebWarn(ctx, formURL,
+			"Your form has expired and was not saved. Please refresh the form and try again.")
 	}
 	efs := user.Presenter{}
 	efs.Id = ctx.Request().FormValue("user_id")
@@ -64,10 +73,15 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		efs.UpdatedBy = sess.Username
 	}
 	
+	// Failures go back to the form as an error flash. UpsertUser is a single
+	// Insert or Update, so a failed save wrote nothing and the form (not the
+	// list) is the right place to retry from.
 	role, err := strconv.ParseInt(ctx.Request().FormValue("role"), 10, 64)
 	if err != nil {
+		// The role is a <select>, so this is a tampered or broken form rather than
+		// a typo; still logged, but the admin gets the form back, not a 500.
 		logger.LogErr(err, "Error converting role")
-		return err
+		return app.RedirectRWebError(ctx, formURL, "Please choose a role. The user was not saved.")
 	}
 	efs.Role = int(role)
 	if ctx.Request().FormValue("enabled") == "on" {
@@ -77,12 +91,20 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
-		return err
+		return app.RedirectRWebError(ctx, formURL, "The user could not be saved: the database is unavailable.")
 	}
 	err = efs.UpsertUser(dbH)
 	if err != nil {
-		logger.LogErr(err, "Error in user upsert", "user_presenter", fmt.Sprintf("%#v", efs))
-		return err
+		if msg, isInput := inputerr.UserMessage(err); isInput {
+			// The admin's mistake, not ours: no error log, just the reason
+			return app.RedirectRWebError(ctx, formURL, msg+". The user was not saved.")
+		}
+		// Password fields are blanked before logging: %#v of the presenter would
+		// otherwise put the typed password in the log.
+		logged := efs
+		logged.Password, logged.PasswordConfirmation = "", ""
+		logger.LogErr(err, "Error in user upsert", "user_presenter", fmt.Sprintf("%#v", logged))
+		return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
 	}
 	msg := "Created"
 	if efs.Id != "0" && efs.Id != "" {

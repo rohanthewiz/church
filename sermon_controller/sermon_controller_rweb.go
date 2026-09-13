@@ -24,6 +24,7 @@ import (
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/template"
 	"github.com/rohanthewiz/church/util/fileops"
+	"github.com/rohanthewiz/church/util/inputerr"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
 	"github.com/rohanthewiz/serr"
@@ -123,11 +124,20 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	var fileUploaded bool
 	var localFileSpec string
 
+	// An expired token is routine (a form left open too long), so send the admin
+	// back to the same form with a warning rather than a bare 500. The check runs
+	// before the audio file is copied or anything is written, so a refused
+	// upload leaves no file behind; the admin must re-select the file.
+	id := strings.TrimSpace(ctx.Request().FormValue("sermon_id"))
+	formURL := "/admin/sermons/new"
+	if id != "" && id != "0" {
+		formURL = "/admin/sermons/edit/" + id
+	}
 	csrf := ctx.Request().FormValue("csrf")
 	// Check that this token is present and valid in the in-process kvstore
 	if !app.VerifyFormToken(csrf) {
-		err := serr.New("Your form is expired. Go back to the form, refresh the page and try again")
-		return err
+		return app.RedirectRWebWarn(ctx, formURL,
+			"Your form has expired and was not saved. Please refresh the form and try again.")
 	}
 	// apparently embedded fields cannot be set immediately in a literal struct
 	// we'll set those after the object is created
@@ -151,6 +161,22 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	if ctx.Request().FormValue("published") == "on" {
 		serPres.Published = true
 	}
+
+	// Refuse bad input before touching the filesystem. The audio copy below
+	// happens before the DB save, and for an existing sermon os.Create truncates
+	// the old file, so input refused any later would already have cost the file.
+	// Also, GetYear picks the upload directory from DateTaught.
+	//
+	//	expired token / refused input ──► form, warn/error   nothing written
+	//	audio copy fault              ──► form, error        no DB write; a partial
+	//	                                                     local file is possible
+	//	DB handle / upsert fault      ──► form, error        no DB write (single
+	//	                                                     Insert/Update); the
+	//	                                                     uploaded file stays on disk
+	if err := serPres.Validate(); err != nil {
+		msg, _ := inputerr.UserMessage(err) // Validate returns only InputErrors
+		return app.RedirectRWebError(ctx, formURL, msg+". The sermon was not saved.")
+	}
 	serYear := serPres.GetYear()
 
 	// Here we don't want to always err if form file is just not set
@@ -158,11 +184,14 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	if err == nil && sermonAudio != nil && sermonHeader != nil && sermonHeader.Filename != "" { // If all conditions are good upload the sermon contents
 		defer sermonAudio.Close()
 
+		const audioFailMsg = "The audio file could not be stored, so the sermon was not saved."
+
 		// Apparently sermonHeader.Filename is coming in url encoded
 		filenameDecoded, err := url.QueryUnescape(sermonHeader.Filename)
 		if err != nil {
 			logger.LogErr(err, "when", "un-escaping filename", "filename", sermonHeader.Filename)
-			return err
+			return app.RedirectRWebError(ctx, formURL,
+				"The audio file name could not be read; please rename the file and try again. The sermon was not saved.")
 		}
 
 		localFileSpec = path.Join(config.Options.IDrive.LocalSermonsDir, serYear, filenameDecoded)
@@ -171,7 +200,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 		err = fileops.EnsureDir(sermonDir)
 		if err != nil {
 			logger.LogErr(err, "error ensuring local directory exists for sermon", "localFileSpec", localFileSpec)
-			return err
+			return app.RedirectRWebError(ctx, formURL, audioFailMsg)
 		}
 
 		sermonAudioURL := path.Join(sermonsURLPrefix, serYear, sermonHeader.Filename)
@@ -180,14 +209,14 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 		dest, err := os.Create(localFileSpec)
 		if err != nil {
 			logger.LogErr(err, "when", "creating local destination file for sermon", "fileSpec", localFileSpec)
-			return err
+			return app.RedirectRWebError(ctx, formURL, audioFailMsg)
 		}
 		defer dest.Close()
 
 		// Copy file contents
 		if _, err := io.Copy(dest, sermonAudio); err != nil {
 			logger.LogErr(err, "when", "copying sermon from FormFile to dest", "filename", sermonHeader.Filename)
-			return err
+			return app.RedirectRWebError(ctx, formURL, audioFailMsg)
 		}
 
 		fileUploaded = true
@@ -208,12 +237,17 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
-		return err
+		return app.RedirectRWebError(ctx, formURL, "The sermon could not be saved: the database is unavailable.")
 	}
 	slug, err := serPres.Upsert(dbH)
 	// fmt.Printf("*|* serPres --> %#v\n", serPres)
 	if err != nil {
-		return err
+		if msg, isInput := inputerr.UserMessage(err); isInput {
+			// Validate already ran, so this is a rule it does not cover yet
+			return app.RedirectRWebError(ctx, formURL, msg+". The sermon was not saved.")
+		}
+		logger.LogErr(err, "Error in sermon upsert", "sermon_id", serPres.Id, "sermon_title", serPres.Title)
+		return app.RedirectRWebError(ctx, formURL, "Error saving the sermon. It was not saved.")
 	}
 
 	msg := "Created"
@@ -296,7 +330,10 @@ func AdminSermonCleanupRunRWeb(ctx rweb.Context) error {
 
 	csrf := ctx.Request().FormValue("csrf")
 	if !app.VerifyFormToken(csrf) {
-		return serr.New("Your form is expired. Go back, refresh the page and try again")
+		// Back to the cleanup page, which re-verifies against IDrive and issues a
+		// fresh token. Nothing has been deleted yet.
+		return app.RedirectRWebWarn(ctx, "/admin/sermons/cleanup",
+			"Your form has expired and nothing was deleted. Please review the list and try again.")
 	}
 
 	raw := ctx.Request().FormValue("selected_specs")

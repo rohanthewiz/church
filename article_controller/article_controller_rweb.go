@@ -2,7 +2,6 @@ package article_controller
 
 import (
 	"bytes"
-	"errors"
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
@@ -14,6 +13,7 @@ import (
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/chimage"
 	"github.com/rohanthewiz/church/template"
+	"github.com/rohanthewiz/church/util/inputerr"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
 )
@@ -65,10 +65,18 @@ func EditArticleRWeb(ctx rweb.Context) error {
 }
 
 func UpsertArticleRWeb(ctx rweb.Context) error {
+	// An expired token is routine (a form left open too long), so send the admin
+	// back to the same form with a warning rather than a bare 500. Nothing has
+	// been written yet. The form re-renders from the DB, so unsaved edits are lost.
+	id := strings.TrimSpace(ctx.Request().FormValue("article_id"))
+	formURL := "/admin/articles/new"
+	if id != "" && id != "0" {
+		formURL = "/admin/articles/edit/" + id
+	}
 	csrf := ctx.Request().FormValue("csrf")
 	if !app.VerifyFormToken(csrf) { // check that csrf is present and valid in the in-process kvstore
-		err := errors.New("Your form is expired. Go back to the form, refresh the page and try again")
-		return err
+		return app.RedirectRWebWarn(ctx, formURL,
+			"Your form has expired and was not saved. Please refresh the form and try again.")
 	}
 	artPres := article.Presenter{}
 	artPres.Id = ctx.Request().FormValue("article_id")
@@ -104,14 +112,22 @@ func UpsertArticleRWeb(ctx rweb.Context) error {
 		artPres.Published = true
 	}
 
+	// Failures go back to the form as an error flash. UpsertArticle is a single
+	// Insert or Update, so a failed save wrote nothing and the form (not the
+	// list) is the right place to retry from.
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
-		return err
+		return app.RedirectRWebError(ctx, formURL, "The article could not be saved: the database is unavailable.")
 	}
 	err = artPres.UpsertArticle(dbH)
 	if err != nil {
-		return err
+		if msg, isInput := inputerr.UserMessage(err); isInput {
+			// The admin's mistake, not ours: no error log, just the reason
+			return app.RedirectRWebError(ctx, formURL, msg+". The article was not saved.")
+		}
+		logger.LogErr(err, "Error in article upsert", "article_id", artPres.Id, "article_title", artPres.Title)
+		return app.RedirectRWebError(ctx, formURL, "Error saving the article. It was not saved.")
 	}
 	msg := "Created"
 	if artPres.Id != "0" && artPres.Id != "" {
