@@ -16,6 +16,7 @@ func TestConstantsAreInCatalog(t *testing.T) {
 		UsersCreate, UsersRead, UsersUpdate, UsersDelete, UsersEnable,
 		RolesCreate, RolesRead, RolesUpdate, RolesDelete,
 		ChargesRead,
+		ChatModerate,
 	} {
 		if !Valid(p) {
 			t.Errorf("%s is not in the catalog", p)
@@ -62,6 +63,46 @@ func TestActorChecks(t *testing.T) {
 	super := NewActorForTest(3, "root", SuperAdminRole)
 	if !super.Can(ChargesRead) || !super.CanGrant(AllPermissions()) {
 		t.Error("SuperAdmin must bypass every check")
+	}
+
+	// A site-only permission moderates the site but doesn't open the admin.
+	moderator := NewActorForTest(4, "mo", 9, ChatModerate)
+	if !moderator.Can(ChatModerate) || moderator.HasAdminAccess() {
+		t.Error("chat.moderate alone must not grant admin access")
+	}
+	if !NewActorForTest(5, "mix", 9, ChatModerate, EventsRead).HasAdminAccess() {
+		t.Error("an admin-area permission alongside chat.moderate must grant admin access")
+	}
+}
+
+func TestLegacyModerator(t *testing.T) {
+	cases := map[int]bool{
+		99: true,  // SuperAdmin (the ordering exception)
+		1:  true,  // Admin
+		5:  true,  // Publisher
+		7:  true,  // Author/Editor
+		9:  false, // RegisteredUser
+		0:  false, // no role loaded
+	}
+	for role, want := range cases {
+		if got := LegacyModerator(role); got != want {
+			t.Errorf("LegacyModerator(%d) = %v, want %v", role, got, want)
+		}
+	}
+}
+
+// countHolders is the arithmetic behind LocksOutRoleManagers; the queries
+// are exercised against bytdb in queries_bytdb_test.go.
+func TestCountHolders(t *testing.T) {
+	perms := map[int64]Set{1: NewSet(RolesUpdate, RolesRead), 2: NewSet(ArticlesRead)}
+	assign := map[int64][]int64{10: {2, 1}, 11: {2}, 12: {1}}
+	eligible := map[int64]bool{10: true, 11: true} // 12 disabled or SuperAdmin
+	if n := countHolders(RolesUpdate, perms, assign, eligible); n != 1 {
+		t.Errorf("countHolders = %d, want 1 (only user 10)", n)
+	}
+	delete(perms, 1) // role deleted
+	if n := countHolders(RolesUpdate, perms, assign, eligible); n != 0 {
+		t.Errorf("countHolders after role delete = %d, want 0", n)
 	}
 }
 

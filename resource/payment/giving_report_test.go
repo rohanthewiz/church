@@ -135,6 +135,46 @@ func TestWriteGivingCSV(t *testing.T) {
 	}
 }
 
+func TestWriteGivingSummaryCSV(t *testing.T) {
+	now := time.Date(2026, time.March, 10, 12, 0, 0, 0, time.UTC)
+	jan := charge(1, time.Date(2026, time.January, 5, 9, 0, 0, 0, time.UTC), 10000, true)
+	jan.AmountRefunded = null.Int64From(2500)
+	mar := charge(2, time.Date(2026, time.March, 1, 9, 0, 0, 0, time.UTC), 5050, true)
+	pending := charge(3, time.Date(2026, time.March, 2, 9, 0, 0, 0, time.UTC), 700, false)
+	g := GroupGivingYear(2026, 2026, models.ChargeSlice{jan, mar, pending}, now)
+
+	var buf bytes.Buffer
+	if err := WriteGivingSummaryCSV(&buf, g); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.HasPrefix(out, "\uFEFF") || !strings.Contains(out, "\r\n") {
+		t.Error("summary CSV must start with a BOM and use CRLF, like the per-gift export")
+	}
+	rows, err := csv.NewReader(strings.NewReader(strings.TrimPrefix(out, "\uFEFF"))).ReadAll()
+	if err != nil {
+		t.Fatalf("CSV does not parse: %v", err)
+	}
+	// Headings, Jan–Mar (year to date, February empty but present), Total
+	if len(rows) != 5 || strings.Join(rows[0], ",") != strings.Join(GivingSummaryCSVHeadings, ",") {
+		t.Fatalf("want headings + 3 months + total, got %d rows: %v", len(rows), rows)
+	}
+	want := [][]string{
+		{"2026-01", "1", "100.00", "25.00", "75.00", "0"},
+		{"2026-02", "0", "0.00", "0.00", "0.00", "0"},
+		{"2026-03", "1", "50.50", "0.00", "50.50", "1"},
+		{"Total", "2", "150.50", "25.00", "125.50", "1"},
+	}
+	for i, w := range want {
+		if strings.Join(rows[i+1], ",") != strings.Join(w, ",") {
+			t.Errorf("row %d = %v, want %v", i+1, rows[i+1], w)
+		}
+	}
+	if g.SummaryCSVFilename() != "giving-2026-ytd-summary.csv" {
+		t.Errorf("summary filename = %s", g.SummaryCSVFilename())
+	}
+}
+
 func TestDollarsGroupsThousands(t *testing.T) {
 	for cents, want := range map[int64]string{
 		0: "$0.00", 5: "$0.05", 99999: "$999.99", 100000: "$1,000.00",

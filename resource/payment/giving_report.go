@@ -9,8 +9,8 @@ package payment
 //	               ──► charges in [Jan 1 year, Jan 1 year+1)  site-local time
 //	               ──► GroupGivingYear     (pure: months + totals, unit tested)
 //	                        │
-//	          ┌─────────────┴─────────────┐
-//	   module render (HTML)        WriteGivingCSV (download)
+//	          ┌─────────────┴─────────────┬──────────────────────────┐
+//	   module render (HTML)        WriteGivingCSV (per gift)   WriteGivingSummaryCSV (month totals)
 //
 // Portability: the SQL is single-table with a range filter and ORDER BY, the
 // subset both Postgres and bytdb (over the wire) support. Grouping and sums
@@ -282,6 +282,61 @@ func WriteGivingCSV(w io.Writer, g GivingYear) error {
 				return serr.Wrap(err, "Error writing CSV row", "charge_id", strconv.FormatInt(c.ID, 10))
 			}
 		}
+	}
+	cw.Flush()
+	if err := cw.Error(); err != nil {
+		return serr.Wrap(err, "Error flushing CSV")
+	}
+	return nil
+}
+
+// SummaryCSVFilename names the month-totals download, e.g.
+// "giving-2026-ytd-summary.csv".
+func (g GivingYear) SummaryCSVFilename() string {
+	return strings.TrimSuffix(g.CSVFilename(), ".csv") + "-summary.csv"
+}
+
+// GivingSummaryCSVHeadings is the header row of the month-totals export.
+var GivingSummaryCSVHeadings = []string{"Month", "Gifts", "Gross", "Refunded", "Net", "Pending"}
+
+// WriteGivingSummaryCSV writes one row per month of g (the same months the
+// page's "By month" table shows, empty ones included), then a Total row.
+//
+// It follows WriteGivingCSV's format (BOM, CRLF, plain decimals) with one
+// deliberate difference: it has a Total row. The per-gift export leaves
+// totals out because it is data to sort and filter. The summary is the
+// finished report a treasurer hands on, and at twelve rows nobody filters
+// it. The Total row's Month cell is the literal "Total", so it can't be
+// mistaken for a month key.
+//
+// Pending counts unpaid charges, which the money columns exclude (see
+// GivingTotals).
+func WriteGivingSummaryCSV(w io.Writer, g GivingYear) error {
+	if _, err := io.WriteString(w, "\uFEFF"); err != nil {
+		return serr.Wrap(err, "Error writing CSV byte-order mark")
+	}
+	cw := csv.NewWriter(w)
+	cw.UseCRLF = true
+	if err := cw.Write(GivingSummaryCSVHeadings); err != nil {
+		return serr.Wrap(err, "Error writing CSV headings")
+	}
+	row := func(label string, t GivingTotals) []string {
+		return []string{
+			label,
+			strconv.Itoa(t.Gifts),
+			decimalCents(t.Gross),
+			decimalCents(t.Refunded),
+			decimalCents(t.Net()),
+			strconv.Itoa(t.Pending),
+		}
+	}
+	for _, m := range g.Months {
+		if err := cw.Write(row(m.Key(), m.Totals)); err != nil {
+			return serr.Wrap(err, "Error writing CSV summary row", "month", m.Key())
+		}
+	}
+	if err := cw.Write(row("Total", g.Totals)); err != nil {
+		return serr.Wrap(err, "Error writing CSV total row")
 	}
 	cw.Flush()
 	if err := cw.Error(); err != nil {

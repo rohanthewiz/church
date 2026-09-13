@@ -152,8 +152,8 @@ func APIPrayerAnsweredRWeb(ctx rweb.Context) error {
 	if !ok {
 		return apiv1.Error(ctx, http.StatusUnauthorized, "Authentication required")
 	}
-	if !chat.CanModerate(tu.Role) {
-		return apiv1.Error(ctx, http.StatusForbidden, "Editor role required")
+	if !canModerate(tu.Username, tu.Role) {
+		return apiv1.Error(ctx, http.StatusForbidden, "Moderator permission required")
 	}
 	id, err := strconv.ParseInt(ctx.Request().Param("id"), 10, 64)
 	if err != nil {
@@ -211,7 +211,8 @@ func APIPrayerDeleteRWeb(ctx rweb.Context) error {
 	if !found {
 		return ctx.WriteJSON(map[string]any{"ok": true, "id": id})
 	}
-	if !chat.CanModerate(tu.Role) && tu.UserID != req.UserId {
+	// Ownership first: it is free, and the moderation check may query roles
+	if tu.UserID != req.UserId && !canModerate(tu.Username, tu.Role) {
 		return apiv1.Error(ctx, http.StatusForbidden, "You may only withdraw your own request")
 	}
 	if err = DeleteRequest(dbH, id); err != nil {

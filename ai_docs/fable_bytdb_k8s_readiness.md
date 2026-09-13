@@ -182,8 +182,15 @@ It would appear to work until the first unclean pod kill — exactly when the WA
 
 ## 6. Phase 1 — COMPLETED 2026-07-19
 
-bytdb is now the **default backend** for both site binaries; Postgres remains an explicit
-fallback (`db.type: postgres` in options.yml, or `DB_TYPE=postgres`). Goose was dropped
+> **Superseded 2026-09-13: Postgres is the default again.** An empty `db.type` now means
+> Postgres; bytdb is opt-in with `db.type: bytdb` or `DB_TYPE=bytdb`. The k8s site
+> manifests pin `DB_TYPE=bytdb`, so the deployment shape below is unchanged, but that env
+> var is now required (removing it switches the pod to Postgres). The paragraph and the
+> `config` bullet below describe the state as of 2026-07-19. See
+> `claude_sessions/2026-0913-1542-postgres-default-db.md`.
+
+As of 2026-07-19, bytdb was the **default backend** for both site binaries, and Postgres
+was an explicit fallback (`db.type: postgres` in options.yml, or `DB_TYPE=postgres`). Goose was dropped
 for the bytdb path — the schema ships as an in-code, idempotent bootstrap.
 
 ### Implementation
@@ -196,8 +203,9 @@ for the bytdb path — the schema ships as an in-code, idempotent bootstrap.
   `db/bytdb_schema_probe_test.go` regression-tests every DDL statement against a scratch
   engine.
 - `config` — new `db: {type, file, listen}` block + `DB_TYPE`/`DB_FILE`/`DB_LISTEN` env
-  overrides. Defaults: bytdb, `data/church.db`, `127.0.0.1:0` (ephemeral port so several
-  sites share a host without port coordination).
+  overrides. Defaults: `data/church.db`, `127.0.0.1:0` (ephemeral port so several
+  sites share a host without port coordination). The type defaulted to bytdb until
+  2026-09-13; it now defaults to Postgres.
 - `cema/main.go`, `ccswm/main.go` — build DBOpts from the new block; PG fallback wired;
   dead `roredis.InitRedis` in cema commented out.
 - Dependencies: `bytdb v0.8.0`, `bytdb/pgwire v0.8.0` (upgraded from v0.6.2 on 2026-08-01

@@ -31,6 +31,7 @@ package template
 //	.af-btn / --danger / --ghost small action buttons (module/menu-item rows)
 //	.af-dash*                    admin home dashboard cards
 //	.af-toolbar / .af-yearnav    report toolbar with year navigation
+//	.af-actions                  a wrapping row of toolbar buttons
 //	.af-table(-wrap)             read-only data tables (giving report)
 //
 // Layout down to phones: field grids collapse to one column at 640px; the
@@ -161,6 +162,7 @@ const AdminCSS = `
 .af-toolbar { display: flex; align-items: center; justify-content: space-between;
 	gap: 0.6rem; flex-wrap: wrap; margin: 0.4rem 0 1rem; }
 .af-yearnav { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.af-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .af-yearnav__label { font-weight: 600; font-size: 1.05rem; }
 .af-yearnav__period { font-weight: 400; font-size: 0.85rem; color: var(--af-text-faint);
 	margin-left: 0.4rem; }

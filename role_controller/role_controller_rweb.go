@@ -49,7 +49,8 @@ func EditRoleRWeb(ctx rweb.Context) error {
 //	expired token / bad id / input error     ─► form, warn/error    nothing written
 //	role holds perms the actor lacks         ─► form, error         nothing written
 //	submitted perms the actor lacks          ─► form, error         nothing written
-//	DB fault mid-save                        ─► form, error         possibly partial:
+//	would leave no role manager (non-super)  ─► form, error         nothing written
+//	DB fault mid-save                       ─► form, error         possibly partial:
 //	                                                                fewer grants, never
 //	                                                                more (see SaveRole)
 func UpsertRoleRWeb(ctx rweb.Context) error {
@@ -117,6 +118,19 @@ func UpsertRoleRWeb(ctx rweb.Context) error {
 		return app.RedirectRWebError(ctx, formURL,
 			"You can only grant permissions you hold yourself. The role was not saved.")
 	}
+	// Taking roles.update out of the only role that grants it to anyone would
+	// leave only a SuperAdmin able to manage roles (see authz/lockout.go). A
+	// SuperAdmin is exempt, and a new role only adds.
+	if roleID != 0 && !actor.IsSuper() {
+		locks, err := authz.LocksOutRoleManagers(dbH, authz.PendingChange{RoleID: roleID, RolePerms: perms})
+		if err != nil {
+			logger.LogErr(err, "Error checking role-manager lockout", "role_id", id)
+			return app.RedirectRWebError(ctx, formURL, "Error saving the role. It was not saved.")
+		}
+		if locks {
+			return app.RedirectRWebError(ctx, formURL, authz.RoleManagerLockoutMsg+" The role was not saved.")
+		}
+	}
 
 	_, err = authz.SaveRole(dbH, authz.Role{
 		ID:          roleID,
@@ -171,6 +185,16 @@ func DeleteRoleRWeb(ctx rweb.Context) error {
 	if !actor.CanGrant(role.Perms) {
 		return app.RedirectRWebError(ctx, rolesURL,
 			"That role holds permissions you don't have, so you can't delete it.")
+	}
+	if !actor.IsSuper() {
+		locks, err := authz.LocksOutRoleManagers(dbH, authz.PendingChange{RoleID: roleID, DeleteRole: true})
+		if err != nil {
+			logger.LogErr(err, "Error checking role-manager lockout", "role_id", ctx.Request().PathParam("id"))
+			return app.RedirectRWebError(ctx, rolesURL, "Error deleting the role.")
+		}
+		if locks {
+			return app.RedirectRWebError(ctx, rolesURL, authz.RoleManagerLockoutMsg+" Nothing was deleted.")
+		}
 	}
 	if err := authz.DeleteRole(dbH, roleID); err != nil {
 		logger.LogErr(err, "Error deleting role", "role_id", ctx.Request().PathParam("id"))

@@ -146,6 +146,41 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
 	}
 
+	// ---- Role assignment (decided here, written after the account) ----
+	// Roles the actor can grant (a subset of their own permissions) follow
+	// the form. Roles they can't grant keep their current state whatever was
+	// posted: their checkboxes were disabled, and a disabled box posts
+	// nothing, which must not read as "remove". Computed before any write so
+	// the lockout check below sees the final assignment.
+	var finalRoles []int64
+	for _, r := range allRoles {
+		field := authz.RoleFieldPrefix + strconv.FormatInt(r.ID, 10)
+		if actor.CanGrant(r.Perms) {
+			if ctx.Request().FormValue(field) == "on" {
+				finalRoles = append(finalRoles, r.ID)
+			}
+		} else if currentRoles[r.ID] {
+			finalRoles = append(finalRoles, r.ID)
+		}
+	}
+
+	// Unticking the last role manager's roles, or disabling that account,
+	// would leave only a SuperAdmin able to fix roles (see authz/lockout.go).
+	// A SuperAdmin is exempt: they are the recovery path. A new account only
+	// adds, so only updates are checked.
+	if isUpdate && !actor.IsSuper() {
+		locks, err := authz.LocksOutRoleManagers(dbH, authz.PendingChange{
+			UserID: userID, SetUserRoles: true, UserRoles: finalRoles, RemoveUser: !efs.Enabled,
+		})
+		if err != nil {
+			logger.LogErr(err, "Error checking role-manager lockout", "user_id", efs.Id)
+			return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+		}
+		if locks {
+			return app.RedirectRWebError(ctx, formURL, authz.RoleManagerLockoutMsg+" The user was not saved.")
+		}
+	}
+
 	savedID, err := efs.UpsertUserID(dbH)
 	if err != nil {
 		if msg, isInput := inputerr.UserMessage(err); isInput {
@@ -159,22 +194,7 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		logger.LogErr(err, "Error in user upsert", "user_presenter", fmt.Sprintf("%#v", logged))
 		return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
 	}
-	// ---- Role assignment ----
-	// Roles the actor can grant (a subset of their own permissions) follow
-	// the form. Roles they can't grant keep their current state whatever was
-	// posted: their checkboxes were disabled, and a disabled box posts
-	// nothing, which must not read as "remove".
-	var finalRoles []int64
-	for _, r := range allRoles {
-		field := authz.RoleFieldPrefix + strconv.FormatInt(r.ID, 10)
-		if actor.CanGrant(r.Perms) {
-			if ctx.Request().FormValue(field) == "on" {
-				finalRoles = append(finalRoles, r.ID)
-			}
-		} else if currentRoles[r.ID] {
-			finalRoles = append(finalRoles, r.ID)
-		}
-	}
+	// ---- Role assignment (finalRoles was decided before the save) ----
 	if err := authz.SetUserRoles(dbH, savedID, finalRoles); err != nil {
 		// The account itself saved; say exactly what didn't.
 		logger.LogErr(err, "Error saving user roles", "user_id", strconv.FormatInt(savedID, 10))
@@ -230,6 +250,18 @@ func DeleteUserRWeb(ctx rweb.Context) error {
 		if !canManage {
 			return app.RedirectRWebError(ctx, "/admin/users",
 				"That person can do things you can't, so you can't delete their account.")
+		}
+		// Deleting the last role manager's account has the same effect as
+		// removing their roles (see authz/lockout.go). A SuperAdmin is exempt.
+		if !actor.IsSuper() {
+			locks, err := authz.LocksOutRoleManagers(dbH, authz.PendingChange{UserID: userID, RemoveUser: true})
+			if err != nil {
+				logger.LogErr(err, "Error checking role-manager lockout", "user_id", ctx.Request().PathParam("id"))
+				return app.RedirectRWebError(ctx, "/admin/users", "Error deleting user")
+			}
+			if locks {
+				return app.RedirectRWebError(ctx, "/admin/users", authz.RoleManagerLockoutMsg+" Nothing was deleted.")
+			}
 		}
 	}
 	err = user.DeleteUserById(dbH, ctx.Request().PathParam("id"))

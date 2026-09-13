@@ -12,9 +12,11 @@
 // bootstrapped (see admin.bootstrapSuperAdmin and /super), and it guarantees
 // that no role edit can lock every administrator out of the site.
 //
-// The legacy numeric users.role column is intentionally kept. It still drives
-// chat / prayer-wall moderation and is part of the mobile app's /auth/me
-// contract (role, role_name). Admin screen access no longer derives from it.
+// The legacy numeric users.role column is intentionally kept. It is part of
+// the mobile app's /auth/me contract (role, role_name), and editor-or-above
+// (1–7, 99) still moderates chat and the prayer wall. Moderation can also be
+// granted through a role (chat.moderate; see CanModerate in moderation.go).
+// Admin screen access no longer derives from it.
 //
 // The catalog is code, not data: permissions only mean something where a
 // handler checks them, so a permission a site could invent in the database
@@ -36,12 +38,13 @@ type Permission string
 // menus historically also "published" but the brief calls it enable, and
 // users are "enabled".
 const (
-	ActCreate  = "create"
-	ActRead    = "read"
-	ActUpdate  = "update"
-	ActDelete  = "delete"
-	ActPublish = "publish"
-	ActEnable  = "enable"
+	ActCreate   = "create"
+	ActRead     = "read"
+	ActUpdate   = "update"
+	ActDelete   = "delete"
+	ActPublish  = "publish"
+	ActEnable   = "enable"
+	ActModerate = "moderate"
 )
 
 // Every permission a handler checks. Kept as named constants so a typo at a
@@ -94,6 +97,11 @@ const (
 	// Giving records are written only by Stripe (webhook / receipt), never by
 	// an admin, so read is the only action there is to grant.
 	ChargesRead Permission = "charges.read"
+
+	// Pin and delete chat messages; mark prayer requests answered or remove
+	// them. This is moderation of the public site, not an admin screen, so it
+	// does not by itself open the admin area (see Resource.SiteOnly).
+	ChatModerate Permission = "chat.moderate"
 )
 
 // Resource is one row of the permission matrix on the role form.
@@ -101,6 +109,12 @@ type Resource struct {
 	Key     string   // permission prefix, e.g. "articles"
 	Label   string   // shown in the matrix
 	Actions []string // in matrix column order
+
+	// SiteOnly marks permissions used on the public site rather than in the
+	// admin area. Holding only these doesn't grant admin access: a chat
+	// moderator is a member with extra buttons, not an admin with an empty
+	// dashboard.
+	SiteOnly bool
 }
 
 // Perm builds the permission for one of this resource's actions.
@@ -121,6 +135,7 @@ var catalog = []Resource{
 	{Key: "users", Label: "Users", Actions: []string{ActCreate, ActRead, ActUpdate, ActDelete, ActEnable}},
 	{Key: "roles", Label: "Roles", Actions: []string{ActCreate, ActRead, ActUpdate, ActDelete}},
 	{Key: "charges", Label: "Giving (charges)", Actions: []string{ActRead}},
+	{Key: "chat", Label: "Chat & prayer wall", Actions: []string{ActModerate}, SiteOnly: true},
 }
 
 // validPerms indexes the catalog for O(1) validation of submitted and stored
@@ -128,6 +143,21 @@ var catalog = []Resource{
 var validPerms = func() map[Permission]bool {
 	m := map[Permission]bool{}
 	for _, r := range catalog {
+		for _, a := range r.Actions {
+			m[r.Perm(a)] = true
+		}
+	}
+	return m
+}()
+
+// siteOnlyPerms indexes the permissions of SiteOnly resources, which
+// Actor.HasAdminAccess ignores.
+var siteOnlyPerms = func() map[Permission]bool {
+	m := map[Permission]bool{}
+	for _, r := range catalog {
+		if !r.SiteOnly {
+			continue
+		}
 		for _, a := range r.Actions {
 			m[r.Perm(a)] = true
 		}

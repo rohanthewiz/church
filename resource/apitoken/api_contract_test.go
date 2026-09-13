@@ -91,7 +91,7 @@ func TestAPILoginContract(t *testing.T) {
 	}
 
 	usr, _ := doc["user"].(map[string]any)
-	apitest.WantKeys(t, usr, "id", "username", "first_name", "last_name", "email", "role", "role_name")
+	apitest.WantKeys(t, usr, "id", "username", "first_name", "last_name", "email", "role", "role_name", "can_moderate")
 	if id, ok := usr["id"].(float64); !ok || id != 7 {
 		t.Errorf("user.id must be numeric 7, got %T %v", usr["id"], usr["id"])
 	}
@@ -193,7 +193,7 @@ func TestAPIMeContract(t *testing.T) {
 		t.Fatalf("status = %d, want 200 (doc: %v)", status, doc)
 	}
 	usr, _ := doc["user"].(map[string]any)
-	apitest.WantKeys(t, usr, "id", "username", "first_name", "last_name", "email", "role", "role_name")
+	apitest.WantKeys(t, usr, "id", "username", "first_name", "last_name", "email", "role", "role_name", "can_moderate")
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Error(err)
 	}

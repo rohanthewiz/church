@@ -1,8 +1,10 @@
 # Church sites on Linode LKE — bytdb edition
 
 Runs each church site (ccswm.org, calvaryeastmetro.org, …) as a single-pod
-Deployment on a shared LKE cluster. bytdb is embedded in the site process;
-the database file lives on Linode Block Storage; its WAL ships continuously
+Deployment on a shared LKE cluster. bytdb is embedded in the site process.
+bytdb is opt-in, not the binaries' default (Postgres is, since 2026-09-13),
+so each site manifest pins `DB_TYPE=bytdb`, and that env var is required.
+The database file lives on Linode Block Storage; its WAL ships continuously
 to Linode Object Storage (S3-compatible), backed by hourly full snapshots to
 the same bucket; one shared ingress-nginx NodeBalancer fans out by Host
 header to all sites, with Let's Encrypt TLS via cert-manager.
@@ -295,8 +297,12 @@ leaves this runbook unchanged.
 6. **Cut DNS** to the NodeBalancer IP, then re-run
    `SITES=<site> ./deploy/deploy.sh sites verify` so the Ingress applies with
    DNS resolving and cert-manager issues on the first attempt. Old PG stack
-   stays warm as rollback (`db.type: postgres` in options.yml is the escape
-   hatch) until confident; then decommission.
+   stays warm as rollback until confident; then decommission. Rolling back
+   means pointing DNS at the old stack again. `db.type: postgres` in
+   options.yml does **not** switch a pod back to Postgres: the manifest's
+   `DB_TYPE=bytdb` env var beats options.yml. To run a pod on Postgres,
+   remove that env var (since 2026-09-13 an empty type means Postgres, not
+   bytdb) and give the site a reachable `pg:` block.
 
 ## Operations quick reference
 

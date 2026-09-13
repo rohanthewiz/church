@@ -7,6 +7,7 @@ import (
 	"github.com/rohanthewiz/church/app"
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/chat"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/logger"
@@ -44,6 +45,19 @@ func webIdentity(ctx rweb.Context) (au user.AuthUser, loggedIn bool, err error) 
 		return au, false, err
 	}
 	return au, true, nil
+}
+
+// canModerate applies the full moderation rule to a resolved identity (web
+// session or bearer token): legacy editor-or-above, or a role granting
+// chat.moderate. A missing DB handle denies, since moderation must fail
+// closed.
+func canModerate(username string, role int) bool {
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "prayer wall: could not obtain DB handle for moderation check")
+		return false
+	}
+	return authz.CanModerate(dbH, username, role)
 }
 
 // PostRequestRWeb handles POST /prayer-requests — a member sharing a request.
@@ -104,8 +118,8 @@ func MarkAnsweredRWeb(ctx rweb.Context) error {
 		logger.LogErr(err, "prayer wall: could not resolve identity")
 		return app.RedirectRWeb(ctx, wallURL(ctx), "Could not update the request")
 	}
-	if !loggedIn || !chat.CanModerate(au.Role) {
-		return app.RedirectRWeb(ctx, wallURL(ctx), "Editor role required")
+	if !loggedIn || !canModerate(au.Username, au.Role) {
+		return app.RedirectRWeb(ctx, wallURL(ctx), "Moderator permission required")
 	}
 
 	id, err := strconv.ParseInt(ctx.Request().Param("id"), 10, 64)
@@ -165,9 +179,10 @@ func DeleteRequestRWeb(ctx rweb.Context) error {
 	if !found { // already gone — idempotent
 		return app.RedirectRWeb(ctx, wallURL(ctx), "Request removed")
 	}
-	// Owner-or-editor: the ownership check is by user id, not username, so a
-	// renamed account can still withdraw its older requests.
-	if !chat.CanModerate(au.Role) && au.ID != req.UserId {
+	// Owner-or-moderator: the ownership check is by user id, not username, so
+	// a renamed account can still withdraw its older requests. Ownership is
+	// tested first because it is free; the moderation check may query roles.
+	if au.ID != req.UserId && !canModerate(au.Username, au.Role) {
 		return app.RedirectRWeb(ctx, wallURL(ctx), "You may only withdraw your own request")
 	}
 	if err = DeleteRequest(dbH, id); err != nil {

@@ -51,6 +51,7 @@ var matrixColumns = []struct {
 	{"Update", []string{ActUpdate}},
 	{"Delete", []string{ActDelete}},
 	{"Publish / Enable", []string{ActPublish, ActEnable}},
+	{"Moderate", []string{ActModerate}},
 }
 
 const roleFormCSS = `

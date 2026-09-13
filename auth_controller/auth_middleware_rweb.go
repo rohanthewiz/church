@@ -128,6 +128,27 @@ func RequireAdmin(next rweb.Handler) rweb.Handler {
 	return Require("", next)
 }
 
+// RequireSuper wraps a handler that only a SuperAdmin may use. It is for
+// operator tools rather than content work, such as /debug/*, which flips
+// process-wide render state for every visitor. A catalog permission would
+// let a site hand that to anyone who can edit roles, and no church role
+// needs it.
+//
+// Denial behaves like Require: the guard's recorded denial replays first,
+// and a signed-in admin who isn't a SuperAdmin lands on the dashboard with a
+// warning.
+func RequireSuper(next rweb.Handler) rweb.Handler {
+	return Require("", func(ctx rweb.Context) error {
+		// Require has already confirmed an actor with admin access
+		if actor, ok := authz.ActorFrom(ctx); !ok || !actor.IsSuper() {
+			logger.Info("SuperAdmin-only route denied", "path", ctx.Request().Path())
+			return app.RedirectRWebWarn(ctx, config.AdminPrefix+"/home",
+				"Only a SuperAdmin can use that.")
+		}
+		return next(ctx)
+	})
+}
+
 // Require wraps a handler so it runs only for an admin holding perm. An empty
 // perm means admin access alone suffices (see RequireAdmin).
 //

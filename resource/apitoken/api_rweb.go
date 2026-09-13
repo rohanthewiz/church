@@ -10,6 +10,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/resource/apiv1"
 	"github.com/rohanthewiz/church/resource/auth"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
@@ -28,6 +29,14 @@ type APIUser struct {
 	Email     string `json:"email"`
 	Role      int    `json:"role"`
 	RoleName  string `json:"role_name"`
+
+	// CanModerate is additive to the original contract. It tells the app
+	// whether to draw chat and prayer-wall moderation controls, using the
+	// server's full rule (legacy role, or a role granting chat.moderate; see
+	// authz.CanModerate). Older app builds ignore it and fall back to
+	// mirroring the legacy rule from `role`. Every moderation endpoint still
+	// re-checks.
+	CanModerate bool `json:"can_moderate"`
 }
 
 func (tu TokenUser) apiUser() APIUser {
@@ -178,13 +187,14 @@ func APILoginRWeb(ctx rweb.Context) error {
 		"token":      token,
 		"expires_at": expiresAt.UTC().Format(time.RFC3339),
 		"user": APIUser{
-			ID:        au.ID,
-			Username:  au.Username,
-			FirstName: au.FirstName,
-			LastName:  au.LastName,
-			Email:     au.EmailAddress,
-			Role:      au.Role,
-			RoleName:  user.RoleToString[au.Role],
+			ID:          au.ID,
+			Username:    au.Username,
+			FirstName:   au.FirstName,
+			LastName:    au.LastName,
+			Email:       au.EmailAddress,
+			Role:        au.Role,
+			RoleName:    user.RoleToString[au.Role],
+			CanModerate: authz.CanModerate(dbH, au.Username, au.Role),
 		},
 	})
 }
@@ -245,7 +255,15 @@ func APIMeRWeb(ctx rweb.Context) error {
 	if !ok { // only reachable if routed without APIGuard — a wiring bug
 		return apiv1.Error(ctx, http.StatusUnauthorized, "Authentication required")
 	}
-	return ctx.WriteJSON(map[string]any{"user": tu.apiUser()})
+	u := tu.apiUser()
+	// A DB fault only hides moderation controls; the identity is still valid,
+	// and moderation endpoints check again anyway.
+	if dbH, err := db.Db(); err == nil {
+		u.CanModerate = authz.CanModerate(dbH, tu.Username, tu.Role)
+	} else {
+		u.CanModerate = authz.LegacyModerator(tu.Role)
+	}
+	return ctx.WriteJSON(map[string]any{"user": u})
 }
 
 // APILogoutRWeb handles POST /api/v1/auth/logout — revokes the presented

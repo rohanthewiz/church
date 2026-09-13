@@ -7,6 +7,7 @@ import (
 
 	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
@@ -106,7 +107,7 @@ func ListMessagesRWeb(ctx rweb.Context) error {
 		"me": map[string]any{
 			"logged_in":    loggedIn,
 			"username":     au.Username,
-			"can_moderate": loggedIn && CanModerate(au.Role),
+			"can_moderate": loggedIn && authz.CanModerate(dbH, au.Username, au.Role),
 		},
 	})
 }
@@ -176,8 +177,14 @@ func requireModerator(ctx rweb.Context) (au user.AuthUser, ok bool, resp error) 
 	if !loggedIn {
 		return au, false, webError(ctx, http.StatusUnauthorized, "Please log in")
 	}
-	if !CanModerate(au.Role) {
-		return au, false, webError(ctx, http.StatusForbidden, "Editor role required")
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "chat: could not obtain DB handle")
+		return au, false, webError(ctx, http.StatusInternalServerError, "Could not verify permissions")
+	}
+	// Legacy editor-or-above, or a role granting chat.moderate
+	if !authz.CanModerate(dbH, au.Username, au.Role) {
+		return au, false, webError(ctx, http.StatusForbidden, "Moderator permission required")
 	}
 	return au, true, nil
 }

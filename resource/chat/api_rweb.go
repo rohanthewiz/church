@@ -9,6 +9,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/resource/apitoken"
 	"github.com/rohanthewiz/church/resource/apiv1"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/rweb"
 )
 
@@ -130,8 +131,13 @@ func requireAPIModerator(ctx rweb.Context) (tu apitoken.TokenUser, ok bool, resp
 	if !found {
 		return tu, false, apiv1.Error(ctx, http.StatusUnauthorized, "Authentication required")
 	}
-	if !CanModerate(tu.Role) {
-		return tu, false, apiv1.Error(ctx, http.StatusForbidden, "Editor role required")
+	dbH, err := db.Db()
+	if err != nil {
+		return tu, false, apiv1.ServerError(ctx, err, "Could not verify permissions")
+	}
+	// Legacy editor-or-above, or a role granting chat.moderate
+	if !authz.CanModerate(dbH, tu.Username, tu.Role) {
+		return tu, false, apiv1.Error(ctx, http.StatusForbidden, "Moderator permission required")
 	}
 	return tu, true, nil
 }

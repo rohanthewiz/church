@@ -109,7 +109,13 @@ func (m *ModuleGivingList) Render(params map[string]map[string]string, loggedIn 
 						}
 					}),
 				),
-				b.AClass("af-btn af-btn--primary", "href", listURL+"/csv?year="+year).T("Export CSV"),
+				// Two exports of the same year: every gift, or the month totals
+				b.DivClass("af-actions").R(
+					b.AClass("af-btn", "href", listURL+"/csv/summary?year="+year,
+						"title", "One row per month, with a total").T("Export summary CSV"),
+					b.AClass("af-btn af-btn--primary", "href", listURL+"/csv?year="+year,
+						"title", "One row per gift").T("Export CSV"),
+				),
 			),
 			b.PClass("af-help").T("Read-only. Giving records come from Stripe; refunds and corrections are made there. "+
 				"Totals count paid gifts; Net subtracts refunds."),

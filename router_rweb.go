@@ -108,28 +108,12 @@ func ServeRWeb() {
 	home := s.Group("", authctlr.UseCustomContextRWeb)
 	home.Get("/", page_controller.HomePageRWeb)
 
-	// Debug routes — admin-only. These toggle process-wide element debug state
-	// and dump internal render diagnostics, so they must not be reachable by
-	// anonymous visitors (any GET could flip debug mode on a production site).
-	dbg := s.Group("/debug", authctlr.UseCustomContextRWeb, authctlr.AdminGuardRWeb)
-	dbg.Get("/set", authctlr.RequireAdmin(func(ctx rweb.Context) error {
-		element.DebugSet()
-		return ctx.WriteHTML("<h3>Debug mode set.</h3> <a href='/'>Home</a>")
-	}))
-
-	dbg.Get("/show", authctlr.RequireAdmin(func(ctx rweb.Context) error {
-		return ctx.WriteHTML(element.DebugShow())
-	}))
-
-	dbg.Get("/clear", authctlr.RequireAdmin(func(ctx rweb.Context) error {
-		element.DebugClear()
-		return ctx.WriteHTML("<h3>Debug mode is off.</h3> <a href='/'>Home</a>")
-	}))
-
-	dbg.Get("/clear-issues", authctlr.RequireAdmin(func(ctx rweb.Context) error {
-		element.DebugClearIssues()
-		return ctx.WriteHTML("<h3>Issues cleared (debug mode still active).</h3> <a href='/'>Home</a> | <a href='/debug/show'>View Debug</a>")
-	}))
+	// Debug routes — SuperAdmin-only. These toggle process-wide element debug
+	// state and dump internal render diagnostics, so they must not be reachable
+	// by anonymous visitors (any GET could flip debug mode on a production
+	// site). Nor by every admin: the state is shared by all visitors, which
+	// makes this an operator tool rather than content work (see RequireSuper).
+	RegisterDebugRoutes(s)
 
 	// Authentication routes
 	s.Get("/login", authctlr.LoginHandlerRWeb)
@@ -294,7 +278,7 @@ func ServeRWeb() {
 }
 
 // RegisterAdminRoutes wires the permission-guarded admin area onto s. It is
-// split out of ServeRWeb so checks (test_scripts/roles_smoke) drive exactly
+// split out of ServeRWeb so checks (admin_routes_smoke_test.go) drive exactly
 // the production wiring, not a copy of it that could drift.
 func RegisterAdminRoutes(s *rweb.Server) {
 	// Admin group. AdminGuardRWeb resolves the signed-in admin and their
@@ -336,6 +320,8 @@ func RegisterAdminRoutes(s *rweb.Server) {
 	// CSV export of the year shown on /giving (same ?year=). It exposes the
 	// same donor data as the page, so it takes the same permission.
 	ad.Get("/giving/csv", req(authz.ChargesRead, payment_controller.AdminGivingCSVRWeb))
+	// Month totals only (same year, same data, same permission)
+	ad.Get("/giving/csv/summary", req(authz.ChargesRead, payment_controller.AdminGivingSummaryCSVRWeb))
 
 	// Admin Articles
 	ad.Get("/articles", req(authz.ArticlesRead, article_controller.AdminListArticlesRWeb))
@@ -384,4 +370,29 @@ func RegisterAdminRoutes(s *rweb.Server) {
 	ad.Get("/menus/edit/:id", req(authz.MenusUpdate, menu_controller.EditMenuRWeb))
 	ad.Post("/menus/update/:id", req(authz.MenusUpdate, menu_controller.UpsertMenuRWeb)) // update
 	ad.Post("/menus/delete/:id", req(authz.MenusDelete, menu_controller.DeleteMenuRWeb))
+}
+
+// RegisterDebugRoutes wires the SuperAdmin-only /debug tools onto s. It is
+// split out of ServeRWeb for the same reason as RegisterAdminRoutes: the
+// smoke test (admin_routes_smoke_test.go) drives the production wiring.
+func RegisterDebugRoutes(s *rweb.Server) {
+	dbg := s.Group("/debug", authctlr.UseCustomContextRWeb, authctlr.AdminGuardRWeb)
+	dbg.Get("/set", authctlr.RequireSuper(func(ctx rweb.Context) error {
+		element.DebugSet()
+		return ctx.WriteHTML("<h3>Debug mode set.</h3> <a href='/'>Home</a>")
+	}))
+
+	dbg.Get("/show", authctlr.RequireSuper(func(ctx rweb.Context) error {
+		return ctx.WriteHTML(element.DebugShow())
+	}))
+
+	dbg.Get("/clear", authctlr.RequireSuper(func(ctx rweb.Context) error {
+		element.DebugClear()
+		return ctx.WriteHTML("<h3>Debug mode is off.</h3> <a href='/'>Home</a>")
+	}))
+
+	dbg.Get("/clear-issues", authctlr.RequireSuper(func(ctx rweb.Context) error {
+		element.DebugClearIssues()
+		return ctx.WriteHTML("<h3>Issues cleared (debug mode still active).</h3> <a href='/'>Home</a> | <a href='/debug/show'>View Debug</a>")
+	}))
 }

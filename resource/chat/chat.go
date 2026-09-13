@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/rohanthewiz/church/db"
-	"github.com/rohanthewiz/church/resource/user"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 )
@@ -67,16 +67,18 @@ func ValidChannel(channel string) bool {
 	return channelPattern.MatchString(channel)
 }
 
-// CanModerate reports whether a role may pin (keep) and delete messages.
-// The role scale is inverted (lower = more privileged: Admin 1, Publisher 5,
-// Author/Editor 7, RegisteredUser 9) EXCEPT SuperAdmin at 99, so a simple
-// <= comparison would wrongly exclude SuperAdmin — hence the explicit check.
-// Zero (no role loaded) never moderates.
+// CanModerate reports whether a legacy role alone may pin (keep) and delete
+// messages. The role scale is inverted (lower = more privileged: Admin 1,
+// Publisher 5, Author/Editor 7, RegisteredUser 9) EXCEPT SuperAdmin at 99, so
+// a simple <= comparison would wrongly exclude SuperAdmin — hence the
+// explicit check. Zero (no role loaded) never moderates.
+//
+// This is only half of the rule. Handlers call authz.CanModerate, which also
+// honors the chat.moderate permission. The comparison itself lives in
+// authz.LegacyModerator, so the legacy rule has one implementation; this
+// wrapper is kept for existing callers.
 func CanModerate(role int) bool {
-	if role == user.Roles.SuperAdmin {
-		return true
-	}
-	return role >= user.Roles.Admin && role <= user.Roles.Author
+	return authz.LegacyModerator(role)
 }
 
 // StartRetentionSweep launches the background goroutine that enforces

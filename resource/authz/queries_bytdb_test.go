@@ -156,4 +156,63 @@ func TestRolesAgainstBytDB(t *testing.T) {
 	if v, _ := ResolveFlag(exec, pat, ArticlesPublish, FlagArticlePublished, idStr, false); v {
 		t.Error("publisher's submitted value must stand")
 	}
+
+	// ---- Chat moderation ----
+	if !CanModerate(exec, "ed", 7) {
+		t.Error("legacy editor must moderate without a permission lookup")
+	}
+	if CanModerate(exec, "mem", 9) {
+		t.Error("a member with no roles must not moderate")
+	}
+	modID, err := SaveRole(exec, Role{Name: "Chat Moderator", Perms: NewSet(ChatModerate)}, "test")
+	if err != nil {
+		t.Fatalf("SaveRole moderator: %v", err)
+	}
+	if err := SetUserRoles(exec, ids["mem"], []int64{modID}); err != nil {
+		t.Fatalf("SetUserRoles moderator: %v", err)
+	}
+	if !CanModerate(exec, "mem", 9) {
+		t.Error("a member holding chat.moderate must moderate")
+	}
+	if a, _ := actor("mem"); a.HasAdminAccess() {
+		t.Error("chat.moderate alone must not open the admin area")
+	}
+	if CanModerate(exec, "gone", 9) {
+		t.Error("a disabled account must not moderate")
+	}
+
+	// ---- Role-manager lockout ----
+	// ann is the only enabled non-super account holding roles.update (via
+	// Administrator); root is SuperAdmin and "gone" is disabled.
+	adminRoleID := int64(0)
+	for _, r := range roles {
+		if r.Name == "Administrator" {
+			adminRoleID = r.ID
+		}
+	}
+	locks := func(label string, c PendingChange, want bool) {
+		t.Helper()
+		got, err := LocksOutRoleManagers(exec, c)
+		if err != nil {
+			t.Fatalf("%s: %v", label, err)
+		}
+		if got != want {
+			t.Errorf("%s: LocksOutRoleManagers = %v, want %v", label, got, want)
+		}
+	}
+	locks("removing ann's roles", PendingChange{UserID: ids["ann"], SetUserRoles: true}, true)
+	locks("disabling ann", PendingChange{UserID: ids["ann"], RemoveUser: true}, true)
+	locks("deleting Administrator", PendingChange{RoleID: adminRoleID, DeleteRole: true}, true)
+	locks("dropping roles.update from Administrator",
+		PendingChange{RoleID: adminRoleID, RolePerms: NewSet(RolesRead, UsersRead)}, true)
+	locks("editing Administrator but keeping roles.update",
+		PendingChange{RoleID: adminRoleID, RolePerms: NewSet(RolesUpdate, RolesRead)}, false)
+	locks("changing a user who isn't a manager", PendingChange{UserID: ids["ed"], RemoveUser: true}, false)
+
+	// A second holder makes the same change safe.
+	if err := SetUserRoles(exec, ids["pat"], []int64{adminRoleID}); err != nil {
+		t.Fatalf("SetUserRoles pat: %v", err)
+	}
+	locks("removing ann's roles with pat also a manager", PendingChange{UserID: ids["ann"], SetUserRoles: true}, false)
+	locks("deleting Administrator still locks out both", PendingChange{RoleID: adminRoleID, DeleteRole: true}, true)
 }

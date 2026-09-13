@@ -39,13 +39,22 @@ func (a *Actor) Can(p Permission) bool {
 }
 
 // HasAdminAccess reports whether the actor may enter the admin area at all:
-// SuperAdmin, or at least one permission. A signed-in member with no roles
-// (e.g. a chat participant) is a user of the site, not of its admin.
+// SuperAdmin, or at least one admin-area permission. A signed-in member with
+// no roles (e.g. a chat participant) is a user of the site, not of its admin,
+// and so is one whose roles grant only site-only permissions (chat.moderate).
 func (a *Actor) HasAdminAccess() bool {
 	if a == nil {
 		return false
 	}
-	return a.IsSuper() || len(a.perms) > 0
+	if a.IsSuper() {
+		return true
+	}
+	for p := range a.perms {
+		if !siteOnlyPerms[p] {
+			return true
+		}
+	}
+	return false
 }
 
 // Permissions returns the actor's effective set. For SuperAdmin that is the

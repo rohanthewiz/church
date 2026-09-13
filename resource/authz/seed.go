@@ -42,11 +42,18 @@ func defaultRoles() []defaultRole {
 	for _, p := range []Permission{MenusCreate, MenusRead, MenusUpdate, MenusDelete, MenusEnable} {
 		publisher[p] = struct{}{}
 	}
+	// Legacy Publisher (5) and Editor (7) already moderate chat by base role
+	// (LegacyModerator). The matching default roles carry the permission too,
+	// so a site that later moves someone's base role to member keeps the
+	// behaviour their role describes.
+	editor := content(false)
+	publisher[ChatModerate] = struct{}{}
+	editor[ChatModerate] = struct{}{}
 
 	return []defaultRole{
 		{"Administrator", "Everything, including users, roles and giving records.", AllPermissions(), legacyAdmin},
 		{"Publisher", "Create, publish and delete site content and menus.", publisher, legacyPublisher},
-		{"Editor", "Write and edit content. Publishing and deleting are left to a publisher.", content(false), legacyEditor},
+		{"Editor", "Write and edit content. Publishing and deleting are left to a publisher.", editor, legacyEditor},
 	}
 }
 

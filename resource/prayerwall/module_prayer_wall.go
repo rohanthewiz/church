@@ -7,6 +7,7 @@ import (
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/chat"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/element"
@@ -85,7 +86,7 @@ func (m ModulePrayerWall) viewer(params map[string]map[string]string) (username 
 		}
 		return username, false
 	}
-	return username, chat.CanModerate(au.Role)
+	return username, authz.CanModerate(dbH, au.Username, au.Role)
 }
 
 func (m *ModulePrayerWall) Render(params map[string]map[string]string, loggedIn bool) string {
