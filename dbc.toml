@@ -1,0 +1,19 @@
+# dbc (github.com/rohanthewiz/dbc) config for the church framework.
+#
+# `dbc migrate` replaces the goose binary: same db/migrate files, same
+# goose_db_version table. From this directory:
+#
+#   dbc migrate status
+#   dbc migrate up
+#
+# The dev DSN is the one README.md and CLAUDE.md already document. For any
+# other database, override on the command line instead of editing this file:
+#
+#   dbc -driver postgres -dsn "$DATABASE_URL" -dir db/migrate migrate up
+default_connection = "church-dev"
+
+[[connection]]
+name       = "church-dev"
+driver     = "postgres"
+dsn        = "postgres://devuser:secret@localhost:5432/church_development?sslmode=disable"
+migrations = "db/migrate"

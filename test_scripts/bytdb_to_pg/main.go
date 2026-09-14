@@ -7,7 +7,7 @@
 //	  -pg "host=localhost user=devuser password=secret dbname=church_restored sslmode=disable"
 //
 // Prerequisites on the Postgres side: the database exists and the goose
-// migrations have been applied (cd db/migrate && goose postgres "<dsn>" up).
+// migrations have been applied (dbc migrate up from the church directory).
 // Unlike the bytdb path, Postgres has no in-code schema bootstrap, and this
 // tool deliberately does not create one — goose is the Postgres schema's
 // source of truth, and a second DDL copy here could only drift from it.
@@ -190,7 +190,7 @@ func checkDestinationReady(dst *sql.DB, tables []string) error {
 	}
 	if len(missing) > 0 {
 		return serr.New("destination is missing tables — apply the goose migrations first "+
-			"(cd db/migrate && goose postgres \"<dsn>\" up)", "tables", strings.Join(missing, ","))
+			"(dbc migrate up from the church directory)", "tables", strings.Join(missing, ","))
 	}
 	if len(nonEmpty) > 0 {
 		return serr.New("destination tables already contain rows — refusing to merge into existing data; "+

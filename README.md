@@ -163,11 +163,11 @@ vips -v
 - As the 'posgres' user, create a user with CREATEDB permissions
  `psql -h localhost -p 5432 -d postgres -U postgres -c "create user myuser with password 'secret' CREATEDB"`
 - Create the database `postgres=# CREATE DATABASE "church_development" WITH OWNER "myuser";`
-- Run goose migrations: first make sure to get and install the goose binary: https://github.com/pressly/goose
-- `go get -u github.com/pressly/goose/cmd/goose`
-- Note goose requires that the database is already created
-- Change to the migrate directory `cd db/migrate`
-- Migrate up: `goose postgres "user=myuser password=secret dbname=church_development sslmode=disable" up`
+- Run the migrations with dbc (https://github.com/rohanthewiz/dbc), which replaced the goose binary. It reads the same `db/migrate` files and the same `goose_db_version` table, so an existing database needs nothing done to it.
+- `go install github.com/rohanthewiz/dbc@latest`
+- Note the database must already exist
+- From the `church` directory (where `dbc.toml` names the dev database): `dbc migrate status`, then `dbc migrate up`
+- For any other database: `dbc -driver postgres -dsn "postgres://myuser:secret@localhost:5432/church_development?sslmode=disable" -dir db/migrate migrate up`
 - You can manually migrate each of the sql files (though not recommended) `psql -h localhost -d church_development -U myuser -f db/migrate/20170419004813_CreateUsersTable.sql`
 
 ### Configuration

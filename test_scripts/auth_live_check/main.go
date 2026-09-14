@@ -8,7 +8,7 @@
 //
 //	go run ./test_scripts/auth_live_check
 //
-// Requires: local Postgres with church_development migrated (goose up).
+// Requires: local Postgres with church_development migrated (dbc migrate up).
 package main
 
 import (
