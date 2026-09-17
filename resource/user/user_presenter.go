@@ -100,3 +100,17 @@ func presenterFromUsername(exec db.Executor, username string) (pres Presenter, e
 	pres = presenterFromModel(model)
 	return
 }
+
+// FormDraft is what a refused user save hands back to the user form (see
+// core/formdraft). The presenter never carries a password: the controller
+// blanks both password fields before saving the draft, so a typed password
+// is never kept in the store.
+type FormDraft struct {
+	Presenter
+	// RolesPosted is false when the roles couldn't be listed at refusal time;
+	// the form then shows the stored assignments. When true, RoleIDs are the
+	// ticked boxes, which the form applies to the roles the viewer may grant
+	// (locked roles always show their stored state).
+	RolesPosted bool
+	RoleIDs     []int64
+}

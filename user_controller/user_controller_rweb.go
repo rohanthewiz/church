@@ -8,6 +8,7 @@ import (
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
 	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/core/formdraft"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/apitoken"
@@ -43,20 +44,10 @@ func EditUserRWeb(ctx rweb.Context) error {
 }
 
 func UpsertUserRWeb(ctx rweb.Context) error {
-	// An expired token is routine (a form left open too long), so send the admin
-	// back to the same form with a warning rather than a bare 500. Nothing has
-	// been written yet. The form re-renders from the DB, so unsaved edits
-	// (including a typed password) are lost.
 	id := strings.TrimSpace(ctx.Request().FormValue("user_id"))
 	formURL := "/admin/users/new"
 	if id != "" && id != "0" {
 		formURL = "/admin/users/edit/" + id
-	}
-	csrf := ctx.Request().FormValue("csrf")
-	// Check token valid against the in-process kvstore
-	if !app.VerifyFormToken(csrf) {
-		return app.RedirectRWebWarn(ctx, formURL,
-			"Your form has expired and was not saved. Please refresh the form and try again.")
 	}
 	efs := user.Presenter{}
 	efs.Id = ctx.Request().FormValue("user_id")
@@ -73,6 +64,46 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 	if err == nil && sess != nil {
 		efs.UpdatedBy = sess.Username
 	}
+
+	// A refused save returns to the form with what was typed (core/formdraft),
+	// except the password, which is never kept: the admin types it again.
+	// Role ticks are read against the role list; if that can't be loaded the
+	// form falls back to the stored assignments.
+	saveDraft := func() {
+		d := user.FormDraft{Presenter: efs}
+		d.Password, d.PasswordConfirmation = "", ""
+		d.Enabled = ctx.Request().FormValue("enabled") == "on"
+		if r, err := strconv.Atoi(ctx.Request().FormValue("role")); err == nil {
+			d.Role = r
+		}
+		if dbH, err := db.Db(); err == nil {
+			if rs, err := authz.ListRoles(dbH); err == nil {
+				d.RolesPosted = true
+				for _, r := range rs {
+					if ctx.Request().FormValue(authz.RoleFieldPrefix+strconv.FormatInt(r.ID, 10)) == "on" {
+						d.RoleIDs = append(d.RoleIDs, r.ID)
+					}
+				}
+			}
+		}
+		formdraft.Save(ctx, formURL, d)
+	}
+	refuse := func(msg string) error {
+		saveDraft()
+		return app.RedirectRWebError(ctx, formURL, msg)
+	}
+
+	// An expired token is routine (a form left open too long), so send the admin
+	// back to the same form with a warning rather than a bare 500. Nothing has
+	// been written yet. Checked after reading the form, which has no side
+	// effects, so the draft keeps their edits.
+	csrf := ctx.Request().FormValue("csrf")
+	// Check token valid against the in-process kvstore
+	if !app.VerifyFormToken(csrf) {
+		saveDraft()
+		return app.RedirectRWebWarn(ctx, formURL,
+			"Your form has expired and was not saved. Your changes are still in the form except the password; please save again.")
+	}
 	
 	// Failures go back to the form as an error flash. UpsertUser is a single
 	// Insert or Update, so a failed save wrote nothing and the form (not the
@@ -82,7 +113,7 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		// The role is a <select>, so this is a tampered or broken form rather than
 		// a typo; still logged, but the admin gets the form back, not a 500.
 		logger.LogErr(err, "Error converting role")
-		return app.RedirectRWebError(ctx, formURL, "Please choose a role. The user was not saved.")
+		return refuse("Please choose a role. The user was not saved.")
 	}
 	efs.Role = int(role)
 	submittedEnabled := ctx.Request().FormValue("enabled") == "on"
@@ -90,14 +121,14 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
-		return app.RedirectRWebError(ctx, formURL, "The user could not be saved: the database is unavailable.")
+		return refuse("The user could not be saved: the database is unavailable.")
 	}
 
 	// ---- Authorization beyond the route permission ----
 	// Every refusal here happens before any write.
 	actor, ok := authz.ActorFrom(ctx)
 	if !ok { // unreachable behind Require; fail closed
-		return app.RedirectRWebError(ctx, formURL, "Could not confirm your permissions. The user was not saved.")
+		return refuse("Could not confirm your permissions. The user was not saved.")
 	}
 	isUpdate := efs.Id != "" && efs.Id != "0"
 	var userID int64
@@ -110,20 +141,19 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		canManage, err := authz.CanManageUser(dbH, actor, userID)
 		if err != nil {
 			logger.LogErr(err, "Error checking user management permission", "user_id", efs.Id)
-			return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+			return refuse("Error saving the user. It was not saved.")
 		}
 		if !canManage {
-			return app.RedirectRWebError(ctx, formURL,
-				"This person can do things you can't, so you can't change their account. The user was not saved.")
+			return refuse("This person can do things you can't, so you can't change their account. The user was not saved.")
 		}
 	}
 	if efs.Role == authz.SuperAdminRole && !actor.IsSuper() {
-		return app.RedirectRWebError(ctx, formURL, "Only a SuperAdmin can make someone a SuperAdmin. The user was not saved.")
+		return refuse("Only a SuperAdmin can make someone a SuperAdmin. The user was not saved.")
 	}
 	enabled, err := authz.ResolveFlag(dbH, actor, authz.UsersEnable, authz.FlagUserEnabled, efs.Id, submittedEnabled)
 	if err != nil {
 		logger.LogErr(err, "Error resolving user enabled flag", "user_id", efs.Id)
-		return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+		return refuse("Error saving the user. It was not saved.")
 	}
 	efs.Enabled = enabled
 
@@ -134,7 +164,7 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		ids, err := authz.RoleIDsForUser(dbH, userID)
 		if err != nil {
 			logger.LogErr(err, "Error loading user roles", "user_id", efs.Id)
-			return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+			return refuse("Error saving the user. It was not saved.")
 		}
 		for _, id := range ids {
 			currentRoles[id] = true
@@ -143,7 +173,7 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 	allRoles, err := authz.ListRoles(dbH)
 	if err != nil {
 		logger.LogErr(err, "Error listing roles for user save")
-		return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+		return refuse("Error saving the user. It was not saved.")
 	}
 
 	// ---- Role assignment (decided here, written after the account) ----
@@ -174,10 +204,10 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		})
 		if err != nil {
 			logger.LogErr(err, "Error checking role-manager lockout", "user_id", efs.Id)
-			return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+			return refuse("Error saving the user. It was not saved.")
 		}
 		if locks {
-			return app.RedirectRWebError(ctx, formURL, authz.RoleManagerLockoutMsg+" The user was not saved.")
+			return refuse(authz.RoleManagerLockoutMsg+" The user was not saved.")
 		}
 	}
 
@@ -185,14 +215,14 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 	if err != nil {
 		if msg, isInput := inputerr.UserMessage(err); isInput {
 			// The admin's mistake, not ours: no error log, just the reason
-			return app.RedirectRWebError(ctx, formURL, msg+". The user was not saved.")
+			return refuse(msg+". The user was not saved.")
 		}
 		// Password fields are blanked before logging: %#v of the presenter would
 		// otherwise put the typed password in the log.
 		logged := efs
 		logged.Password, logged.PasswordConfirmation = "", ""
 		logger.LogErr(err, "Error in user upsert", "user_presenter", fmt.Sprintf("%#v", logged))
-		return app.RedirectRWebError(ctx, formURL, "Error saving the user. It was not saved.")
+		return refuse("Error saving the user. It was not saved.")
 	}
 	// ---- Role assignment (finalRoles was decided before the save) ----
 	if err := authz.SetUserRoles(dbH, savedID, finalRoles); err != nil {

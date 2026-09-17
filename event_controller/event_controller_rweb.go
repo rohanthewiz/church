@@ -7,6 +7,7 @@ import (
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
 	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/core/formdraft"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/authz"
@@ -70,8 +71,8 @@ func EditEventRWeb(ctx rweb.Context) error {
 // before the first write. A server fault may arrive after the events row was
 // inserted (recurrence and location rows follow it, untransacted), so returning
 // to the "new" form would invite a duplicate; the list shows what exists.
-// The redirect re-renders the form from the DB, so typed-but-unsaved values are
-// not carried back.
+// A refusal that returns to the form carries the typed values back with it
+// (core/formdraft).
 func UpsertEventRWeb(ctx rweb.Context) error {
 	id := strings.TrimSpace(ctx.Request().FormValue("event_id"))
 	formURL := "/admin/events/new"
@@ -79,12 +80,6 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 		formURL = "/admin/events/edit/" + id
 	}
 
-	csrf := ctx.Request().FormValue("csrf")
-	// At the action func (example UpsertEvent), check that this token is present and valid in the in-process kvstore
-	if !app.VerifyFormToken(csrf) {
-		return app.RedirectRWebWarn(ctx, formURL,
-			"Your form has expired and was not saved. Please refresh the form and try again.")
-	}
 	// apparently embedded fields cannot be set immediately in a literal struct
 	// we'll set those after efs is created
 	efs := event.Presenter{
@@ -121,11 +116,26 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 	if ctx.Request().FormValue("published") == "on" {
 		efs.Published = true
 	}
+	// refuse sends the admin back to the form, keeping what they typed
+	refuse := func(msg string) error {
+		formdraft.Save(ctx, formURL, efs)
+		return app.RedirectRWebError(ctx, formURL, msg)
+	}
+
+	// The token is checked after reading the form (which has no side
+	// effects) so an expired form still hands back what was typed.
+	csrf := ctx.Request().FormValue("csrf")
+	// At the action func (example UpsertEvent), check that this token is present and valid in the in-process kvstore
+	if !app.VerifyFormToken(csrf) {
+		formdraft.Save(ctx, formURL, efs)
+		return app.RedirectRWebWarn(ctx, formURL,
+			"Your form has expired and was not saved. Your changes are still in the form; please save again.")
+	}
 
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
-		return app.RedirectRWebError(ctx, formURL, "The event could not be saved: the database is unavailable.")
+		return refuse("The event could not be saved: the database is unavailable.")
 	}
 
 	// Publishing is its own permission, resolved field by field rather than by
@@ -136,13 +146,13 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 	if !ok {
 		// Admin routes always run behind AdminGuardRWeb, so no actor means a
 		// wiring bug. Fail closed rather than publish unchecked.
-		return app.RedirectRWebError(ctx, formURL, "Your permissions could not be confirmed. The event was not saved.")
+		return refuse("Your permissions could not be confirmed. The event was not saved.")
 	}
 	submittedFlag := efs.Published
 	efs.Published, err = authz.ResolveFlag(dbH, actor, authz.EventsPublish, authz.FlagEventPublished, efs.Id, submittedFlag)
 	if err != nil {
 		logger.LogErr(err, "Error resolving event published flag", "event_id", efs.Id)
-		return app.RedirectRWebError(ctx, formURL, "Error saving the event. It was not saved.")
+		return refuse("Error saving the event. It was not saved.")
 	}
 	// The form renders the switch disabled (with the stored value in a hidden
 	// field) for anyone lacking the permission, so a difference here means a
@@ -156,7 +166,7 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 	if err != nil {
 		if msg, isInput := event.UserMessage(err); isInput {
 			// The admin's mistake, not ours: no error log, just the reason
-			return app.RedirectRWebError(ctx, formURL, msg+". The event was not saved.")
+			return refuse(msg+". The event was not saved.")
 		}
 		logger.LogErr(err, "Error in event upsert", "event_presenter", fmt.Sprintf("%#v", efs))
 		return app.RedirectRWebError(ctx, "/admin/events",

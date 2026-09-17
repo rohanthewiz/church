@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/core/formdraft"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/authz"
@@ -107,6 +108,26 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 		}
 	}
 	canEnable := manageable && actor.Can(authz.UsersEnable)
+
+	// A refused save comes back with what was typed (core/formdraft). The
+	// draft never holds a password. Role ticks apply only to roles the viewer
+	// may grant; locked roles keep showing their stored state, which is also
+	// what the save handler does with them.
+	var draft FormDraft
+	if formdraft.FromParams(params, &draft) && formdraft.SameItem(draft.Id, m.Opts.ItemIds) {
+		usr = draft.Presenter
+		if draft.RolesPosted && manageable {
+			ticked := map[int64]bool{}
+			for _, id := range draft.RoleIDs {
+				ticked[id] = true
+			}
+			for _, r := range roles {
+				if actor.CanGrant(r.Perms) {
+					assigned[r.ID] = ticked[r.ID]
+				}
+			}
+		}
+	}
 
 	b := element.NewBuilder()
 

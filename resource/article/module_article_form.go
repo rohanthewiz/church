@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/core/formdraft"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/authz"
@@ -61,6 +62,11 @@ func (m *ModuleArticleForm) Render(params map[string]map[string]string, loggedIn
 			return ""
 		}
 		action = "/update/" + art.Id
+	}
+	// A refused save comes back with what was typed (core/formdraft)
+	var draft Presenter
+	if formdraft.FromParams(params, &draft) && formdraft.SameItem(draft.Id, m.Opts.ItemIds) {
+		art = draft
 	}
 	// Publishing is gated by its own permission; the handler re-checks it
 	// (authz.ResolveFlag), so this only decides what the switch offers.

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/core/formdraft"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/authz"
@@ -205,6 +206,11 @@ func (m *ModuleEventForm) Render(params map[string]map[string]string, loggedIn b
 			return ""
 		}
 		action = "/update/" + evt.Id
+	}
+	// A refused save comes back with what was typed (core/formdraft)
+	var draft Presenter
+	if formdraft.FromParams(params, &draft) && formdraft.SameItem(draft.Id, m.Opts.ItemIds) {
+		evt = draft
 	}
 
 	// hasRule seeds the JS "touched" state: an existing rule's weekday/week

@@ -17,6 +17,7 @@ import (
 	base "github.com/rohanthewiz/church/basectlr"
 	"github.com/rohanthewiz/church/config"
 	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/core/formdraft"
 	"github.com/rohanthewiz/church/core/idrive"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
@@ -40,7 +41,9 @@ func NewSermonRWeb(ctx rweb.Context) error {
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
 		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
 			// What the viewer may do, so admin modules offer only permitted actions
-			authz.ParamKey: authz.ParamValue(ctx)},
+			authz.ParamKey: authz.ParamValue(ctx),
+			// Typed values from a refused save of this form, if any
+			formdraft.ParamKey: base.TakeFormDraft(pg, ctx)},
 	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
@@ -146,12 +149,6 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	if id != "" && id != "0" {
 		formURL = "/admin/sermons/edit/" + id
 	}
-	csrf := ctx.Request().FormValue("csrf")
-	// Check that this token is present and valid in the in-process kvstore
-	if !app.VerifyFormToken(csrf) {
-		return app.RedirectRWebWarn(ctx, formURL,
-			"Your form has expired and was not saved. Please refresh the form and try again.")
-	}
 	// apparently embedded fields cannot be set immediately in a literal struct
 	// we'll set those after the object is created
 	serPres := sermon.Presenter{}
@@ -174,6 +171,27 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	if ctx.Request().FormValue("published") == "on" {
 		serPres.Published = true
 	}
+	// refuse sends the admin back to the form, keeping what they typed
+	// (core/formdraft). Only the text fields come back: a browser can't
+	// refill a file input, so any audio has to be chosen again.
+	refuse := func(msg string) error {
+		draft := serPres
+		draft.AudioLink = "" // the form keeps the stored link
+		formdraft.Save(ctx, formURL, draft)
+		return app.RedirectRWebError(ctx, formURL, msg)
+	}
+
+	// The token is checked after reading the text fields (which has no side
+	// effects) so an expired form still hands back what was typed.
+	csrf := ctx.Request().FormValue("csrf")
+	// Check that this token is present and valid in the in-process kvstore
+	if !app.VerifyFormToken(csrf) {
+		draft := serPres
+		draft.AudioLink = ""
+		formdraft.Save(ctx, formURL, draft)
+		return app.RedirectRWebWarn(ctx, formURL,
+			"Your form has expired and was not saved. Your changes are still in the form (except any audio file); please save again.")
+	}
 
 	// Refuse bad input before touching the filesystem. The audio is streamed
 	// to a temp file before the DB save, so refusing input first avoids
@@ -192,7 +210,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	//	                                                     (if any) untouched
 	if err := serPres.Validate(); err != nil {
 		msg, _ := inputerr.UserMessage(err) // Validate returns only InputErrors
-		return app.RedirectRWebError(ctx, formURL, msg+". The sermon was not saved.")
+		return refuse(msg + ". The sermon was not saved.")
 	}
 
 	// The DB handle is fetched here, before the audio copy, because resolving
@@ -201,7 +219,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
-		return app.RedirectRWebError(ctx, formURL, "The sermon could not be saved: the database is unavailable.")
+		return refuse("The sermon could not be saved: the database is unavailable.")
 	}
 
 	// Publishing is its own permission, resolved field by field rather than by
@@ -212,13 +230,13 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	if !ok {
 		// Admin routes always run behind AdminGuardRWeb, so no actor means a
 		// wiring bug. Fail closed rather than publish unchecked.
-		return app.RedirectRWebError(ctx, formURL, "Your permissions could not be confirmed. The sermon was not saved.")
+		return refuse("Your permissions could not be confirmed. The sermon was not saved.")
 	}
 	submittedFlag := serPres.Published
 	serPres.Published, err = authz.ResolveFlag(dbH, actor, authz.SermonsPublish, authz.FlagSermonPublished, serPres.Id, submittedFlag)
 	if err != nil {
 		logger.LogErr(err, "Error resolving sermon published flag", "sermon_id", serPres.Id)
-		return app.RedirectRWebError(ctx, formURL, "Error saving the sermon. It was not saved.")
+		return refuse("Error saving the sermon. It was not saved.")
 	}
 	// The form renders the switch disabled (with the stored value in a hidden
 	// field) for anyone lacking the permission, so a difference here means a
@@ -241,8 +259,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 		filenameDecoded, err := url.QueryUnescape(sermonHeader.Filename)
 		if err != nil {
 			logger.LogErr(err, "when", "un-escaping filename", "filename", sermonHeader.Filename)
-			return app.RedirectRWebError(ctx, formURL,
-				"The audio file name could not be read; please rename the file and try again. The sermon was not saved.")
+			return refuse("The audio file name could not be read; please rename the file and try again. The sermon was not saved.")
 		}
 
 		// The name must be a plain file name. Browsers send only the base
@@ -255,8 +272,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 		baseName := filepath.Base(filenameDecoded)
 		if baseName != filenameDecoded || strings.ContainsAny(filenameDecoded, `/\`) ||
 			baseName == ".." || strings.HasPrefix(baseName, ".") {
-			return app.RedirectRWebError(ctx, formURL,
-				"The audio file name isn't usable; please rename the file and try again. The sermon was not saved.")
+			return refuse("The audio file name isn't usable; please rename the file and try again. The sermon was not saved.")
 		}
 
 		localFileSpec = path.Join(config.Options.IDrive.LocalSermonsDir, serYear, baseName)
@@ -265,7 +281,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 		err = fileops.EnsureDir(sermonDir)
 		if err != nil {
 			logger.LogErr(err, "error ensuring local directory exists for sermon", "localFileSpec", localFileSpec)
-			return app.RedirectRWebError(ctx, formURL, audioFailMsg)
+			return refuse(audioFailMsg)
 		}
 
 		sermonAudioURL := path.Join(sermonsURLPrefix, serYear, sermonHeader.Filename)
@@ -276,7 +292,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 		dest, err := os.CreateTemp(sermonDir, "."+baseName+".upload-*")
 		if err != nil {
 			logger.LogErr(err, "when", "creating temp file for sermon upload", "dir", sermonDir)
-			return app.RedirectRWebError(ctx, formURL, audioFailMsg)
+			return refuse(audioFailMsg)
 		}
 		stagedAudio = dest.Name()
 
@@ -287,7 +303,7 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 		if copyErr != nil || closeErr != nil {
 			logger.LogErr(serr.New("sermon upload copy failed"), "copy_err", fmt.Sprint(copyErr),
 				"close_err", fmt.Sprint(closeErr), "filename", sermonHeader.Filename)
-			return app.RedirectRWebError(ctx, formURL, audioFailMsg)
+			return refuse(audioFailMsg)
 		}
 
 		fileUploaded = true
@@ -310,10 +326,10 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	if err != nil {
 		if msg, isInput := inputerr.UserMessage(err); isInput {
 			// Validate already ran, so this is a rule it does not cover yet
-			return app.RedirectRWebError(ctx, formURL, msg+". The sermon was not saved.")
+			return refuse(msg + ". The sermon was not saved.")
 		}
 		logger.LogErr(err, "Error in sermon upsert", "sermon_id", serPres.Id, "sermon_title", serPres.Title)
-		return app.RedirectRWebError(ctx, formURL, "Error saving the sermon. It was not saved.")
+		return refuse("Error saving the sermon. It was not saved.")
 	}
 
 	msg := "Created"

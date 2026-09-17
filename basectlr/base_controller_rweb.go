@@ -5,6 +5,7 @@ import (
 
 	"github.com/rohanthewiz/church/config"
 	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/core/formdraft"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/authz"
@@ -26,7 +27,9 @@ func RenderPageNewRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
 		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
 			// What the viewer may do, so admin modules offer only permitted actions
-			authz.ParamKey: authz.ParamValue(ctx)},
+			authz.ParamKey: authz.ParamValue(ctx),
+			// Typed values from a refused save of this form, if any
+			formdraft.ParamKey: TakeFormDraft(pg, ctx)},
 	}, IsLoggedInRWeb(ctx))
 	out = buf.Bytes()
 	return
@@ -106,10 +109,23 @@ func RenderPageSingleRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 		// discussion strip derives its per-article channel from it.
 		// username likewise lets modules tailor controls to the viewer.
 		"_global": {"user_agent": ctx.UserAgent(), "item_id": ctx.Request().PathParam("id"),
-			"username": cctx.GetUsernameFromRWeb(ctx), authz.ParamKey: authz.ParamValue(ctx)},
+			"username": cctx.GetUsernameFromRWeb(ctx), authz.ParamKey: authz.ParamValue(ctx),
+			// Typed values from a refused save of this form, if any
+			formdraft.ParamKey: TakeFormDraft(pg, ctx)},
 	}, IsLoggedInRWeb(ctx))
 	out = buf.Bytes()
 	return
+}
+
+// TakeFormDraft claims the draft a refused save left for this form (see
+// core/formdraft). Only admin pages are checked: drafts are only saved by
+// admin form handlers, and public renders then skip the store lookup.
+// Exported for controllers that call template.Page directly.
+func TakeFormDraft(pg *page.Page, ctx rweb.Context) string {
+	if !pg.IsAdmin {
+		return ""
+	}
+	return formdraft.Take(ctx, ctx.Request().Path())
 }
 
 // IsLoggedInRWeb checks if user is logged in based on RWeb context

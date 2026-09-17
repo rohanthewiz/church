@@ -466,6 +466,39 @@ func TestAdminRoutesSmoke(t *testing.T) {
 		os.IsNotExist(escErr) && os.IsNotExist(escErr2) && len(leftovers()) == 0,
 		fmt.Sprintf("status %d saved %d stat %v / %v", r.Status(), escSaved, escErr, escErr2))
 
+	// ---- Refused saves keep what was typed (core/formdraft) ----
+	r = post(ed, "/admin/articles", url.Values{"article_id": {"0"}, "article_title": {"  "},
+		"article_summary": {"draft-summary-7f3a"}, "article_body": {"b"}, "categories": {"news"}})
+	check("a refused article save returns to the form", r.Status() == 303 &&
+		r.Header("Location") == "/admin/articles/new", fmt.Sprintf("status %d loc %q", r.Status(), r.Header("Location")))
+	_, body = get(ann, "/admin/articles/new")
+	check("another session doesn't get the draft", !strings.Contains(body, "draft-summary-7f3a"), "")
+	_, body = get(ed, "/admin/articles/new")
+	check("the form shows the refused article's typed summary", strings.Contains(body, "draft-summary-7f3a"), "")
+	_, body = get(ed, "/admin/articles/new")
+	check("the draft is used once; a reload shows a fresh form", !strings.Contains(body, "draft-summary-7f3a"), "")
+
+	// An expired token keeps the draft too
+	expired := url.Values{"csrf": {"not-a-token"}, "article_id": {"0"}, "article_title": {"Expired Draft"},
+		"article_summary": {"expired-draft-91c2"}, "article_body": {"b"}, "categories": {"news"}}
+	r = s.Request("POST", "/admin/articles", append([]rweb.Header{{Key: "Content-Type",
+		Value: "application/x-www-form-urlencoded"}}, ed...), strings.NewReader(expired.Encode()))
+	_, body = get(ed, "/admin/articles/new")
+	check("an expired-token refusal keeps the typed values", r.Status() == 303 &&
+		strings.Contains(body, "expired-draft-91c2"), fmt.Sprintf("status %d", r.Status()))
+
+	// The user form gets typed values back, never the password
+	ritaEdit := userForm("rita", 9)
+	ritaEdit.Set("firstname", "Rita-Draft-5d1e")
+	ritaEdit.Set("password", "Typed-Secret-88")
+	ritaEdit.Set("password_confirm", "Different-Secret-88")
+	r = post(root, "/admin/users/update/"+id("rita"), ritaEdit)
+	_, body = get(root, "/admin/users/edit/"+id("rita"))
+	check("a refused user save keeps typed values but not the password", r.Status() == 303 &&
+		strings.Contains(body, "Rita-Draft-5d1e") && !strings.Contains(body, "Typed-Secret-88") &&
+		!strings.Contains(body, "Different-Secret-88"),
+		fmt.Sprintf("status %d loc %q name=%v", r.Status(), r.Header("Location"), strings.Contains(body, "Rita-Draft-5d1e")))
+
 	// ---- Duplicate titles ----
 	// Slugs carry a time-and-hash suffix (stringops.SlugWithRandomString), so
 	// a repeated title must save as a second item, not fail on the unique

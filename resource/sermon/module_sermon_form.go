@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
+	"github.com/rohanthewiz/church/core/formdraft"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/authz"
@@ -62,6 +63,17 @@ func (m *ModuleSermonForm) Render(params map[string]map[string]string, loggedIn 
 			return ""
 		}
 		action = "/update/" + ser.Id
+	}
+	// A refused save comes back with what was typed (core/formdraft). The
+	// audio link is kept from the stored sermon unless the draft set one
+	// (the override field): a file input can't be refilled, so the admin
+	// re-selects any new audio.
+	var draft Presenter
+	if formdraft.FromParams(params, &draft) && formdraft.SameItem(draft.Id, m.Opts.ItemIds) {
+		if draft.AudioLink == "" {
+			draft.AudioLink = ser.AudioLink
+		}
+		ser = draft
 	}
 
 	// Publishing is gated by its own permission; the handler re-checks it

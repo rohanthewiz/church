@@ -7,6 +7,7 @@ import (
 	"github.com/rohanthewiz/church/app"
 	base "github.com/rohanthewiz/church/basectlr"
 	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/core/formdraft"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
@@ -28,7 +29,9 @@ func NewArticleRWeb(ctx rweb.Context) error {
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
 		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
 			// What the viewer may do, so admin modules offer only permitted actions
-			authz.ParamKey: authz.ParamValue(ctx)},
+			authz.ParamKey: authz.ParamValue(ctx),
+			// Typed values from a refused save of this form, if any
+			formdraft.ParamKey: base.TakeFormDraft(pg, ctx)},
 	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
@@ -68,24 +71,40 @@ func EditArticleRWeb(ctx rweb.Context) error {
 }
 
 func UpsertArticleRWeb(ctx rweb.Context) error {
-	// An expired token is routine (a form left open too long), so send the admin
-	// back to the same form with a warning rather than a bare 500. Nothing has
-	// been written yet. The form re-renders from the DB, so unsaved edits are lost.
+	// Every refusal returns to the form with what was typed (core/formdraft),
+	// so the form values are read first. Reading them has no side effects;
+	// inline images are only stored after the token check below.
 	id := strings.TrimSpace(ctx.Request().FormValue("article_id"))
 	formURL := "/admin/articles/new"
 	if id != "" && id != "0" {
 		formURL = "/admin/articles/edit/" + id
 	}
-	csrf := ctx.Request().FormValue("csrf")
-	if !app.VerifyFormToken(csrf) { // check that csrf is present and valid in the in-process kvstore
-		return app.RedirectRWebWarn(ctx, formURL,
-			"Your form has expired and was not saved. Please refresh the form and try again.")
-	}
 	artPres := article.Presenter{}
 	artPres.Id = ctx.Request().FormValue("article_id")
 	artPres.Title = ctx.Request().FormValue("article_title")
-
 	summary := ctx.Request().FormValue("article_summary")
+	body := ctx.Request().FormValue("article_body")
+	artPres.Summary, artPres.Body = summary, body
+	artPres.Categories = strings.Split(ctx.Request().FormValue("categories"), ",")
+	if ctx.Request().FormValue("published") == "on" {
+		artPres.Published = true
+	}
+	// refuse sends the admin back to the form, keeping what they typed
+	refuse := func(msg string) error {
+		formdraft.Save(ctx, formURL, artPres)
+		return app.RedirectRWebError(ctx, formURL, msg)
+	}
+
+	// An expired token is routine (a form left open too long), so send the admin
+	// back to the same form with a warning rather than a bare 500. Nothing has
+	// been written yet, and the draft keeps their edits.
+	csrf := ctx.Request().FormValue("csrf")
+	if !app.VerifyFormToken(csrf) { // check that csrf is present and valid in the in-process kvstore
+		formdraft.Save(ctx, formURL, artPres)
+		return app.RedirectRWebWarn(ctx, formURL,
+			"Your form has expired and was not saved. Your changes are still in the form; please save again.")
+	}
+
 	str, err := chimage.ProcessInlineImages(summary)
 	if err != nil {
 		logger.LogErr(err, "Error processing summary inline image", "article_id", artPres.Id, "article_title", artPres.Title)
@@ -94,7 +113,6 @@ func UpsertArticleRWeb(ctx rweb.Context) error {
 		artPres.Summary = str
 	}
 
-	body := ctx.Request().FormValue("article_body")
 	str, err = chimage.ProcessInlineImages(body)
 	if err != nil {
 		logger.LogErr(err, "Error processing body inline image", "article_id", artPres.Id, "article_title", artPres.Title)
@@ -103,16 +121,10 @@ func UpsertArticleRWeb(ctx rweb.Context) error {
 		artPres.Body = str
 	}
 
-	artPres.Categories = strings.Split(ctx.Request().FormValue("categories"), ",")
-
 	// Get username from session
 	sess, err := cctx.GetSessionFromRWeb(ctx)
 	if err == nil && sess != nil {
 		artPres.UpdatedBy = sess.Username
-	}
-
-	if ctx.Request().FormValue("published") == "on" {
-		artPres.Published = true
 	}
 
 	// Failures go back to the form as an error flash. UpsertArticle is a single
@@ -121,7 +133,7 @@ func UpsertArticleRWeb(ctx rweb.Context) error {
 	dbH, err := db.Db()
 	if err != nil {
 		logger.LogErr(err, "Could not obtain DB handle")
-		return app.RedirectRWebError(ctx, formURL, "The article could not be saved: the database is unavailable.")
+		return refuse("The article could not be saved: the database is unavailable.")
 	}
 
 	// Publishing is its own permission, resolved field by field rather than by
@@ -132,13 +144,13 @@ func UpsertArticleRWeb(ctx rweb.Context) error {
 	if !ok {
 		// Admin routes always run behind AdminGuardRWeb, so no actor means a
 		// wiring bug. Fail closed rather than publish unchecked.
-		return app.RedirectRWebError(ctx, formURL, "Your permissions could not be confirmed. The article was not saved.")
+		return refuse("Your permissions could not be confirmed. The article was not saved.")
 	}
 	submittedFlag := artPres.Published
 	artPres.Published, err = authz.ResolveFlag(dbH, actor, authz.ArticlesPublish, authz.FlagArticlePublished, artPres.Id, submittedFlag)
 	if err != nil {
 		logger.LogErr(err, "Error resolving article published flag", "article_id", artPres.Id)
-		return app.RedirectRWebError(ctx, formURL, "Error saving the article. It was not saved.")
+		return refuse("Error saving the article. It was not saved.")
 	}
 	// The form renders the switch disabled (with the stored value in a hidden
 	// field) for anyone lacking the permission, so a difference here means a
@@ -152,10 +164,10 @@ func UpsertArticleRWeb(ctx rweb.Context) error {
 	if err != nil {
 		if msg, isInput := inputerr.UserMessage(err); isInput {
 			// The admin's mistake, not ours: no error log, just the reason
-			return app.RedirectRWebError(ctx, formURL, msg+". The article was not saved.")
+			return refuse(msg + ". The article was not saved.")
 		}
 		logger.LogErr(err, "Error in article upsert", "article_id", artPres.Id, "article_title", artPres.Title)
-		return app.RedirectRWebError(ctx, formURL, "Error saving the article. It was not saved.")
+		return refuse("Error saving the article. It was not saved.")
 	}
 	msg := "Created"
 	if artPres.Id != "0" && artPres.Id != "" {
