@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/rohanthewiz/church/app"
+	cctx "github.com/rohanthewiz/church/context"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/page"
@@ -24,7 +25,8 @@ func LoginHandlerRWeb(ctx rweb.Context) error {
 	}
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
-		"_global": {"user_agent": ctx.UserAgent()},
+		// username lets the nav filter the Admin submenu for a signed-in viewer
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx)},
 	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }

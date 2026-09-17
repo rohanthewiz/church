@@ -81,13 +81,14 @@ func TestAdminRoutesSmoke(t *testing.T) {
 	must("Db", err)
 
 	// Legacy users: ann=Admin(1), ed=Editor(7), root=SuperAdmin(99),
-	// uman=RegisteredUser(9) who will get a users-only role, and
-	// mo=RegisteredUser(9) who will get chat moderation only.
+	// uman=RegisteredUser(9) who will get a users-only role,
+	// mo=RegisteredUser(9) who will get chat moderation only, and
+	// rita=RegisteredUser(9) who will get read-only articles.
 	ids := map[string]int64{}
 	for _, u := range []struct {
 		name string
 		role int
-	}{{"ann", 1}, {"ed", 7}, {"root", 99}, {"uman", 9}, {"mo", 9}} {
+	}{{"ann", 1}, {"ed", 7}, {"root", 99}, {"uman", 9}, {"mo", 9}, {"rita", 9}} {
 		var id int64
 		err := dbH.QueryRow(`INSERT INTO users (updated_by, enabled, role, username, email_address, first_name)
 			VALUES ('smoke', true, $1, $2, $3, $2) RETURNING id`, u.role, u.name, u.name+"@smoke.test").Scan(&id)
@@ -165,7 +166,7 @@ func TestAdminRoutesSmoke(t *testing.T) {
 		return v
 	}
 
-	root, ann, ed, uman, mo := signIn("root"), signIn("ann"), signIn("ed"), signIn("uman"), signIn("mo")
+	root, ann, ed, uman, mo, rita := signIn("root"), signIn("ann"), signIn("ed"), signIn("uman"), signIn("mo"), signIn("rita")
 
 	// ---- Role Management screens ----
 	r, body := get(root, "/admin/home")
@@ -225,9 +226,13 @@ func TestAdminRoutesSmoke(t *testing.T) {
 	check("uman (users only) is refused articles", r.Status() == 303 && r.Header("Location") == "/admin/home" &&
 		!strings.Contains(body, "ch-module-wrapper"), fmt.Sprintf("status %d loc %q", r.Status(), r.Header("Location")))
 	r, body = get(uman, "/admin/home")
-	// Only the dashboard cards are asserted on. The site nav's Admin submenu
-	// is menu content and still lists every admin link (each one refused by
-	// its route guard), so the whole page can't be used here.
+	// The whole page includes the site nav, whose Admin submenu is filtered
+	// by permission too (menu.linkPermitted).
+	check("uman's nav offers Users, not Articles, Roles or Giving", r.Status() == 200 &&
+		strings.Contains(body, `href="/admin/users"`) && !strings.Contains(body, `href="/admin/articles"`) &&
+		!strings.Contains(body, `href="/admin/roles"`) && !strings.Contains(body, `href="/admin/giving"`),
+		fmt.Sprintf("status %d", r.Status()))
+	// Then the dashboard cards alone.
 	if i := strings.Index(body, `class="af-dash"`); i >= 0 {
 		body = body[i:]
 	}
@@ -379,6 +384,32 @@ func TestAdminRoutesSmoke(t *testing.T) {
 	r, body = get(ed, "/admin/articles/new")
 	check("editor's article form disables the publish switch", r.Status() == 200 &&
 		strings.Contains(body, "Publishing requires the articles.publish permission"),
+		fmt.Sprintf("status %d", r.Status()))
+
+	// ---- List actions follow permissions ----
+	r = post(root, "/admin/roles", url.Values{"role_id": {"0"}, "role_name": {"Article Reader"},
+		"perm:articles.read": {"on"}})
+	ritaForm := userForm("rita", 9)
+	ritaForm.Set(roleField(roleID("Article Reader")), "on")
+	post(root, "/admin/users/update/"+id("rita"), ritaForm)
+
+	r, body = get(rita, "/admin/articles")
+	check("a read-only viewer sees the article list without +, Edit or Delete", r.Status() == 200 &&
+		strings.Contains(body, "Draft by Ed") && !strings.Contains(body, `class="btn-add"`) &&
+		!strings.Contains(body, "/admin/articles/edit/") && !strings.Contains(body, "/admin/articles/delete/"),
+		fmt.Sprintf("status %d add=%v edit=%v delete=%v", r.Status(), strings.Contains(body, `class="btn-add"`),
+			strings.Contains(body, "/admin/articles/edit/"), strings.Contains(body, "/admin/articles/delete/")))
+	check("a read-only viewer's nav offers the dashboard and Articles only", strings.Contains(body, `href="/admin/home"`) &&
+		strings.Contains(body, `href="/admin/articles"`) && !strings.Contains(body, `href="/admin/users"`) &&
+		!strings.Contains(body, `href="/admin/pages"`) && !strings.Contains(body, `href="/admin/giving"`), "")
+
+	r, body = get(ed, "/admin/articles")
+	check("an Editor gets + and Edit but no Delete", r.Status() == 200 &&
+		strings.Contains(body, `class="btn-add"`) && strings.Contains(body, "/admin/articles/edit/") &&
+		!strings.Contains(body, "/admin/articles/delete/"), fmt.Sprintf("status %d", r.Status()))
+
+	r, body = get(root, "/admin/articles")
+	check("a SuperAdmin gets Delete", r.Status() == 200 && strings.Contains(body, "/admin/articles/delete/"),
 		fmt.Sprintf("status %d", r.Status()))
 
 	// ---- Duplicate titles ----

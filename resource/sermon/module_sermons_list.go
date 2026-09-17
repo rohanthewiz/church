@@ -8,6 +8,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -74,6 +75,12 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 		logger.Log("Info", strconv.Itoa(len(sermons))+" sermon(s) found")
 	}
 
+	// Offer only the actions the viewer may take: "+" needs sermons.create, the
+	// edit and delete links need sermons.update and sermons.delete. This is UI
+	// only; each route is guarded by auth_controller.Require. The permissions
+	// arrive through render params (see authz.ParamValue).
+	actor := authz.FromParams(params)
+
 	// Grid setup — columns mirror the former AG Grid defs; the date column
 	// drives the year-grouping toggle. Column and row ordering must agree.
 	g := grid.Grid{
@@ -103,6 +110,13 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 	}
 
 	for _, ser := range sermons {
+		editCell, deleteCell := grid.Text(""), grid.Text("")
+		if actor.Can(authz.SermonsUpdate) {
+			editCell = grid.EditLinkNamed(m.GetEditURL()+ser.Id, ser.Title)
+		}
+		if actor.Can(authz.SermonsDelete) {
+			deleteCell = grid.DeleteLinkNamed(m.GetDeleteURL()+ser.Id, ser.Title)
+		}
 		published := "draft"
 		if ser.Published {
 			published = "published"
@@ -123,8 +137,8 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 				grid.Text(ser.Slug),
 				grid.Text(ser.UpdatedBy),
 				grid.Text(published),
-				grid.EditLinkNamed(m.GetEditURL()+ser.Id, ser.Title),
-				grid.DeleteLinkNamed(m.GetDeleteURL()+ser.Id, ser.Title),
+				editCell,
+				deleteCell,
 			)
 		}
 		g.Rows = append(g.Rows, row)
@@ -136,7 +150,7 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 		b.DivClass("ch-module-heading").R(
 			b.T(m.Opts.Title),
 			b.Wrap(func() {
-				if m.Opts.IsAdmin {
+				if m.Opts.IsAdmin && actor.Can(authz.SermonsCreate) {
 					b.A("class", "btn-add", "href", m.GetNewURL(), "title", "Add Sermon").T("+")
 				}
 			}),

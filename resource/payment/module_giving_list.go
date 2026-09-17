@@ -2,7 +2,6 @@ package payment
 
 import (
 	"fmt"
-	"html"
 	"strconv"
 	"strings"
 	"time"
@@ -199,9 +198,7 @@ func (m *ModuleGivingList) Render(params map[string]map[string]string, loggedIn 
 
 // renderGivingMonth writes one month's card: a subtotal heading and a row per
 // charge, newest first. Donor-supplied text (name, email, description,
-// comment) is HTML-escaped before T, which writes raw. html.EscapeString is
-// used rather than element's TE because site binaries pin element releases
-// that predate TE.
+// comment) is written with TE, which HTML-escapes; T writes raw.
 func renderGivingMonth(b *element.Builder, mo GivingMonth) {
 	loc := mo.Start.Location()
 	b.DivClass("af-card", "id", "giving-"+mo.Key()).R(
@@ -233,12 +230,12 @@ func renderGivingMonth(b *element.Builder, mo GivingMonth) {
 							}
 							b.Tr(rowAttrs...).R(
 								b.Td("style", "white-space:nowrap").T(c.CreatedAt.Time.In(loc).Format(config.DisplayDateTimeFormat)),
-								b.Td().T(html.EscapeString(c.CustomerName)),
-								b.Td("class", "af-wraptext").T(html.EscapeString(c.CustomerEmail.String)),
+								b.Td().TE(c.CustomerName),
+								b.Td("class", "af-wraptext").TE(c.CustomerEmail.String),
 								b.Td("class", "af-num").T(dollars(c.AmountPaid.Int64)),
 								b.Td().T(chargeStatus(c)),
-								b.Td("class", "af-wraptext").T(html.EscapeString(c.Description.String)),
-								b.Td("class", "af-wraptext").T(html.EscapeString(c.Comment.String)),
+								b.Td("class", "af-wraptext").TE(c.Description.String),
+								b.Td("class", "af-wraptext").TE(c.Comment.String),
 								b.Td().R(
 									b.Wrap(func() { renderReceiptLink(b, c) }),
 								),

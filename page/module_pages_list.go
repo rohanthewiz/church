@@ -5,6 +5,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -66,6 +67,12 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 		return ""
 	}
 
+	// Offer only the actions the viewer may take: "+" needs pages.create, the
+	// edit and delete links need pages.update and pages.delete. This is UI
+	// only; each route is guarded by auth_controller.Require. The permissions
+	// arrive through render params (see authz.ParamValue).
+	actor := authz.FromParams(params)
+
 	// Grid setup — the pages list is admin-only, so every column is present.
 	// Page URL renders as a real link to the public page (the old grid showed
 	// it as text with a click-popup).
@@ -87,6 +94,13 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 	}
 
 	for _, pg := range pgs {
+		editCell, deleteCell := grid.Text(""), grid.Text("")
+		if actor.Can(authz.PagesUpdate) {
+			editCell = grid.EditLinkNamed(m.GetEditURL()+pg.Id, pg.Title)
+		}
+		if actor.Can(authz.PagesDelete) {
+			deleteCell = grid.DeleteLinkNamed(m.GetDeleteURL()+pg.Id, pg.Title)
+		}
 		published := "draft"
 		if pg.Published {
 			published = "published"
@@ -98,8 +112,8 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 			grid.Link("/pages/"+pg.Slug, "/pages/"+pg.Slug),
 			grid.Text(published),
 			grid.Text(pg.UpdatedBy),
-			grid.EditLinkNamed(m.GetEditURL()+pg.Id, pg.Title),
-			grid.DeleteLinkNamed(m.GetDeleteURL()+pg.Id, pg.Title),
+			editCell,
+			deleteCell,
 		})
 	}
 
@@ -109,7 +123,7 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 		b.DivClass("ch-module-heading").R(
 			b.T(m.Opts.Title),
 			b.Wrap(func() {
-				if m.Opts.IsAdmin {
+				if m.Opts.IsAdmin && actor.Can(authz.PagesCreate) {
 					b.A("class", "btn-add", "href", m.GetNewURL(), "title", "Add Page").T("+")
 				}
 			}),

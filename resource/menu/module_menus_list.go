@@ -5,6 +5,7 @@ import (
 	theDB "github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -66,6 +67,12 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 		return ""
 	}
 
+	// Offer only the actions the viewer may take: "+" needs menus.create, the
+	// edit and delete links need menus.update and menus.delete. This is UI
+	// only; each route is guarded by auth_controller.Require. The permissions
+	// arrive through render params (see authz.ParamValue).
+	actor := authz.FromParams(params)
+
 	// Grid setup. Admin-only columns are gated like the other list modules
 	// (the old grid always defined them but left the cells blank for non-admin).
 	g := grid.Grid{
@@ -92,6 +99,13 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 	}
 
 	for _, mnu := range mnus {
+		editCell, deleteCell := grid.Text(""), grid.Text("")
+		if actor.Can(authz.MenusUpdate) {
+			editCell = grid.EditLinkNamed(m.GetEditURL()+mnu.Id, mnu.Title)
+		}
+		if actor.Can(authz.MenusDelete) {
+			deleteCell = grid.DeleteLinkNamed(m.GetDeleteURL()+mnu.Id, mnu.Title)
+		}
 		published := "draft"
 		if mnu.Published {
 			published = "published"
@@ -101,9 +115,10 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 		if m.Opts.IsAdmin {
 			row = append(row, grid.Text(mnu.Id))
 		}
-		// Title links to the menu editor (menus have no public single view)
+		// Title links to the menu editor (menus have no public single view) when
+		// the viewer may edit
 		titleCell := grid.Text(mnu.Title)
-		if m.Opts.IsAdmin {
+		if m.Opts.IsAdmin && actor.Can(authz.MenusUpdate) {
 			titleCell = grid.Link(mnu.Title, m.GetEditURL()+mnu.Id)
 		}
 		row = append(row, titleCell, grid.Text(mnu.Slug))
@@ -111,8 +126,8 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 			row = append(row,
 				grid.Text(published),
 				grid.Text(mnu.UpdatedBy),
-				grid.EditLinkNamed(m.GetEditURL()+mnu.Id, mnu.Title),
-				grid.DeleteLinkNamed(m.GetDeleteURL()+mnu.Id, mnu.Title),
+				editCell,
+				deleteCell,
 			)
 		}
 		g.Rows = append(g.Rows, row)
@@ -124,7 +139,7 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 		b.DivClass("ch-module-heading").R(
 			b.T(m.Opts.Title),
 			b.Wrap(func() {
-				if m.Opts.IsAdmin {
+				if m.Opts.IsAdmin && actor.Can(authz.MenusCreate) {
 					b.AClass("btn-add", "href", m.GetNewURL(), "title", "Add Menu").T("+")
 				}
 			}),

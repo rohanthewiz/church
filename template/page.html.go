@@ -64,7 +64,7 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 
 	// Menu
 	b.DivClass("theme-"+config.Options.Theme, "id", "header").T(
-		menu.RenderNav("main-menu", loggedIn))
+		menu.RenderNav("main-menu", loggedIn, params["_global"]))
 
 	// Flash
 	b.T(flsh.Render())
@@ -100,7 +100,7 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	)
 
 	b.DivClass("theme-"+config.Options.Theme, "id", "footer").R(
-		b.T(menu.RenderNav("footer-menu", loggedIn)),
+		b.T(menu.RenderNav("footer-menu", loggedIn, params["_global"])),
 		b.T(view.PgFrame.GetCopyright()),
 	)
 

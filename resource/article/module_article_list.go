@@ -7,6 +7,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/element"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -67,6 +68,12 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 		return ""
 	}
 
+	// Offer only the actions the viewer may take: "+" needs articles.create, the
+	// edit and delete links need articles.update and articles.delete. This is UI
+	// only; each route is guarded by auth_controller.Require. The permissions
+	// arrive through render params (see authz.ParamValue).
+	actor := authz.FromParams(params)
+
 	// Grid setup. The Summary column holds editor-authored HTML: it renders
 	// clamped in the row (no more base64 shuttling through JSON) and the Popup
 	// flag lets a click show the full content — same UX as the old AG Grid
@@ -97,6 +104,13 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 	}
 
 	for _, art := range articles {
+		editCell, deleteCell := grid.Text(""), grid.Text("")
+		if actor.Can(authz.ArticlesUpdate) {
+			editCell = grid.EditLinkNamed(m.GetEditURL()+art.Id, art.Title)
+		}
+		if actor.Can(authz.ArticlesDelete) {
+			deleteCell = grid.DeleteLinkNamed(m.GetDeleteURL()+art.Id, art.Title)
+		}
 		published := "draft"
 		if art.Published {
 			published = "published"
@@ -116,8 +130,8 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 				grid.Text(strings.Join(art.Categories, ", ")),
 				grid.Text(art.UpdatedBy),
 				grid.Text(published),
-				grid.EditLinkNamed(m.GetEditURL()+art.Id, art.Title),
-				grid.DeleteLinkNamed(m.GetDeleteURL()+art.Id, art.Title),
+				editCell,
+				deleteCell,
 			)
 		}
 		g.Rows = append(g.Rows, row)
@@ -129,7 +143,7 @@ func (m *ModuleArticlesList) Render(params map[string]map[string]string, loggedI
 		b.DivClass("ch-module-heading").R(
 			b.T(m.Opts.Title),
 			b.Wrap(func() {
-				if m.Opts.IsAdmin {
+				if m.Opts.IsAdmin && actor.Can(authz.ArticlesCreate) {
 					b.A("class", "btn-add", "href", m.GetNewURL(), "title", "Add Article").T("+")
 				}
 			}),

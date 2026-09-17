@@ -7,6 +7,7 @@ import (
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/element"
 	. "github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -68,6 +69,12 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 		return ""
 	}
 
+	// Offer only the actions the viewer may take: "+" needs events.create, the
+	// edit and delete links need events.update and events.delete. This is UI
+	// only; each route is guarded by auth_controller.Require. The permissions
+	// arrive through render params (see authz.ParamValue).
+	actor := authz.FromParams(params)
+
 	// Grid setup — the event date column powers sorting and year grouping
 	g := grid.Grid{
 		Class:        "events-list-grid",
@@ -95,6 +102,13 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 	}
 
 	for _, evt := range evts {
+		editCell, deleteCell := grid.Text(""), grid.Text("")
+		if actor.Can(authz.EventsUpdate) {
+			editCell = grid.EditLinkNamed(m.GetEditURL()+evt.Id, evt.Title)
+		}
+		if actor.Can(authz.EventsDelete) {
+			deleteCell = grid.DeleteLinkNamed(m.GetDeleteURL()+evt.Id, evt.Title)
+		}
 		published := "draft"
 		if evt.Published {
 			published = "published"
@@ -114,8 +128,8 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 				grid.Text(strings.Join(evt.Categories, ", ")),
 				grid.Text(evt.UpdatedBy),
 				grid.Text(published),
-				grid.EditLinkNamed(m.GetEditURL()+evt.Id, evt.Title),
-				grid.DeleteLinkNamed(m.GetDeleteURL()+evt.Id, evt.Title),
+				editCell,
+				deleteCell,
 			)
 		}
 		g.Rows = append(g.Rows, row)
@@ -127,7 +141,7 @@ func (m *ModuleEventsList) Render(params map[string]map[string]string, loggedIn 
 		b.DivClass("ch-module-heading").R(
 			b.T(m.Opts.Title),
 			b.Wrap(func() {
-				if m.Opts.IsAdmin {
+				if m.Opts.IsAdmin && actor.Can(authz.EventsCreate) {
 					b.AClass("btn-add", "href", m.GetNewURL(), "title", "Add Events").T("+")
 				}
 			}),

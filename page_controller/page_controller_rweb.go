@@ -35,6 +35,9 @@ func HomePageRWeb(ctx rweb.Context) error {
 	buf := new(bytes.Buffer)
 	template.Page(buf, pg, flash.GetOrNewRWeb(ctx), map[string]map[string]string{
 		pg.MainModuleSlug(): {"id": ctx.Request().PathParam("id")},
+		// Only username: the nav resolves a signed-in viewer's permissions
+		// from it to filter the Admin submenu (see menu.RenderNav)
+		"_global": {"username": cctx.GetUsernameFromRWeb(ctx)},
 	}, app.IsLoggedInRWeb(ctx))
 	return ctx.WriteHTML(buf.String())
 }
