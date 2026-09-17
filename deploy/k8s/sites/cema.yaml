@@ -136,17 +136,11 @@ spec:
             - {name: http, containerPort: 4000}
           volumeMounts:
             - {name: data, mountPath: /data}
-            # Admin-uploaded article images. resource/chimage writes them to
-            # the CWD-relative "dist/img/" and pages reference them as
-            # /assets/img/... — so without this mount every upload lives in the
-            # container's writable layer and every redeploy silently breaks the
-            # images in existing articles. Backed by a subdirectory of the same
-            # block volume rather than a second PVC: one device, one $1/mo,
-            # nothing extra to attach.
-            # NOTE: unlike the database, these files are NOT shipped to object
-            # storage. Their protection is the `-retain` storage class plus
-            # Linode volume snapshots — see README.
-            - {name: data, mountPath: /app/dist/img, subPath: uploads}
+            # No mount for admin-uploaded article images (dist/img/): cema runs
+            # with idrive.enabled, so resource/chimage copies each image to
+            # IDrive e2 and serves a missing local file from there. dist/img/
+            # in the container is only a cache. See README "Uploaded images";
+            # copy pre-existing images up with test_scripts/images_to_e2.
             # The WHOLE cfg directory, not a single-file subPath: the app needs
             # two files from this Secret, and the second one is not optional.
             # resource/auth's init() opens cfg/random_seeds.txt and log.Fatal()s

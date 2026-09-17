@@ -3,7 +3,6 @@ package chimage
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -70,9 +69,22 @@ func ProcessInlineImages(field string) (out string, err error) {
 			if !ok {
 				return
 			}
+			// The editor supplies data-filename, so only its base name is used
+			// (a path would otherwise pick where the file is written). A name
+			// that is still unusable leaves the image inline rather than lost.
+			filename = filepath.Base(filename)
 			uniqueFilename := filename + "." + stringops.XXHash(string(dUrl.Data)) + ext
+			if !validName(uniqueFilename) {
+				logger.LogAsync("warn", "unusable image filename; keeping the image inline", "filename", filename)
+				return
+			}
 			// uniqueFilename := stringops.SlugWithRandomString(filename) + ext
-			ioutil.WriteFile(localImagesFolder+uniqueFilename, dUrl.Data, 0644)
+			if err := storeImage(uniqueFilename, dUrl.Data); err != nil {
+				// Keep the data URL in place: the article still shows the image,
+				// just inline, instead of pointing at a file that wasn't written
+				logger.LogErr(err, "Could not store article image; keeping it inline", "filename", uniqueFilename)
+				return
+			}
 			sel.SetAttr("src", webImagesFolder+uniqueFilename)
 		}
 	})

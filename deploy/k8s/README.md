@@ -71,18 +71,19 @@ header to all sites, with Let's Encrypt TLS via cert-manager.
 ### Uploaded images
 
 Article images pasted into the editor are written by `resource/chimage` to the
-CWD-relative `dist/img/` and referenced as `/assets/img/…`. The Deployment
-mounts that path from a subdirectory (`uploads`) of the same block volume as
-the database, so a redeploy no longer silently breaks the images in existing
-articles — which is what happened while they lived in the container's writable
-layer.
+CWD-relative `dist/img/` and referenced as `/assets/img/…`. With `idrive.enabled`
+in the site's options, each new image is also copied to the sermon-media bucket
+under `images/`, and `/assets/img/<name>` falls back to that object (caching it
+locally) when the local file is missing. So on a site with IDrive enabled,
+`dist/img/` is only a cache: a fresh container refetches images on demand.
 
-Note the asymmetry, because it is a real limitation and not an oversight:
-**uploaded images are not shipped to object storage.** The WAL replication and
-snapshot tiers cover the database only. Images are protected by the
-`-retain` storage class and whatever Linode volume snapshots you schedule. The
-durable fix is to put them on IDrive e2 next to the sermon media, which is a
-code change in `resource/chimage`, not a manifest one.
+- **cema** (IDrive enabled) has no uploads mount.
+- **ccswm** keeps the `uploads` subdirectory mount of its data volume until its
+  `options.yml` enables IDrive and its existing images have been copied up.
+  Without IDrive, that mount is the only thing keeping images across redeploys.
+
+Existing images (from before this change, or from the old VPS) are copied with
+`test_scripts/images_to_e2`, run from the site directory; see migration step 4.
 
 ## Bucket layout
 
@@ -286,7 +287,12 @@ leaves this runbook unchanged.
 3. **Content freeze** on the live PG site (church sites are low-write;
    a short freeze beats building delta sync).
 4. **Final import** against live PG; upload the result to
-   `s3://<bucket>/<site>/latest/church.db`.
+   `s3://<bucket>/<site>/latest/church.db`. Then copy the site's article
+   images from the old stack's `dist/img/` to IDrive e2, from the site
+   directory holding that `dist/img/`:
+   `APP_ENV=production go run github.com/rohanthewiz/church/test_scripts/images_to_e2`
+   (a dry run), then again with `-apply`. Re-run until it reports
+   `would copy: 0`; images uploaded after that are copied by the app itself.
 5. **Deploy** the site: `SITES=<site> ./deploy/deploy.sh secrets images sites`.
    The app finds an empty volume, restores the migrated file from `latest/`
    (no WAL generation exists yet), and boots on it. Answer `n` to the DNS

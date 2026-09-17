@@ -67,9 +67,10 @@ COPY --from=build /out/site /app/${SITE}
 # with it. An image without that file cannot start under any configuration.
 #
 # dist/ (built CSS/JS) ships with the site repo, so it rides along here.
-# dist/img/ is deliberately left as an empty mount point: it holds
-# admin-uploaded article images, which the Deployment backs with a
-# persistent volume — anything baked in at that path would be shadowed.
+# dist/img/ is deliberately left empty: it holds admin-uploaded article
+# images, which are either a cache of IDrive e2 (idrive.enabled) or a
+# persistent-volume mount (see deploy/k8s/README.md "Uploaded images").
+# Anything baked in at that path would be shadowed by the mount.
 COPY --from=build /src/${SITE}/dist/ /app/dist/
 RUN mkdir -p /app/cfg /app/log /app/dist/img && chown -R app:app /app
 USER app

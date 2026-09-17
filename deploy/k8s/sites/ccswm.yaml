@@ -142,9 +142,11 @@ spec:
             # images in existing articles. Backed by a subdirectory of the same
             # block volume rather than a second PVC: one device, one $1/mo,
             # nothing extra to attach.
-            # NOTE: unlike the database, these files are NOT shipped to object
-            # storage. Their protection is the `-retain` storage class plus
-            # Linode volume snapshots — see README.
+            # This mount is needed only while ccswm runs without idrive.enabled.
+            # With IDrive on, resource/chimage copies each image to IDrive e2
+            # and serves a missing local file from there, so once ccswm's
+            # options.yml enables it and test_scripts/images_to_e2 has copied
+            # the existing images, drop this mount as cema did. See README.
             - {name: data, mountPath: /app/dist/img, subPath: uploads}
             # The WHOLE cfg directory, not a single-file subPath: the app needs
             # two files from this Secret, and the second one is not optional.

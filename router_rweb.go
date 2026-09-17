@@ -23,6 +23,7 @@ import (
 	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/calendar"
 	"github.com/rohanthewiz/church/resource/chat"
+	"github.com/rohanthewiz/church/resource/chimage"
 	"github.com/rohanthewiz/church/resource/dbbackup"
 	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/resource/feed"
@@ -82,6 +83,10 @@ func ServeRWeb() {
 
 	// Static files
 	s.StaticFiles("/assets/", "dist", 1)
+	// Editor-uploaded article images: local cache first, then IDrive e2 (see
+	// resource/chimage/store.go). This route is more specific than the static
+	// /assets/*path route, so it takes /assets/img/ requests.
+	s.Get("/assets/img/:filename", chimage.ServeImageRWeb)
 	// Serve cached sermon media from the same directory the IDrive cache and
 	// cleanup service use, so all three always agree on where files live.
 	// Fall back to the historical "sermons" dir for configs predating the key.
