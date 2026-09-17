@@ -100,11 +100,11 @@ func replicationConfigured() bool {
 // backupStore builds the S3 client shared by shipping and restore, and
 // returns the site's key prefix alongside it.
 //
-// This is replicate/s3 — the stdlib-only SigV4 client that ships with the
-// feature — not the aws-sdk-v2 client resource/dbbackup carries. Two clients
-// against one bucket is a wart; consolidating dbbackup onto this one (and
-// dropping the AWS SDK dependency entirely) is a tracked follow-up, kept out
-// of this change so a replication bug and an SDK swap can't be confused.
+// This is replicate/s3, the stdlib-only SigV4 client that ships with the
+// feature. resource/dbbackup uses the same client (through BackupStore), so
+// every tier talks to the backup bucket one way. The media bucket
+// (core/s3ops) still uses the AWS SDK; it has separate credentials and is
+// outside this function's scope.
 func backupStore() (store replicate.Storage, prefix string, err error) {
 	b := config.Options.Backup
 
@@ -132,6 +132,16 @@ func backupStore() (store replicate.Storage, prefix string, err error) {
 			"endpoint", endpoint, "bucket", b.Bucket)
 	}
 	return cl, b.Prefix, nil
+}
+
+// BackupStore returns the backup bucket's client and the site's key prefix,
+// for the snapshot tier (resource/dbbackup). The caller checks that backup is
+// configured first; an incomplete config is returned as an error here.
+func BackupStore() (store replicate.Storage, prefix string, err error) {
+	if config.Options == nil {
+		return nil, "", serr.New("config not loaded; no backup destination")
+	}
+	return backupStore()
 }
 
 // replicateInterval parses the configured cadence, falling back to the

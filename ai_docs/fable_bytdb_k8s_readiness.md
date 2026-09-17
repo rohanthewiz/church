@@ -262,8 +262,10 @@ child tables; JOIN + windowed selects.
    `db/replicate_integration_test.go`).
 5. ~~Upstream: BETWEEN-in-CHECK and LIMIT/OFFSET placeholder support in bytdb.~~
    Done — both shipped in bytdb v0.6.2 (adopted 2026-07-19).
-6. Follow-ups opened by item 4, both non-blocking: a SIGTERM → `CloseDB()` handler in
-   `church.ServeRWeb()` (today `defer db.CloseDB()` never runs on a pod kill, so the
-   replicator's final flush is skipped — harmless, since a restart with the PVC intact
-   re-ships from offset 0), and migrating `resource/dbbackup` off aws-sdk-go-v2 onto
-   `replicate/s3` to drop the AWS SDK dependency and leave one S3 client in the tree.
+6. ~~Follow-ups opened by item 4, both non-blocking: a SIGTERM → `CloseDB()` handler in
+   `church.ServeRWeb()`, and migrating `resource/dbbackup` off aws-sdk-go-v2 onto
+   `replicate/s3`.~~ Done 2026-09-17. `ServeRWeb` drains in-flight requests (10s cap)
+   after rweb's own SIGTERM handling returns, then calls `db.CloseDB()`
+   (`shutdown_rweb.go`). `resource/dbbackup` now uses `db.BackupStore()`, the same
+   `replicate/s3` client as WAL shipping. The AWS SDK stays in the tree for
+   `core/s3ops` (the IDrive media bucket: sermons and article images).
