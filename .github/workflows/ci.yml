@@ -1,0 +1,45 @@
+# CI for the church framework.
+#
+# Runs on every push and pull request:
+#   build  - every package compiles with the module's own go.mod (GOWORK=off,
+#            so a local go.work can't hide a missing or stale requirement)
+#   vet    - go vet ./...
+#   test   - go test ./..., which includes admin_routes_smoke_test.go: the
+#            real admin route wiring on a temp bytdb, so a route that lost its
+#            Require guard or a broken permission check fails here
+#
+# The sites (cema, ccswm) are private repos with their own CI, which builds
+# them against their pinned church and against church master.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GOWORK: "off"
+    steps:
+      - uses: actions/checkout@v4
+
+      # resource/chimage resizes with bimg, a cgo binding to libvips
+      - name: Install libvips
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libvips-dev
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...

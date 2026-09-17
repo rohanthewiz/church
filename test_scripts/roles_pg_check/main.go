@@ -5,15 +5,22 @@
 // always rolled back. Postgres DDL is transactional, so the dev database ends
 // exactly as it started: no roles tables, no role rows, no assignments.
 //
-// That makes this safe to run against a shared church_development that hasn't
-// run the migration yet, and it proves the two things the bytdb tests can't:
-// the goose SQL is valid Postgres, and the hand-written queries behave the
-// same on lib/pq against real Postgres.
+// That makes this safe to run against a shared church_development, and it
+// proves the two things the bytdb tests can't: the migration SQL is valid
+// Postgres, and the hand-written queries behave the same on lib/pq against
+// real Postgres.
+//
+// Two starting states are supported:
+//
+//	roles tables absent  ─► apply the migration's Up section in the transaction
+//	roles tables present ─► (already migrated) empty the three role tables in
+//	                        the transaction, so the checks start from the same
+//	                        blank slate. The rollback restores every row.
 //
 //	go run ./test_scripts/roles_pg_check   (from the church module root)
 //
-// Requires: local Postgres with church_development migrated up to (but not
-// necessarily including) the roles migration.
+// Requires: local Postgres with church_development migrated at least up to the
+// migration before the roles one.
 package main
 
 import (
@@ -102,19 +109,36 @@ func run() int {
 		}
 	}()
 
-	raw, err := os.ReadFile(migrationFile)
-	if err != nil {
-		fmt.Println("FATAL reading migration:", err)
+	// to_regclass is NULL for a relation that doesn't exist
+	var rolesTable *string
+	if err := tx.QueryRow(`SELECT to_regclass('roles')::text`).Scan(&rolesTable); err != nil {
+		fmt.Println("FATAL checking for roles table:", err)
 		return 1
 	}
-	for _, stmt := range upStatements(string(raw)) {
-		if _, err := tx.Exec(stmt); err != nil {
-			first := strings.SplitN(strings.TrimSpace(stmt), "\n", 2)[0]
-			fmt.Printf("FAIL  migration statement %q: %v\n", first, err)
+	if rolesTable == nil {
+		raw, err := os.ReadFile(migrationFile)
+		if err != nil {
+			fmt.Println("FATAL reading migration:", err)
 			return 1
 		}
+		for _, stmt := range upStatements(string(raw)) {
+			if _, err := tx.Exec(stmt); err != nil {
+				first := strings.SplitN(strings.TrimSpace(stmt), "\n", 2)[0]
+				fmt.Printf("FAIL  migration statement %q: %v\n", first, err)
+				return 1
+			}
+		}
+		fmt.Println("pass  migration Up section applies on Postgres")
+	} else {
+		// Children first; there are no cascades to rely on
+		for _, tbl := range []string{"user_roles", "role_permissions", "roles"} {
+			if _, err := tx.Exec(`DELETE FROM ` + tbl); err != nil {
+				fmt.Printf("FATAL emptying %s: %v\n", tbl, err)
+				return 1
+			}
+		}
+		fmt.Println("      roles migration already applied; role tables emptied inside the transaction")
 	}
-	fmt.Println("pass  migration Up section applies on Postgres")
 
 	// Seed users inside the transaction. Existing dev users get backfilled
 	// too, which is fine: it all rolls back.
@@ -197,10 +221,86 @@ func run() int {
 	a = load("rolespg_editor")
 	expect("deleting a role revokes it", err == nil && a != nil && !a.Can(authz.ChargesRead), fmt.Sprintf("err %v", err))
 
+	checkModeration(tx, ids, load)
+	checkLockout(tx, ids)
+
 	if failures > 0 {
 		fmt.Printf("\n%d check(s) FAILED\n", failures)
 		return 1
 	}
 	fmt.Println("\nall Postgres role checks passed")
 	return 0
+}
+
+// checkModeration drives authz.CanModerate on Postgres: the legacy role rule,
+// a chat.moderate grant, and a disabled account holding the grant.
+func checkModeration(tx db.Executor, ids map[string]int64, load func(string) *authz.Actor) {
+	expect("legacy editor moderates without a grant", authz.CanModerate(tx, "rolespg_editor", 7), "")
+	expect("member without a grant can't moderate", !authz.CanModerate(tx, "rolespg_member", 9), "")
+
+	modRole, err := authz.SaveRole(tx, authz.Role{Name: "PG Moderator", Perms: authz.NewSet(authz.ChatModerate)}, "rolespg")
+	if err != nil {
+		expect("create moderator role", false, fmt.Sprintf("err %v", err))
+		return
+	}
+	err = authz.SetUserRoles(tx, ids["rolespg_member"], []int64{modRole})
+	expect("member holding chat.moderate may moderate", err == nil && authz.CanModerate(tx, "rolespg_member", 9),
+		fmt.Sprintf("err %v", err))
+	if a := load("rolespg_member"); a != nil {
+		expect("chat.moderate alone opens no admin area", !a.HasAdminAccess(), "")
+	}
+
+	if _, err := tx.Exec(`UPDATE users SET enabled = false WHERE id = $1`, ids["rolespg_member"]); err != nil {
+		expect("disable member", false, err.Error())
+		return
+	}
+	expect("a disabled account's grant doesn't moderate", !authz.CanModerate(tx, "rolespg_member", 9), "")
+	if _, err := tx.Exec(`UPDATE users SET enabled = true WHERE id = $1`, ids["rolespg_member"]); err != nil {
+		expect("re-enable member", false, err.Error())
+	}
+}
+
+// checkLockout drives authz.LocksOutRoleManagers on Postgres. The scenarios
+// need rolespg_admin to be the only role manager. EnsureDefaultRoles also
+// backfilled any legacy admins already in the dev database to Administrator,
+// so those assignments are removed first (inside the transaction).
+func checkLockout(tx db.Executor, ids map[string]int64) {
+	adminID := ids["rolespg_admin"]
+	adminRoles, err := authz.RoleIDsForUser(tx, adminID)
+	if err != nil || len(adminRoles) == 0 {
+		expect("load Administrator assignment", false, fmt.Sprintf("roles %v err %v", adminRoles, err))
+		return
+	}
+	adminRole := adminRoles[0]
+	if _, err := tx.Exec(`DELETE FROM user_roles WHERE role_id = $1 AND user_id <> $2`, adminRole, adminID); err != nil {
+		expect("isolate the Administrator assignment", false, err.Error())
+		return
+	}
+
+	locks := func(label string, change authz.PendingChange, want bool) {
+		got, err := authz.LocksOutRoleManagers(tx, change)
+		expect(label, err == nil && got == want, fmt.Sprintf("got %v want %v err %v", got, want, err))
+	}
+
+	locks("removing the last manager's roles locks out", authz.PendingChange{
+		UserID: adminID, SetUserRoles: true, UserRoles: nil}, true)
+	locks("disabling the last manager locks out", authz.PendingChange{
+		UserID: adminID, RemoveUser: true}, true)
+	locks("deleting the only role with roles.update locks out", authz.PendingChange{
+		RoleID: adminRole, DeleteRole: true}, true)
+
+	noRolesUpdate := authz.AllPermissions()
+	delete(noRolesUpdate, authz.RolesUpdate)
+	locks("taking roles.update out of the only role granting it locks out", authz.PendingChange{
+		RoleID: adminRole, RolePerms: noRolesUpdate}, true)
+	locks("an unrelated edit to the manager's account doesn't lock out", authz.PendingChange{
+		UserID: adminID, SetUserRoles: true, UserRoles: adminRoles}, false)
+
+	// A second holder makes removing the first safe
+	if err := authz.SetUserRoles(tx, ids["rolespg_editor"], []int64{adminRole}); err != nil {
+		expect("assign a second manager", false, err.Error())
+		return
+	}
+	locks("with a second manager, removing the first is allowed", authz.PendingChange{
+		UserID: adminID, SetUserRoles: true, UserRoles: nil}, false)
 }
