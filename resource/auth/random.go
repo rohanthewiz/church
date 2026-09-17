@@ -37,6 +37,43 @@ func init() {
 	if err := scanner.Err(); err != nil {
 		log.Fatal("Error when reading random seeds file")
 	}
+	if err := checkSeedsForEnv(os.Getenv("APP_ENV"), randStrings); err != nil {
+		log.Fatal(err.Error())
+	}
+}
+
+// testSeedPrefix marks the dummy seeds committed as test fixtures
+// (cfg/random_seeds.txt at the repo root and in each package's cfg/, which
+// `go test` needs because this init runs in every test binary).
+const testSeedPrefix = "test-seed-"
+
+// checkSeedsForEnv refuses production when the seeds are the public test
+// fixture or too few to be a real pool. The seeds feed session keys and the
+// SuperAdmin bootstrap token (RandomKey), so a production site on the fixture
+// would draw them from a list anyone with the source can read.
+//
+// APP_ENV is read directly rather than through config.AppEnv: this runs from
+// init(), before main() has called config.InitConfig. Development and test
+// runs are not checked, since that is exactly where the fixture belongs.
+func checkSeedsForEnv(appEnv string, seeds []string) error {
+	if strings.TrimSpace(appEnv) != "production" {
+		return nil
+	}
+	usable := 0
+	for _, s := range seeds {
+		if s == "" || strings.HasPrefix(s, testSeedPrefix) {
+			continue
+		}
+		usable++
+	}
+	// A generated pool has 60–72 lines (see deploy.sh cmd_seeds); 16 is a
+	// floor well under that, above which a pool is plausibly deliberate.
+	if usable < 16 {
+		return fmt.Errorf("cfg/random_seeds.txt holds %d usable seeds (test fixtures and blank lines "+
+			"don't count); production needs a generated pool of at least 16. "+
+			"Run `./deploy/deploy.sh seeds` or generate one with openssl rand", usable)
+	}
+	return nil
 }
 
 // Randomly pull a string from the above array

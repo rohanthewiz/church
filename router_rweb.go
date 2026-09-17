@@ -74,6 +74,12 @@ func ServeRWeb() {
 		TLS:     tlsCfg,
 	})
 
+	// Track in-flight requests so shutdown can let them finish before the
+	// database closes (see shutdown_rweb.go). First in the chain, so it wraps
+	// every route registered below.
+	reqs := &inflight{}
+	s.Use(reqs.middleware)
+
 	// Static files
 	s.StaticFiles("/assets/", "dist", 1)
 	// Serve cached sermon media from the same directory the IDrive cache and
@@ -275,6 +281,9 @@ func ServeRWeb() {
 	if err := s.Run(); err != nil {
 		logger.LogErr(err, "failed to start server")
 	}
+	// Run returns on SIGINT/SIGTERM (or a listen failure): finish open
+	// requests, then close the database cleanly
+	reqs.shutdown(shutdownDrainTimeout)
 }
 
 // RegisterAdminRoutes wires the permission-guarded admin area onto s. It is

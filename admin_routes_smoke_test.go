@@ -27,8 +27,11 @@ package church_test
 // directory; at the module root that is the committed cfg/ file.
 
 import (
+	"bytes"
 	"fmt"
+	"mime/multipart"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -100,6 +103,9 @@ func TestAdminRoutesSmoke(t *testing.T) {
 	// Site mains load config.Options at startup; the page template reads it
 	// (theme), so the harness supplies an empty one.
 	config.Options = &config.EnvConfig{}
+	// Sermon audio uploads land here (IDrive itself stays disabled)
+	sermonsDir := t.TempDir()
+	config.Options.IDrive.LocalSermonsDir = sermonsDir
 	page.RegisterModules()
 	s := rweb.NewServer(rweb.ServerOptions{})
 	church.RegisterAdminRoutes(s)
@@ -411,6 +417,54 @@ func TestAdminRoutesSmoke(t *testing.T) {
 	r, body = get(root, "/admin/articles")
 	check("a SuperAdmin gets Delete", r.Status() == 200 && strings.Contains(body, "/admin/articles/delete/"),
 		fmt.Sprintf("status %d", r.Status()))
+
+	// ---- Sermon audio upload ----
+	// uploadSermon posts the sermon form as multipart with an audio file.
+	uploadSermon := func(title, filename, content string) rweb.Response {
+		tok, err := app.GenerateFormToken()
+		must("csrf token", err)
+		var buf bytes.Buffer
+		mw := multipart.NewWriter(&buf)
+		for k, v := range map[string]string{"csrf": tok, "sermon_id": "0", "sermon_title": title,
+			"sermon_date": "2026-09-06", "pastor-teacher": "Pastor", "categories": "", "scripture_refs": ""} {
+			_ = mw.WriteField(k, v)
+		}
+		fw, err := mw.CreateFormFile("sermon_audio", filename)
+		must("multipart file", err)
+		_, _ = fw.Write([]byte(content))
+		must("multipart close", mw.Close())
+		hdrs := append([]rweb.Header{{Key: "Content-Type", Value: mw.FormDataContentType()}}, root...)
+		r := s.Request("POST", "/admin/sermons", hdrs, &buf)
+		lastBody = string(r.Body())
+		return r
+	}
+	// leftovers lists staged upload files still in the year directory
+	leftovers := func() []string {
+		matches, _ := filepath.Glob(filepath.Join(sermonsDir, "2026", ".*.upload-*"))
+		return matches
+	}
+	audioPath := filepath.Join(sermonsDir, "2026", "upload-check.mp3")
+
+	r = uploadSermon("Upload Check", "upload-check.mp3", "first audio")
+	got, _ := os.ReadFile(audioPath)
+	check("sermon audio upload lands in place with no staged file left", r.Status() == 303 &&
+		string(got) == "first audio" && len(leftovers()) == 0,
+		fmt.Sprintf("status %d content %q leftovers %v", r.Status(), got, leftovers()))
+
+	r = uploadSermon("Upload Check 2", "upload-check.mp3", "second audio")
+	got, _ = os.ReadFile(audioPath)
+	check("re-uploading the same name replaces the file whole", r.Status() == 303 &&
+		string(got) == "second audio" && len(leftovers()) == 0,
+		fmt.Sprintf("status %d content %q leftovers %v", r.Status(), got, leftovers()))
+
+	r = uploadSermon("Upload Escape", "..%2F..%2Fescaped.mp3", "nope")
+	escSaved := 0
+	_ = dbH.QueryRow(`SELECT COUNT(*) FROM sermons WHERE title = $1`, "Upload Escape").Scan(&escSaved)
+	_, escErr := os.Stat(filepath.Join(sermonsDir, "escaped.mp3"))
+	_, escErr2 := os.Stat(filepath.Join(sermonsDir, "2026", "escaped.mp3"))
+	check("an upload name with a path is refused and writes nothing", r.Status() == 303 && escSaved == 0 &&
+		os.IsNotExist(escErr) && os.IsNotExist(escErr2) && len(leftovers()) == 0,
+		fmt.Sprintf("status %d saved %d stat %v / %v", r.Status(), escSaved, escErr, escErr2))
 
 	// ---- Duplicate titles ----
 	// Slugs carry a time-and-hash suffix (stringops.SlugWithRandomString), so

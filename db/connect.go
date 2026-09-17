@@ -79,13 +79,17 @@ func InitDB(opts DBOpts) error {
 func CloseDB() {
 	// The replicator closes first, before anything below can take the engine
 	// away: its shutdown performs one final ship, and that read needs a live
-	// source. (See db/replicate.go — on a k8s SIGTERM this path usually does
-	// not run at all, which costs nothing: the next boot starts a fresh
-	// generation and re-ships the whole small file from offset zero.)
+	// source. On SIGTERM, ServeRWeb calls this after draining in-flight
+	// requests (see shutdown_rweb.go). If the process dies without getting
+	// here (SIGKILL, OOM) that costs little: the next boot starts a fresh
+	// generation and re-ships the whole small file from offset zero.
+	//
+	// Safe to call more than once: every step checks and clears its handle.
 	closeBytDBReplication()
 
 	if dbHandle != nil {
 		dbHandle.Close()
+		dbHandle = nil
 	}
 	// Order matters on the embedded path: the wire server drains before the
 	// engine closes so no in-flight statement lands on a closed engine.

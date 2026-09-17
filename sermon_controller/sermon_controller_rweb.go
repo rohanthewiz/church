@@ -126,6 +126,16 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	const cloudUploadDelay = time.Second * 45
 	var fileUploaded bool
 	var localFileSpec string
+	// stagedAudio is the uploaded audio's temp file, beside localFileSpec. It
+	// is renamed into place only after the row saves, so a failed save leaves
+	// neither a partial file nor a truncated old one. Removed on any early
+	// return; cleared once renamed.
+	var stagedAudio string
+	defer func() {
+		if stagedAudio != "" {
+			_ = os.Remove(stagedAudio)
+		}
+	}()
 
 	// An expired token is routine (a form left open too long), so send the admin
 	// back to the same form with a warning rather than a bare 500. The check runs
@@ -165,17 +175,21 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 		serPres.Published = true
 	}
 
-	// Refuse bad input before touching the filesystem. The audio copy below
-	// happens before the DB save, and for an existing sermon os.Create truncates
-	// the old file, so input refused any later would already have cost the file.
-	// Also, GetYear picks the upload directory from DateTaught.
+	// Refuse bad input before touching the filesystem. The audio is streamed
+	// to a temp file before the DB save, so refusing input first avoids
+	// writing an upload only to throw it away. Also, GetYear picks the upload
+	// directory from DateTaught.
 	//
 	//	expired token / refused input ──► form, warn/error   nothing written
-	//	audio copy fault              ──► form, error        no DB write; a partial
-	//	                                                     local file is possible
+	//	audio copy fault              ──► form, error        no DB write; temp
+	//	                                                     file removed
 	//	DB handle / upsert fault      ──► form, error        no DB write (single
-	//	                                                     Insert/Update); the
-	//	                                                     uploaded file stays on disk
+	//	                                                     Insert/Update); temp
+	//	                                                     file removed, any old
+	//	                                                     audio untouched
+	//	rename fault (after save)     ──► list, error        row saved; temp file
+	//	                                                     removed, old audio
+	//	                                                     (if any) untouched
 	if err := serPres.Validate(); err != nil {
 		msg, _ := inputerr.UserMessage(err) // Validate returns only InputErrors
 		return app.RedirectRWebError(ctx, formURL, msg+". The sermon was not saved.")
@@ -231,7 +245,21 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 				"The audio file name could not be read; please rename the file and try again. The sermon was not saved.")
 		}
 
-		localFileSpec = path.Join(config.Options.IDrive.LocalSermonsDir, serYear, filenameDecoded)
+		// The name must be a plain file name. Browsers send only the base
+		// name, so a path ("../../cfg/options.yml") is a hand-built request
+		// that would otherwise write outside the sermons directory. It is
+		// refused rather than trimmed, because the audio link below is built
+		// from the name as sent and would no longer match the stored file.
+		// A leading dot is refused too: staged uploads and the cache cleanup
+		// walker both treat dot files as not-a-sermon.
+		baseName := filepath.Base(filenameDecoded)
+		if baseName != filenameDecoded || strings.ContainsAny(filenameDecoded, `/\`) ||
+			baseName == ".." || strings.HasPrefix(baseName, ".") {
+			return app.RedirectRWebError(ctx, formURL,
+				"The audio file name isn't usable; please rename the file and try again. The sermon was not saved.")
+		}
+
+		localFileSpec = path.Join(config.Options.IDrive.LocalSermonsDir, serYear, baseName)
 
 		sermonDir := filepath.Dir(localFileSpec)
 		err = fileops.EnsureDir(sermonDir)
@@ -242,17 +270,23 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 
 		sermonAudioURL := path.Join(sermonsURLPrefix, serYear, sermonHeader.Filename)
 
-		// Create empty local file
-		dest, err := os.Create(localFileSpec)
+		// Stage in the destination directory, so the final rename stays on one
+		// filesystem and is atomic. The leading dot keeps the cache cleanup
+		// walker from treating a staged file as a sermon (it skips hidden files).
+		dest, err := os.CreateTemp(sermonDir, "."+baseName+".upload-*")
 		if err != nil {
-			logger.LogErr(err, "when", "creating local destination file for sermon", "fileSpec", localFileSpec)
+			logger.LogErr(err, "when", "creating temp file for sermon upload", "dir", sermonDir)
 			return app.RedirectRWebError(ctx, formURL, audioFailMsg)
 		}
-		defer dest.Close()
+		stagedAudio = dest.Name()
 
-		// Copy file contents
-		if _, err := io.Copy(dest, sermonAudio); err != nil {
-			logger.LogErr(err, "when", "copying sermon from FormFile to dest", "filename", sermonHeader.Filename)
+		// Copy file contents. Close is checked too: a write can fail only
+		// when the buffered data is flushed on close.
+		_, copyErr := io.Copy(dest, sermonAudio)
+		closeErr := dest.Close()
+		if copyErr != nil || closeErr != nil {
+			logger.LogErr(serr.New("sermon upload copy failed"), "copy_err", fmt.Sprint(copyErr),
+				"close_err", fmt.Sprint(closeErr), "filename", sermonHeader.Filename)
 			return app.RedirectRWebError(ctx, formURL, audioFailMsg)
 		}
 
@@ -285,6 +319,20 @@ func UpsertSermonRWeb(ctx rweb.Context) error {
 	msg := "Created"
 	if serPres.Id != "0" && serPres.Id != "" {
 		msg = "Updated"
+	}
+
+	// The row is saved: put the staged audio in place. The rename replaces
+	// any older file of the same name in one step.
+	if stagedAudio != "" {
+		if err := os.Rename(stagedAudio, localFileSpec); err != nil {
+			logger.LogErr(err, "when", "moving staged sermon audio into place", "staged", stagedAudio,
+				"fileSpec", localFileSpec)
+			// The deferred cleanup removes the staged file. The row already
+			// points at the new audio link, so say so plainly.
+			return app.RedirectRWebError(ctx, "/admin/sermons", "Sermon "+msg+
+				", but its audio file could not be put in place. Please upload the audio again.")
+		}
+		stagedAudio = ""
 	}
 
 	if config.Options.IDrive.Enabled && fileUploaded { // Transfer to sermon archive
