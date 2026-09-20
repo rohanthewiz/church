@@ -25,7 +25,7 @@ grmob's own session docs.
 - Open is kept in ID order. Sorted views (by age or value) come from
   `/next-list`.
 
-**Next ID: N-047**
+**Next ID: N-048**
 
 ## Open
 
@@ -101,21 +101,6 @@ grmob's own session docs.
 - **N-012** · raised `2026-0912-1655` · value low
   Optional: per-table content checksum in `bytdb_to_pg` beyond row counts. The
   round-trip dump diff covered the current schema. Deletion candidate.
-- **N-013** · raised `2026-0912-1752` · value medium
-  One browser click-through of everything since 2026-09-12:
-  - **09-12 flash changes:** bad event coordinates or an expired csrf; empty
-    menu items / page modules; the referrer guard; `token.txt` permissions
-  - **Admin save flashes:** expired csrf, blank title, bad sermon date with
-    audio chosen, password mismatch, stopped DB; each should also bring back a
-    draft
-  - **Role screens:** role form; user Roles card and locked states; Editor's
-    disabled publish switch; the "Moderate" column; lockout refusal flashes
-  - **`/admin/giving`:** year limits; month anchors; the unpaid note;
-    phone-width scrolling; both export buttons; both CSVs opened in Excel
-  - **Access:** `/debug/show` as Administrator vs SuperAdmin
-  - **2026-09-17 work:** the nav Admin dropdown per role on a public page;
-    list +/Edit/Delete as a read-only role; drafts, including role ticks; an
-    article image upload with IDrive on, then delete the local file and reload
 - **N-014** · raised `2026-0912-2125` · value medium
   Seeds: cema's committed `cfg/random_seeds.txt.sample` is identical to cema's
   local `cfg/random_seeds.txt`, and ccswm's sample is the same file (confirmed
@@ -215,6 +200,36 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-013** · raised `2026-0912-1752` · closed 2026-09-19 — Browser
+  click-through of everything since 2026-09-12, run against a booted cema on an
+  isolated `church_test` Postgres database (a copy of dev) with five seeded
+  actors (`test_scripts/n013_seed`). Verified: nav Admin dropdown per role on a
+  public page; list +/Edit/Delete for a read-only role; the Editor's disabled
+  publish switch; the role form's permission matrix incl. the Moderate column;
+  the user form's Roles card and its locked states; the lockout refusal; drafts
+  incl. role ticks; expired-token, blank-title, bad-coordinate, bad-sermon-date,
+  empty-menu-items and empty-page-modules flashes; the referrer guard;
+  `token.txt` at 0600; `/debug/show` as Administrator vs SuperAdmin; the giving
+  report's year limits, month anchors, unpaid note, phone-width scrolling and
+  both CSVs; the image serve route with IDrive off. Two cosmetic permission
+  leaks were found and fixed (see Closed N-047). Not covered: the live IDrive
+  upload (skipped on purpose — cema's config holds production `cemasermons`
+  credentials) and literally opening the CSVs in Excel (checked for UTF-8 BOM,
+  CRLF and quoting instead).
+- **N-047** · raised and closed 2026-09-19 — Two admin affordances were shown
+  to viewers the routes then refused, found by the N-013 click-through and
+  fixed in the same pass:
+  - the inline "Edit Page" pencil rendered for any signed-in viewer, so a chat
+    member saw it on every dynamic page; it now follows `pages.update`
+  - the users list linked each row's first name into the editor
+    unconditionally, so a read-only role had a working-looking way in; it now
+    follows `users.update` plus the manageable check, like the Actions "Edit"
+    beside it (the same leak item 16 closed for the menu list's title link)
+
+  Both were cosmetic — the routes refused with a flash naming the missing
+  permission — but a dead link is a promise the page cannot keep. The nav's
+  viewer resolution moved to `authz.ResolveViewer` so the pencil and the nav
+  share one implementation instead of two.
 - **N-015** · raised `2026-0913-1542` · closed 2026-09-19 — All three boot
   checks run against a locally built cema (workspace church, so current
   master).

@@ -141,16 +141,24 @@ func (m *ModuleUsersList) Render(params map[string]map[string]string, loggedIn b
 		if m.Opts.IsAdmin {
 			row = append(row, grid.Text(usr.Id))
 		}
+		// The first name doubles as a link into the editor, so it is gated on
+		// exactly what the Actions "Edit" is gated on. It used to be an
+		// unconditional link, which handed a read-only role a working-looking
+		// way into a form the route then refused — the same leak item 16 closed
+		// for the menu list's title link.
+		uid, _ := strconv.ParseInt(usr.Id, 10, 64)
+		canManage := m.Opts.IsAdmin && manageable(usr, uid)
+		mayEdit := m.Opts.IsAdmin && actor.Can(authz.UsersUpdate) && canManage
+
+		nameCell := grid.Text(usr.Firstname)
+		if mayEdit {
+			nameCell = grid.Link(usr.Firstname, m.GetEditURL()+usr.Id)
+		}
 		row = append(row,
 			grid.Text(enabled),
-			grid.Link(usr.Firstname, m.GetEditURL()+usr.Id),
+			nameCell,
 		)
 		if m.Opts.IsAdmin {
-			uid, _ := strconv.ParseInt(usr.Id, 10, 64)
-			canManage := manageable(usr, uid)
-
-			// An explicit edit action: the first-name link alone was too
-			// easy to miss as the only way into the editor
 			editCell := grid.EditLinkNamed(m.GetEditURL()+usr.Id, usr.Username)
 			if !actor.Can(authz.UsersUpdate) {
 				editCell = grid.Text("")

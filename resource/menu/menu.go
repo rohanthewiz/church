@@ -85,25 +85,10 @@ func (nr *navRender) viewer() *authz.Actor {
 	}
 	nr.actorResolved = true
 
-	if !nr.loggedIn {
-		return nil
-	}
-	if nr.glob[authz.ParamKey] != "" {
-		nr.actor = authz.FromParams(map[string]map[string]string{"_global": nr.glob})
-		return nr.actor
-	}
-	username := nr.glob["username"]
-	if username == "" || nr.exec == nil {
-		return nil
-	}
-	actor, found, err := authz.LoadActor(nr.exec, username)
-	if err != nil {
-		logger.LogErr(err, "Could not load permissions for nav; hiding admin links", "username", username)
-		return nil
-	}
-	if found {
-		nr.actor = actor
-	}
+	// The resolution itself is shared with the page template's "Edit Page"
+	// pencil (authz.ResolveViewer); this method only adds the per-render cache,
+	// so a nav with several admin links still costs at most one lookup.
+	nr.actor = authz.ResolveViewer(nr.exec, nr.loggedIn, nr.glob)
 	return nr.actor
 }
 

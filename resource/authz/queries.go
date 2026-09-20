@@ -9,6 +9,7 @@ import (
 
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/util/inputerr"
+	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
 )
 
@@ -553,4 +554,45 @@ func PermsByUser(exec db.Executor) (map[int64]Set, error) {
 		return nil, serr.Wrap(err, "error reading role assignments")
 	}
 	return out, nil
+}
+
+// ResolveViewer returns the actor whose permissions decide what a rendered page
+// offers a signed-in viewer: the nav's admin links, and the inline "Edit Page"
+// pencil. Both used to answer "is anyone signed in?", which offered admin
+// affordances to every registered member; the routes refused them, so the links
+// were dead rather than dangerous, but a dead link is still a promise the page
+// cannot keep.
+//
+// Sources, in order:
+//  1. Not signed in: nil, which is permitted nothing.
+//  2. Admin pages: the permissions AdminGuardRWeb already resolved and passed
+//     in render params under ParamKey. No query.
+//  3. Public pages resolve no actor up front, so a signed-in viewer's
+//     permissions are loaded by username — one lookup per render that asks.
+//
+// A failed lookup yields nil: hide the affordance rather than offer it to
+// someone whose permissions are unknown. It reappears once the DB is back.
+// Callers that ask repeatedly should cache the result for the render; this
+// function itself does not.
+func ResolveViewer(exec db.Executor, loggedIn bool, glob map[string]string) *Actor {
+	if !loggedIn {
+		return nil
+	}
+	if glob[ParamKey] != "" {
+		return FromParams(map[string]map[string]string{"_global": glob})
+	}
+	username := glob["username"]
+	if username == "" || exec == nil {
+		return nil
+	}
+	actor, found, err := LoadActor(exec, username)
+	if err != nil {
+		logger.LogErr(err, "Could not load viewer permissions; hiding admin affordances",
+			"username", username)
+		return nil
+	}
+	if !found {
+		return nil
+	}
+	return actor
 }

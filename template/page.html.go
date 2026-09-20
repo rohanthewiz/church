@@ -4,9 +4,11 @@ import (
 	"bytes"
 
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/flash"
 	"github.com/rohanthewiz/church/grid"
 	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/menu"
 	"github.com/rohanthewiz/church/view"
 	"github.com/rohanthewiz/element"
@@ -83,7 +85,13 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 		// Center
 		b.DivClass(layout, "id", "main").R(
 			b.Wrap(func() {
-				if loggedIn && page.IsDynamic() {
+				// The pencil links straight into the page editor, so it follows
+				// pages.update the way the nav's admin links and the list
+				// actions do. Being signed in is not enough: a chat member used
+				// to see it on every dynamic page and be bounced by the guard.
+				// Permissions are resolved once here (authz.ResolveViewer), and
+				// an unreadable DB hides it rather than offering a dead link.
+				if loggedIn && page.IsDynamic() && pageEditor(params, loggedIn).Can(authz.PagesUpdate) {
 					b.DivClass("page-edit").R(
 						b.AClass("edit-link", "href", "/admin/pages/edit/"+page.PresenterId).R(
 							b.ImgClass("edit-icon", "src", "/assets/images/edit_page.svg", "title", "Edit Page").R(),
@@ -129,4 +137,18 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 	b.T(`</body></html>`)
 
 	buffer.WriteString(b.String())
+}
+
+// pageEditor resolves the viewer whose permissions decide whether the inline
+// "Edit Page" pencil is drawn. On admin pages the permissions already ride in
+// params, so this costs nothing; on a public page it is one lookup, and only
+// for a signed-in viewer on a dynamic page. A nil DB handle (the database is
+// down) yields a nil actor, and a nil *authz.Actor answers false to Can, so the
+// pencil simply disappears.
+func pageEditor(params map[string]map[string]string, loggedIn bool) *authz.Actor {
+	exec, err := db.Db()
+	if err != nil {
+		exec = nil
+	}
+	return authz.ResolveViewer(exec, loggedIn, params["_global"])
 }
