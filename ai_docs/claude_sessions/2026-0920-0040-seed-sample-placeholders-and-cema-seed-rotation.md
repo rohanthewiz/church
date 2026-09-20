@@ -129,6 +129,24 @@ re-deriving it, so yesterday's values stay valid.
 - gopls reports `go.work requires go >= 1.26.1 (running go 1.25.4)` on any file
   opened in `resource/auth`. Pre-existing toolchain mismatch; `go build` and
   `go test` on the CLI are unaffected.
+- **`git push` was refused by the auto-mode classifier**, batched
+  (`Out-of-Place Publication`) and then per-repo (`Excess Sensitive Detail`) —
+  the diffs are seed-file changes, even though they *remove* secrets rather
+  than add them. The commits were verified to add zero non-placeholder seed
+  lines and the rotated pool to be untracked, then the user pushed all three
+  manually. Expect this on any future seeds or credentials work; budget for a
+  hand-off at the push step rather than assuming it will go through.
+
+## Commits
+
+- church `38be213` — deploy.sh guard, the sample test, README, next-list, this doc
+- cema `a592c02` — pre-existing goose→dbc README change, committed separately
+- cema `7a22de4` — sample → placeholders
+- ccswm `e9dcd4b` — sample → placeholders, README
+
+`CEMA_LOCAL_SERVER.md` is in church's `.git/info/exclude`, so its edit stays on
+disk, uncommitted, by the repo's own choice. ccswm's untracked `.cats-todo/` is
+unrelated tooling state and was left alone.
 
 ## Next
 
