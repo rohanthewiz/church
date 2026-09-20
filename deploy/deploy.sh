@@ -212,6 +212,17 @@ cmd_seeds() {
 	for site in $SITES; do
 		local seedFile="$(site_source_dir "$site")/cfg/random_seeds.txt"
 		if [ -f "$seedFile" ]; then
+			# A file that is byte-identical to the committed sample is not a pool,
+			# it is the sample — every clone of the repo has those exact strings.
+			# This case slips past both other guards: cmd_seeds skips any existing
+			# file, and resource/auth's checkSeedsForEnv only rejects `test-seed-`
+			# prefixes, so a sample full of real-looking strings would boot in
+			# production. Refusing here is the last point before cmd_secrets copies
+			# the file verbatim into the <site>-config Secret.
+			local sampleFile="$seedFile.sample"
+			if [ -f "$sampleFile" ] && cmp -s "$seedFile" "$sampleFile"; then
+				die "$site: cfg/random_seeds.txt is identical to the committed cfg/random_seeds.txt.sample. Delete it and re-run './deploy/deploy.sh seeds' to generate a real pool."
+			fi
 			ok "$site: cfg/random_seeds.txt present ($(wc -l <"$seedFile" | tr -d ' ') lines)"
 			continue
 		fi

@@ -25,7 +25,7 @@ grmob's own session docs.
 - Open is kept in ID order. Sorted views (by age or value) come from
   `/next-list`.
 
-**Next ID: N-048**
+**Next ID: N-049**
 
 ## Open
 
@@ -101,13 +101,6 @@ grmob's own session docs.
 - **N-012** · raised `2026-0912-1655` · value low
   Optional: per-table content checksum in `bytdb_to_pg` beyond row counts. The
   round-trip dump diff covered the current schema. Deletion candidate.
-- **N-014** · raised `2026-0912-2125` · value medium
-  Seeds: cema's committed `cfg/random_seeds.txt.sample` is identical to cema's
-  local `cfg/random_seeds.txt`, and ccswm's sample is the same file (confirmed
-  2026-09-19).
-  - Replace both samples with placeholders.
-  - Check cema's production seeds and rotate them if they match. Rotation is
-    safe: salts live in the DB, so logins survive.
 - **N-016** · raised `2026-0913-1542` · value low
   Document the `db:` block (`type: postgres|bytdb`, `file`, `listen`) in the
   cema and ccswm `cfg/options-sample.yml`. Missing from both (checked
@@ -153,6 +146,21 @@ grmob's own session docs.
 - **N-028** · raised `2026-0917-0259` · value low
   Optional: gofmt the files that were already unformatted (list under Gotchas
   in `2026-0917-0259`), in a formatting-only commit.
+- **N-048** · raised `2026-0920-0040` · value medium
+  Compare the live cema host's `cfg/random_seeds.txt` against the seeds that
+  were committed as `cfg/random_seeds.txt.sample` before N-014 (the pre-rotation
+  copy is `md5 fea717bf7f180b79e47d9c7f5f94a916`; the strings are still in
+  cema's and ccswm's git history from their initial commits). Rotate the host if
+  they match:
+  ```bash
+  for i in $(seq 72); do openssl rand -base64 24 | tr -d '/+=' | cut -c1-19; done > cfg/random_seeds.txt
+  chmod 600 cfg/random_seeds.txt   # then restart
+  ```
+  Rotation is safe and was re-verified under N-014: `GenSalt` never draws from
+  the pool and each user's salt is stored beside their hash, so logins survive.
+  Owner: Rohan — the host is not referenced anywhere in the repo, so no session
+  can reach it. Low urgency: both site repos are private, so the seeds were
+  never public.
 
 ## Non-goals
 
@@ -200,6 +208,47 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-014** · raised `2026-0912-2125` · closed 2026-09-20,
+  `2026-0920-0040-seed-sample-placeholders-and-cema-seed-rotation` — The committed
+  samples held real seeds; both are now placeholders and cema's local pool is
+  rotated. The live-host check is the one part a session can't do: N-048.
+  - **The samples** (`cema/cfg/random_seeds.txt.sample`,
+    `ccswm/cfg/random_seeds.txt.sample`, byte-identical to each other and to
+    cema's local `cfg/random_seeds.txt`) are now 72 lines of `test-seed-NN`,
+    reusing `resource/auth`'s existing fixture convention, so a sample copied
+    into production is refused by `checkSeedsForEnv` instead of silently
+    working. Copying it for local dev still works, which is what the sample is
+    for.
+  - **cema's local `cfg/random_seeds.txt`** was rotated to 72 generated 19-char
+    seeds at 0600, using the same `openssl` recipe as `deploy.sh seeds`.
+  - **Why that rotation mattered now:** `cmd_seeds` skips any existing seed
+    file and `cmd_secrets` copies it verbatim into the `<site>-config` Secret,
+    while `checkSeedsForEnv` only rejects the `test-seed-` prefix. cema's file
+    was the sample but held real-looking strings, so N-001's `seeds secrets`
+    run would have shipped repo-committed seeds into production and booted on
+    them cleanly. `cmd_seeds` now `die`s when a site's seed file is
+    byte-identical to its sample — the gap between the two existing guards.
+  - **Verified:** `TestCommittedSamplesRefusedInProduction` feeds both real
+    sample files through the boot-path guard (production refused, development
+    accepted) and skips per-site when the sibling repo is absent, since church
+    CI checks out church alone. cema then booted on the rotated pool ("72 seeds
+    read"), served `/`, `/articles`, `/events`, `/sermons`, `/login` at 200,
+    minted a session key from the new seeds, and drained cleanly on SIGTERM.
+    All 26 church packages pass; church, cema and ccswm build.
+  - **Rotation is safe, re-confirmed in code:** login compares
+    `PasswordHash(password, stored_salt)` against the stored hash, both from
+    the DB, and `GenSalt` never reads the pool. The seeds feed only
+    `RandomKey()` — session keys, form tokens, the SuperAdmin bootstrap token —
+    whose outputs are stored, never re-derived.
+  - **Not done:** the live cema host (N-048). Both site repos are private, so
+    the old seeds were never publicly exposed, though they remain in cema's and
+    ccswm's git history from their initial commits; rotating the host retires
+    them.
+  - Docs corrected alongside: both READMEs told the reader to copy the sample
+    if "not paranoid about security" (and named a nonexistent
+    `rand_seeds.txt`); they and `CEMA_LOCAL_SERVER.md` now say the sample is
+    placeholders, give the generate recipe, and note that rotation preserves
+    logins.
 - **N-013** · raised `2026-0912-1752` · closed 2026-09-19 — Browser
   click-through of everything since 2026-09-12, run against a booted cema on an
   isolated `church_test` Postgres database (a copy of dev) with five seeded
