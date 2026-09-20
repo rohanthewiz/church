@@ -123,14 +123,6 @@ grmob's own session docs.
   - Replace both samples with placeholders.
   - Check cema's production seeds and rotate them if they match. Rotation is
     safe: salts live in the DB, so logins survive.
-- **N-015** · raised `2026-0913-1542` · value medium
-  Boot checks on a local site binary:
-  - cema with no `db.type` against Postgres: no `bytdb serving` line, pages
-    render
-  - `time_zone` set, and once with a bad name: startup log line and fatal
-    message
-  - SIGTERM: "draining in-flight requests", then "Database closed", then a
-    clean bytdb reopen
 - **N-016** · raised `2026-0913-1542` · value low
   Document the `db:` block (`type: postgres|bytdb`, `file`, `listen`) in the
   cema and ccswm `cfg/options-sample.yml`. Missing from both (checked
@@ -223,6 +215,30 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-015** · raised `2026-0913-1542` · closed 2026-09-19 — All three boot
+  checks run against a locally built cema (workspace church, so current
+  master).
+  - **Postgres:** `env -u DB_TYPE ./cema` logged no `bytdb serving` line and
+    served `/`, `/articles`, `/events`, `/sermons`, `/login` at 200 with the
+    real site content; the rendered article title matched the row in
+    `church_development`.
+  - **Zone:** `config.TimeZone is America/Chicago` on boot, log timestamps at
+    `-05:00`. `TIME_ZONE=Europe/London` beat the file (`+01:00`, and the date
+    rolled to the next day — the month-cut bug N-018 guards against).
+    `TIME_ZONE=America/Nowhere` exited 1 before binding a port, naming the bad
+    zone and suggesting an IANA name.
+  - **SIGTERM:** "Server stopped accepting connections; draining in-flight
+    requests" then "Database closed; shutdown complete", on both backends. Under
+    60 concurrent page builds the count was real (`in_flight=34`) and all 60
+    clients got a complete 200; the drain never timed out. Rebooting on the same
+    bytdb file reopened it cleanly — the second boot refreshed the existing
+    menus rather than recreating them, and served the first boot's article.
+  - **Found and fixed in `shutdown_rweb.go`:** the comment said the drain is
+    bounded because SSE subscribers hold requests open. They do not — rweb
+    streams from `sendSSE` after the handler chain returns, outside the
+    middleware, so an open `/chat/stream` measured `in_flight=0`. Comment
+    corrected; no behavior change, and none needed (the stream loop reads an
+    in-memory channel, never the database).
 - **N-018** · raised `2026-0913-1725` · closed 2026-09-19 — `TIME_ZONE:
   America/Chicago` added to the Deployment env in both
   `deploy/k8s/sites/cema.yaml` and `ccswm.yaml`, `time_zone: America/Chicago`
@@ -230,7 +246,7 @@ in the session docs' bodies.
   reason a container needs the env var documented in `deploy/k8s/README.md`.
   cema's Secret picks the file up on the next `deploy.sh secrets`. ccswm has no
   real `options.yml`; that half moved to N-007, and its pod is covered by the
-  manifest meanwhile. Not yet seen on a booted site — that stays N-015.
+  manifest meanwhile. Since confirmed on a booted site under N-015.
 - **N-046** · raised `2026-0917-0259` · closed 2026-09-19, `/next-list`
   rebuild — Watch the first church (`18713dd`) and site re-pin CI runs. All
   green, checked with `gh run list`.
