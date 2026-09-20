@@ -248,6 +248,19 @@ bare-metal values — ccswm's sample says port 80 with certbot paths, cema's say
 8088 — while the pod, its Service, and its probes all agree on 4000. TLS
 terminates at the ingress, which also owns the ACME challenge.
 
+**`TIME_ZONE`** is set in each Deployment for a different reason: there is no
+host zone in a container to fall back on. The image ships no `/etc/localtime`
+and `TZ` is unset, so a site with no zone configured runs in UTC, and UTC is
+wrong in a way nothing reports — a Sunday-evening service lands on Monday, and
+the giving report's month boundaries cut hours early. Both manifests say
+`America/Chicago`; change it per church. The env var beats `time_zone` in
+`options.yml` (`config/env_overrides.go`), so the manifest is the one place a
+pod's zone is decided, and setting both to the same value keeps a bare-metal
+run of the same site honest. An invalid IANA name stops startup on purpose: a
+crash-looping pod is louder than silently wrong dates. The name is `TIME_ZONE`
+rather than `TZ` because the Go runtime reads `TZ` before config loads, and a
+site with no `time_zone` must keep honoring it.
+
 ### Image build
 
 CGO is required and the image is **not** static: `resource/chimage` imports

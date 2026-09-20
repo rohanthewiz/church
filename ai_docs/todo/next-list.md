@@ -74,7 +74,10 @@ grmob's own session docs.
   Create `ccswm/cfg/options.yml` from the sample, with a real `pg:` block (or
   `db.type: bytdb`), a real `time_zone` and an `idrive` block. Then copy
   ccswm's images with `images_to_e2` and drop the uploads mount from
-  `ccswm.yaml`. (The sample already says `idrive.enabled: true`.)
+  `ccswm.yaml`. (The sample already says `idrive.enabled: true`.) The
+  `time_zone` half arrived here from N-018: ccswm has no real `options.yml` to
+  set it in yet. Its pod is covered either way — `ccswm.yaml` now pins
+  `TIME_ZONE=America/Chicago`, which beats the file.
 - **N-008** · raised `2026-0801-1935` · value low
   Optional hardening:
   - `imagePullSecrets`, only if the ghcr packages go private (deletion
@@ -135,11 +138,6 @@ grmob's own session docs.
 - **N-017** · raised `2026-0913-1725` · value medium
   Check the giving report and the summary CSV against real charge data on
   Postgres, and against Stripe for one month, with `time_zone` set.
-- **N-018** · raised `2026-0913-1725` · value medium
-  Add `TIME_ZONE` to `deploy/k8s/sites/cema.yaml` and `ccswm.yaml`, and set
-  `time_zone` in each site's real `cfg/options.yml`. Missing from both
-  manifests and from cema's real `options.yml` (checked 2026-09-19). Until
-  then pods cut months and show event times in UTC.
 - **N-019** · raised `2026-0913-1747` · value low
   Recurring: after each church push a site depends on, re-pin ccswm and cema.
   Site CI warns when a pin lags.
@@ -225,6 +223,14 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-018** · raised `2026-0913-1725` · closed 2026-09-19 — `TIME_ZONE:
+  America/Chicago` added to the Deployment env in both
+  `deploy/k8s/sites/cema.yaml` and `ccswm.yaml`, `time_zone: America/Chicago`
+  set in `defaults` of cema's real (gitignored) `cfg/options.yml`, and the
+  reason a container needs the env var documented in `deploy/k8s/README.md`.
+  cema's Secret picks the file up on the next `deploy.sh secrets`. ccswm has no
+  real `options.yml`; that half moved to N-007, and its pod is covered by the
+  manifest meanwhile. Not yet seen on a booted site — that stays N-015.
 - **N-046** · raised `2026-0917-0259` · closed 2026-09-19, `/next-list`
   rebuild — Watch the first church (`18713dd`) and site re-pin CI runs. All
   green, checked with `gh run list`.

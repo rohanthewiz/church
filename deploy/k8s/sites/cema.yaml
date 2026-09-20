@@ -109,6 +109,18 @@ spec:
             # so the app must serve plain HTTP here.
             - {name: SERVER_PORT, value: "4000"}
             - {name: USE_TLS, value: "false"}
+            # The church's own zone, and it must be set HERE rather than left to
+            # options.yml alone: a container has no host zone to inherit — the
+            # image carries no /etc/localtime and TZ is unset, so an unset
+            # time_zone leaves the process in UTC. In UTC a Sunday-evening
+            # service shows up on Monday, and the giving report cuts months six
+            # hours early, silently. TIME_ZONE (config/env_overrides.go) beats
+            # the value in options.yml, so this line is the single place the
+            # pod's zone is decided. An invalid IANA name stops startup, which
+            # is deliberate: a crash-looping pod is louder than wrong dates.
+            # The name is TIME_ZONE, not TZ, because the Go runtime reads TZ
+            # before config loads and an unset time_zone must keep honoring it.
+            - {name: TIME_ZONE, value: America/Chicago}
             # Env overrides (config/env_overrides.go) beat options.yml, so the
             # DB location is pinned here where the volume mount is defined,
             # keeping the two in one file. DB_TYPE is required: Postgres is the default.
