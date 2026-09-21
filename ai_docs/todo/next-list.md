@@ -19,30 +19,21 @@ grmob's own session docs.
   blocks one named thing, or it is a visible problem nobody routes around yet.
   **low**: nobody has hit it, or it is contingent on something that does not
   exist.
-- **Nothing leaves Open without a line in Closed or Non-goals.** A silent
+- **Three places an unfinished item can live.** **Open** is what we intend to
+  pick up next. **Roadmap** is what we want to do in the future, but not
+  immediately. **Non-goals** is what we are likely not to do. An item moves
+  between them freely as plans change, keeping its ID.
+- **Nothing leaves Open without a line in Roadmap, Closed or Non-goals**, and
+  nothing leaves Roadmap without a line in Open, Closed or Non-goals. A silent
   deletion is the leak this file exists to prevent; `/next-list` checks for it
   in git history.
-- Open is kept in ID order. Sorted views (by age or value) come from
-  `/next-list`.
+- Open and Roadmap are kept in ID order. Sorted views (by age or value) come
+  from `/next-list`.
 
 **Next ID: N-050**
 
 ## Open
 
-- **N-001** · raised `2026-0719-1841` · value medium
-  Provision LKE + Object Storage and fill `deploy/backup.env`. Then run
-  `./deploy/deploy.sh preflight infra`, point DNS at the NodeBalancer IP, and
-  run `./deploy/deploy.sh base secrets images sites verify`. Verify also
-  checks that WAL generations appear under `<prefix>/wal/gen/` and that
-  `lag_seconds` is small. Blocked by N-006.
-- **N-002** · raised `2026-0719-1841` · value medium
-  Readiness §7 item 1: boot a site on bytdb and exercise the article/page/menu
-  admin flows, "the last unchecked item before a real cutover". Lapsed from
-  every Next list after `2026-0801-0852`; recovered 2026-09-19.
-  - `admin_routes_smoke_test.go` now covers article create on an embedded
-    bytdb (`db.InitDB`).
-  - Page and menu saves on bytdb are still unproven.
-  - Lands with N-011.
 - **N-003** · raised `2026-0801-0956` · value low
   API additions for the mobile app, none built (checked 2026-09-19):
   - item image/thumbnail URLs
@@ -65,6 +56,81 @@ grmob's own session docs.
   - slim the old material-form classes; `page/login_form.go` is their only user
 
   Lapsed after `2026-0801-0956`; recovered 2026-09-19.
+- **N-009** · raised `2026-0912-1655` · value medium
+  Postgres coverage still missing (Postgres is the default):
+  - sermon create/import + audio
+  - Stripe intent/history/webhook
+  - `/chat/stream` SSE
+  - image upload
+  - the giving report with data
+  - optionally let `test_scripts/bytdb_wire_check` take a Postgres DSN
+- **N-010** · raised `2026-0912-1655` · value medium
+  Run the roles and `event_locations` migrations (`dbc migrate up`) on any
+  Postgres site before deploying current church to it. The dev DB has both.
+- **N-017** · raised `2026-0913-1725` · value medium
+  Check the giving report and the summary CSV against real charge data on
+  Postgres, and against Stripe for one month, with `time_zone` set.
+- **N-019** · raised `2026-0913-1747` · value low
+  Recurring: after each church push a site depends on, re-pin ccswm and cema.
+  Site CI warns when a pin lags.
+- **N-020** · raised `2026-0913-1820` · value low
+  Delete cema's `feature/site-themes`. It is fully merged into `master`
+  (checked 2026-09-19), so deleting it loses nothing.
+- **N-021** · raised `2026-0913-1820` · value low
+  Mobile moderation UI for a permission-only moderator: check that the
+  controls appear once the server sends `can_moderate: true`. The app is on
+  grmob now; this belongs in church_mobile's docs.
+- **N-022** · raised `2026-0913-1820` · value low
+  Optional: add `chat.moderate` by hand to Publisher and Editor on sites whose
+  default roles were seeded before it existed. Legacy roles moderate either
+  way.
+- **N-025** · raised `2026-0917-0259` · value medium
+  Keep `resource/menu/admin_links.go` in step with `router_rweb.go` and the
+  dashboard cards in `page/admin_home.go` when adding admin routes. Three
+  hand-synced copies of one route→permission table: a single shared table
+  would retire this.
+- **N-026** · raised `2026-0917-0259` · value low
+  Optional: a test for the sermon upload failed-save path, e.g. by injecting
+  an upsert failure.
+- **N-028** · raised `2026-0917-0259` · value low
+  Optional: gofmt the files that were already unformatted (list under Gotchas
+  in `2026-0917-0259`), in a formatting-only commit.
+- **N-049** · raised `2026-0920-1957-drop-seed-pool-for-crypto-rand` · value medium
+  Re-pin cema and ccswm to a church commit at or past `9c796bd` (the seed pool
+  removal), as `f5dabf4 Re-pin church to 18713dd` did before. Both sites
+  deleted `cfg/random_seeds.txt.sample` in the same session, so until the pin
+  moves, a build outside the local `go.work` (the sites' pinned-church CI job,
+  a fresh clone) still gets the seed-reading church, which `log.Fatal`s at boot
+  without `cfg/random_seeds.txt` and now has no sample to copy. Needs church
+  pushed first. Afterwards the stale `cfg/random_seeds.txt` on each host and
+  checkout can be deleted.
+
+## Roadmap
+
+Wanted, but not now. These are things we mean to do once the immediate work in
+Open is through; they are parked, not declined (that is Non-goals). An item
+keeps its ID, `raised` and `value` here, so moving it back to Open is a pure
+move. `/next-list` does not sort these into the working view; it lists them
+and checks only that none has gone missing.
+
+**Infrastructure track** — bytdb, Docker, k8s/LKE and object storage work and
+testing, deferred together 2026-09-20. The sites run on Postgres on their
+current hosts meanwhile, so nothing in Open waits on these.
+
+- **N-001** · raised `2026-0719-1841` · value medium
+  Provision LKE + Object Storage and fill `deploy/backup.env`. Then run
+  `./deploy/deploy.sh preflight infra`, point DNS at the NodeBalancer IP, and
+  run `./deploy/deploy.sh base secrets images sites verify`. Verify also
+  checks that WAL generations appear under `<prefix>/wal/gen/` and that
+  `lag_seconds` is small. Blocked by N-006.
+- **N-002** · raised `2026-0719-1841` · value medium
+  Readiness §7 item 1: boot a site on bytdb and exercise the article/page/menu
+  admin flows, "the last unchecked item before a real cutover". Lapsed from
+  every Next list after `2026-0801-0852`; recovered 2026-09-19.
+  - `admin_routes_smoke_test.go` now covers article create on an embedded
+    bytdb (`db.InitDB`).
+  - Page and menu saves on bytdb are still unproven.
+  - Lands with N-011.
 - **N-006** · raised `2026-0801-1935` · value medium
   Start Docker and run `./deploy/deploy.sh images`. The CGO/libvips build is
   unproven in Docker (Alpine); CI proves it only on Ubuntu. If bimg/libvips
@@ -83,17 +149,6 @@ grmob's own session docs.
   - `imagePullSecrets`, only if the ghcr packages go private (deletion
     candidate)
   - a www→apex redirect
-- **N-009** · raised `2026-0912-1655` · value medium
-  Postgres coverage still missing (Postgres is the default):
-  - sermon create/import + audio
-  - Stripe intent/history/webhook
-  - `/chat/stream` SSE
-  - image upload
-  - the giving report with data
-  - optionally let `test_scripts/bytdb_wire_check` take a Postgres DSN
-- **N-010** · raised `2026-0912-1655` · value medium
-  Run the roles and `event_locations` migrations (`dbc migrate up`) on any
-  Postgres site before deploying current church to it. The dev DB has both.
 - **N-011** · raised `2026-0912-1655` · value low
   In `ai_docs/fable_bytdb_k8s_readiness.md` §7, add `bytdb_to_pg`, the
   `pg_to_bytdb` date fix and the Postgres smoke result. Tick or update §7
@@ -105,23 +160,6 @@ grmob's own session docs.
   Document the `db:` block (`type: postgres|bytdb`, `file`, `listen`) in the
   cema and ccswm `cfg/options-sample.yml`. Missing from both (checked
   2026-09-19).
-- **N-017** · raised `2026-0913-1725` · value medium
-  Check the giving report and the summary CSV against real charge data on
-  Postgres, and against Stripe for one month, with `time_zone` set.
-- **N-019** · raised `2026-0913-1747` · value low
-  Recurring: after each church push a site depends on, re-pin ccswm and cema.
-  Site CI warns when a pin lags.
-- **N-020** · raised `2026-0913-1820` · value low
-  Delete cema's `feature/site-themes`. It is fully merged into `master`
-  (checked 2026-09-19), so deleting it loses nothing.
-- **N-021** · raised `2026-0913-1820` · value low
-  Mobile moderation UI for a permission-only moderator: check that the
-  controls appear once the server sends `can_moderate: true`. The app is on
-  grmob now; this belongs in church_mobile's docs.
-- **N-022** · raised `2026-0913-1820` · value low
-  Optional: add `chat.moderate` by hand to Publisher and Editor on sites whose
-  default roles were seeded before it existed. Legacy roles moderate either
-  way.
 - **N-023** · raised `2026-0917-0259` · value medium
   Before cema's k8s cutover, run
   `APP_ENV=production go run github.com/rohanthewiz/church/test_scripts/images_to_e2`
@@ -131,30 +169,10 @@ grmob's own session docs.
   Trigger `POST /api/admin/db/backup` against real object storage (e.g.
   `./deploy/deploy.sh verify`, or curl with the token). Confirm both keys, and
   pruning with a small `retain`.
-- **N-025** · raised `2026-0917-0259` · value medium
-  Keep `resource/menu/admin_links.go` in step with `router_rweb.go` and the
-  dashboard cards in `page/admin_home.go` when adding admin routes. Three
-  hand-synced copies of one route→permission table: a single shared table
-  would retire this.
-- **N-026** · raised `2026-0917-0259` · value low
-  Optional: a test for the sermon upload failed-save path, e.g. by injecting
-  an upsert failure.
 - **N-027** · raised `2026-0917-0259` · value low
   Optional: move `core/s3ops` (media bucket) off aws-sdk-go-v2 onto
   `replicate/s3`. Needs a HEAD/exists call (`ObjectInfo`), which the replicate
   client lacks.
-- **N-028** · raised `2026-0917-0259` · value low
-  Optional: gofmt the files that were already unformatted (list under Gotchas
-  in `2026-0917-0259`), in a formatting-only commit.
-- **N-049** · raised `2026-0920-1957-drop-seed-pool-for-crypto-rand` · value medium
-  Re-pin cema and ccswm to a church commit at or past `9c796bd` (the seed pool
-  removal), as `f5dabf4 Re-pin church to 18713dd` did before. Both sites
-  deleted `cfg/random_seeds.txt.sample` in the same session, so until the pin
-  moves, a build outside the local `go.work` (the sites' pinned-church CI job,
-  a fresh clone) still gets the seed-reading church, which `log.Fatal`s at boot
-  without `cfg/random_seeds.txt` and now has no sample to copy. Needs church
-  pushed first. Afterwards the stale `cfg/random_seeds.txt` on each host and
-  checkout can be deleted.
 
 ## Non-goals
 
