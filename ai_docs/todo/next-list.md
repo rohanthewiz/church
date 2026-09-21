@@ -25,7 +25,7 @@ grmob's own session docs.
 - Open is kept in ID order. Sorted views (by age or value) come from
   `/next-list`.
 
-**Next ID: N-049**
+**Next ID: N-050**
 
 ## Open
 
@@ -146,6 +146,15 @@ grmob's own session docs.
 - **N-028** · raised `2026-0917-0259` · value low
   Optional: gofmt the files that were already unformatted (list under Gotchas
   in `2026-0917-0259`), in a formatting-only commit.
+- **N-049** · raised `2026-0920-1957-drop-seed-pool-for-crypto-rand` · value medium
+  Re-pin cema and ccswm to a church commit at or past `9c796bd` (the seed pool
+  removal), as `f5dabf4 Re-pin church to 18713dd` did before. Both sites
+  deleted `cfg/random_seeds.txt.sample` in the same session, so until the pin
+  moves, a build outside the local `go.work` (the sites' pinned-church CI job,
+  a fresh clone) still gets the seed-reading church, which `log.Fatal`s at boot
+  without `cfg/random_seeds.txt` and now has no sample to copy. Needs church
+  pushed first. Afterwards the stale `cfg/random_seeds.txt` on each host and
+  checkout can be deleted.
 
 ## Non-goals
 
@@ -193,7 +202,8 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
-- **N-048** · raised `2026-0920-0040` · closed 2026-09-20, superseded — The
+- **N-048** · raised `2026-0920-0040` · closed 2026-09-20,
+  `2026-0920-1957-drop-seed-pool-for-crypto-rand`, superseded — The
   seed pool no longer exists: `RandomKey()` draws 256 bits from `crypto/rand`
   (same 64-hex shape), `resource/auth` has no `init()`, and
   `cfg/random_seeds.txt`, its 15 per-package test fixtures, `checkSeedsForEnv`,
