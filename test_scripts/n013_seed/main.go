@@ -11,8 +11,7 @@
 //	n013-member   legacy  9, no roles                   — no admin access at all
 //
 // Passwords are all n013-pass-1. Hashing goes through resource/auth so the real
-// login path verifies them, which means this must run from the church project
-// root: auth's init reads cfg/random_seeds.txt relative to the working dir.
+// login path verifies them. Run from the church project root:
 //
 //	go run ./test_scripts/n013_seed
 //

@@ -12,8 +12,7 @@
 #
 # Secrets expected in the `churches` namespace (created out-of-band, never
 # committed — `deploy/deploy.sh secrets` builds both):
-#   cema-config   keys `options.yml` AND `random_seeds.txt` — BOTH required;
-#                  the app cannot start without the seeds file (see below)
+#   cema-config   key `options.yml`
 #   cema-backup   keys OBJ_ENDPOINT, OBJ_REGION, OBJ_BUCKET, OBJ_ACCESS_KEY,
 #                  OBJ_SECRET_KEY, BACKUP_TOKEN
 ---
@@ -153,11 +152,9 @@ spec:
             # IDrive e2 and serves a missing local file from there. dist/img/
             # in the container is only a cache. See README "Uploaded images";
             # copy pre-existing images up with test_scripts/images_to_e2.
-            # The WHOLE cfg directory, not a single-file subPath: the app needs
-            # two files from this Secret, and the second one is not optional.
-            # resource/auth's init() opens cfg/random_seeds.txt and log.Fatal()s
-            # if it is missing — that runs before main(), so an incomplete
-            # Secret here is an unconditional crash loop with a one-line error.
+            # The whole cfg directory rather than a single-file subPath, which
+            # leaves room for further config files without touching the mount.
+            # Today the Secret holds only options.yml.
             - {name: config, mountPath: /app/cfg, readOnly: true}
           # Probes hit /healthz (router_rweb.go): no session middleware, no DB
           # query, no page render. Pointing them at "/" cost a full home-page

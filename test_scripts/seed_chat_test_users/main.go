@@ -7,8 +7,7 @@
 // (resource/auth) so the real login path verifies the credentials.
 // Idempotent: re-running updates the existing rows.
 //
-// Run from the church project root (resource/auth loads cfg/random_seeds.txt
-// relative to the working directory):
+// Run from the church project root:
 //
 //	go run test_scripts/seed_chat_test_users/main.go
 package main

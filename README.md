@@ -193,23 +193,11 @@ Requires ports 80/443 to be reachable from the internet (Let's Encrypt validates
 
 **Managed cert files** — set `auto_cert: false` (or omit) and provide `cert_file`/`key_file`. The server hot-reloads the pair whenever the cert file changes, so an external renewer (e.g. certbot cron) just replaces the files — no restart needed.
 
-#### Create a Random Seeds file
-- Create a file: `cfg/random_seeds.txt` and populate it with random strings _one per line_.
-- The committed `cfg/random_seeds.txt.sample` holds **placeholders, not usable seeds** — every line reads
-  `test-seed-NN`. `cp cfg/random_seeds.txt.sample cfg/random_seeds.txt` is fine for local development, but a
-  site booted with `APP_ENV=production` refuses to start on it (see `checkSeedsForEnv` in
-  `resource/auth/random.go`). The pool feeds session keys and the SuperAdmin bootstrap token, so production
-  needs seeds that are not in the source tree.
-- Generate a real pool with `./deploy/deploy.sh seeds` (72 × 19-char, never overwrites an existing file), or
-  by hand:
-  ```bash
-  for i in $(seq 72); do openssl rand -base64 24 | tr -d '/+=' | cut -c1-19; done > cfg/random_seeds.txt
-  chmod 600 cfg/random_seeds.txt
-  ```
-- Rotating the pool is safe on a live site: each user's salt is stored beside their hash in the DB and
-  `GenSalt` never draws from the pool, so replacing the seeds does not invalidate existing logins.
-- Random.org's *Random File Generation Service* https://files.random.org/ (cheap) or their free
-  *Random String Generator Service* https://www.random.org/strings/ work too.
+#### Random seeds file (no longer needed)
+- Earlier versions required a `cfg/random_seeds.txt` pool. Session keys, form tokens and the SuperAdmin
+  bootstrap token now come straight from the OS CSPRNG (`crypto/rand`, see `resource/auth/random.go`),
+  so there is nothing to create. An existing `cfg/random_seeds.txt` is ignored and can be deleted;
+  doing so does not affect existing logins (each user's salt is stored beside their hash in the DB).
 
 ## Building the Platform
 

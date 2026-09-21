@@ -22,9 +22,6 @@ package church_test
 // on earlier state (a role created, then assigned, then revoked). A failed
 // check is reported and the run continues, as the script did, so one
 // regression doesn't hide the rest.
-//
-// resource/auth's init loads cfg/random_seeds.txt relative to the package
-// directory; at the module root that is the committed cfg/ file.
 
 import (
 	"bytes"

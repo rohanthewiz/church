@@ -4,7 +4,7 @@
 // This exercises the hand-written api_tokens SQL against real Postgres,
 // which the sqlmock contract tests by design cannot.
 //
-// Run (from repo root, so cfg/random_seeds.txt resolves):
+// Run (from the church project root):
 //
 //	go run ./test_scripts/auth_live_check
 //

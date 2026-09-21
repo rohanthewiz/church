@@ -3,10 +3,6 @@ package prayerwall
 // Contract tests for /api/v1/prayer-requests consumed by church_mobile —
 // freezing the request envelope, the ownership "mine" flag, and the Bearer
 // guard placement.
-//
-// Note: resource/auth's init() loads cfg/random_seeds.txt relative to the
-// test package dir, hence the committed cfg/ fixture (same workaround as the
-// other API test packages).
 
 import (
 	"encoding/json"

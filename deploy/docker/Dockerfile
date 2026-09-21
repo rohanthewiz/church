@@ -60,11 +60,8 @@ RUN apk add --no-cache ca-certificates tzdata vips \
  && addgroup -g 1000 app && adduser -D -u 1000 -G app app
 WORKDIR /app
 COPY --from=build /out/site /app/${SITE}
-# cfg/ is NOT baked in — options.yml AND random_seeds.txt both arrive from
-# the <site>-config Secret mounted over /app/cfg at runtime. random_seeds.txt
-# is not optional: resource/auth's init() log.Fatal()s when it can't open
-# cfg/random_seeds.txt, which happens before main() and takes the process
-# with it. An image without that file cannot start under any configuration.
+# cfg/ is NOT baked in — options.yml arrives from the <site>-config Secret
+# mounted over /app/cfg at runtime.
 #
 # dist/ (built CSS/JS) ships with the site repo, so it rides along here.
 # dist/img/ is deliberately left empty: it holds admin-uploaded article

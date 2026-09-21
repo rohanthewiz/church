@@ -185,7 +185,6 @@ Phases, in the order `all` runs them (each also runnable on its own):
 | `preflight` | Tooling, cluster context confirmation, manifests, build context |
 | `infra` | helm-installs ingress-nginx + cert-manager; prints the NodeBalancer IP |
 | `base` | Namespace + Let's Encrypt ClusterIssuer (needs cert-manager's CRDs) |
-| `seeds` | Generates `cfg/random_seeds.txt` where missing; never overwrites |
 | `secrets` | `<site>-config` and `<site>-backup`, validated before they are applied |
 | `images` | `docker build` + push, one image per site, tagged with the site's git SHA |
 | `sites` | DNS precheck → apply manifests with the pinned image → wait for rollout |
@@ -200,7 +199,7 @@ two passes:
 ```bash
 ./deploy/deploy.sh preflight infra          # prints the NodeBalancer IP
 #   → point A records for every domain at that IP, let them propagate
-./deploy/deploy.sh base seeds secrets images sites verify
+./deploy/deploy.sh base secrets images sites verify
 ```
 
 …or run `all` and answer `n` when the DNS precheck warns, then re-run `sites`
@@ -224,20 +223,15 @@ pin them once you know what you want to live with.
 
 ### What each site actually needs to boot
 
-Three things beyond the image, and the first two are unforgiving:
+Two things beyond the image, and both are unforgiving. (There used to be a
+third, `cfg/random_seeds.txt`; session keys and tokens now come straight from
+`crypto/rand`, so the file and the `seeds` phase are gone. A `random_seeds.txt`
+key left in an existing `<site>-config` Secret is ignored.)
 
-1. **`cfg/random_seeds.txt`** — `resource/auth`'s `init()` opens it and
-   `log.Fatal()`s when it can't. That runs before `main()`, so a site missing
-   this file is an unconditional crash loop, not a degraded mode. It ships in
-   the `<site>-config` Secret alongside `options.yml`, which is why that Secret
-   is mounted as a whole directory over `/app/cfg` rather than as a single-file
-   `subPath`. `deploy.sh seeds` generates one where absent; doing so is safe on
-   a live site, because the pool is entropy for *new* salts and tokens and each
-   user's salt is stored next to their hash.
-2. **`APP_ENV=production`** — `config.InitConfig` defaults to `development`
+1. **`APP_ENV=production`** — `config.InitConfig` defaults to `development`
    when it is unset, and would then read the wrong section of `options.yml`
    entirely. Set in the Deployment.
-3. **`options.yml` with a `production:` section** — `deploy.sh secrets` refuses
+2. **`options.yml` with a `production:` section** — `deploy.sh secrets` refuses
    to build the Secret without one, since `getOptionsForEnvironment` `log.Fatal`s
    on a missing section.
 
@@ -394,8 +388,7 @@ place.
    stampede (ccswm is `:07`, cema `:37`).
 2. Add the module to `go.work` and to the Dockerfile's `COPY` list.
 3. Point DNS at the same NodeBalancer IP.
-4. `SITES=<site> ./deploy/deploy.sh seeds secrets images sites verify`.
+4. `SITES=<site> ./deploy/deploy.sh secrets images sites verify`.
 
 Everything else is derived: `deploy.sh` reads the domains straight out of the
-new manifest, generates the seed file if the site doesn't have one, and mints
-the site's backup token on first deploy.
+new manifest and mints the site's backup token on first deploy.

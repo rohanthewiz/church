@@ -3,10 +3,6 @@ package apitoken
 // Contract tests for /api/v1/auth/* consumed by church_mobile. These freeze
 // the login/me/logout JSON shapes, the Bearer guard's 401 behavior, and the
 // login throttle — before the Flutter side grows a token store against them.
-//
-// Note: resource/auth's init() loads cfg/random_seeds.txt relative to the
-// test package dir, hence the committed cfg/ fixture (same workaround as the
-// sermon/article/event/feed test packages).
 
 import (
 	"encoding/json"

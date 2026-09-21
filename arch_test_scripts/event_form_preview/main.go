@@ -1,6 +1,6 @@
 // Renders the revamped admin event form module to a standalone HTML file so
 // the UI can be eyeballed in a browser without a running server/DB.
-// Run from the church root (needs cfg/random_seeds.txt for the auth init):
+// Run from the church root:
 //
 //	go run ./test_scripts/event_form_preview
 //

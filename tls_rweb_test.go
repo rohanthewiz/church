@@ -1,6 +1,3 @@
-// Note: running tests in this root package requires cfg/random_seeds.txt
-// (a dummy fixture is committed) because the transitively imported
-// resource/auth package fatals in init() without it.
 package church
 
 import (

@@ -16,6 +16,8 @@
 # Live site config: Stripe keys, SMTP passwords, object-store credentials.
 # These reach the pod through the <site>-config Secret, never through a layer.
 **/cfg/options.yml
+# No longer read by the app (resource/auth draws from crypto/rand), but older
+# checkouts still have one lying around and it was a secret — keep it out.
 **/cfg/random_seeds.txt
 **/token.txt
 

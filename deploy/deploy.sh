@@ -12,8 +12,8 @@
 # Phase order is not cosmetic — each step's inputs are produced by the one
 # before it:
 #
-#   preflight → infra → base → seeds → secrets → images → sites → verify
-#                 │       │                                  │
+#   preflight → infra → base → secrets → images → sites → verify
+#                 │       │                          │
 #                 │       └ ClusterIssuer needs cert-manager's CRDs
 #                 └ NodeBalancer IP must exist before DNS can point at it,
 #                   and DNS must resolve before an Ingress is applied, or
@@ -198,48 +198,6 @@ cmd_base() {
 }
 
 # --------------------------------------------------------------------------
-# seeds — cfg/random_seeds.txt, without which the process cannot start
-# --------------------------------------------------------------------------
-
-# resource/auth's init() opens cfg/random_seeds.txt and log.Fatal()s when it
-# can't — before main(), so a site without this file is an unconditional crash
-# loop. Generating one is safe even for a long-running site: the pool is an
-# entropy source for NEW salts and tokens (each user's salt is stored next to
-# their hash in the DB), so replacing it never invalidates existing logins.
-# Existing files are never touched — the sites' own seeds stay theirs.
-cmd_seeds() {
-	phase "Crypto seed files"
-	for site in $SITES; do
-		local seedFile="$(site_source_dir "$site")/cfg/random_seeds.txt"
-		if [ -f "$seedFile" ]; then
-			# A file that is byte-identical to the committed sample is not a pool,
-			# it is the sample — every clone of the repo has those exact strings.
-			# This case slips past both other guards: cmd_seeds skips any existing
-			# file, and resource/auth's checkSeedsForEnv only rejects `test-seed-`
-			# prefixes, so a sample full of real-looking strings would boot in
-			# production. Refusing here is the last point before cmd_secrets copies
-			# the file verbatim into the <site>-config Secret.
-			local sampleFile="$seedFile.sample"
-			if [ -f "$sampleFile" ] && cmp -s "$seedFile" "$sampleFile"; then
-				die "$site: cfg/random_seeds.txt is identical to the committed cfg/random_seeds.txt.sample. Delete it and re-run './deploy/deploy.sh seeds' to generate a real pool."
-			fi
-			ok "$site: cfg/random_seeds.txt present ($(wc -l <"$seedFile" | tr -d ' ') lines)"
-			continue
-		fi
-		info "$site: generating cfg/random_seeds.txt (72 × 19-char)"
-		mkdir -p "$(dirname "$seedFile")"
-		: >"$seedFile"
-		local i=0
-		while [ "$i" -lt 72 ]; do
-			openssl rand -base64 24 | tr -d '/+=' | cut -c1-19 >>"$seedFile"
-			i=$((i + 1))
-		done
-		chmod 600 "$seedFile"
-		ok "$site: generated (gitignored — back it up with your other site secrets)"
-	done
-}
-
-# --------------------------------------------------------------------------
 # secrets — <site>-config and <site>-backup
 # --------------------------------------------------------------------------
 
@@ -251,10 +209,8 @@ cmd_secrets() {
 	for site in $SITES; do
 		local srcDir; srcDir="$(site_source_dir "$site")"
 		local optionsFile="$srcDir/cfg/options.yml"
-		local seedFile="$srcDir/cfg/random_seeds.txt"
 
 		[ -f "$optionsFile" ] || die "$site: missing cfg/options.yml (copy cfg/options-sample.yml and fill it in)"
-		[ -f "$seedFile" ] || die "$site: missing cfg/random_seeds.txt — run './deploy/deploy.sh seeds' first"
 
 		# The pod runs with APP_ENV=production, and config.getOptionsForEnvironment
 		# log.Fatal()s on a missing section. Catching that here beats catching it
@@ -267,9 +223,8 @@ cmd_secrets() {
 		# keep its bare-metal values.
 		kc create secret generic "${site}-config" \
 			--from-file=options.yml="$optionsFile" \
-			--from-file=random_seeds.txt="$seedFile" \
 			--dry-run=client -o yaml | kc apply -f - >/dev/null
-		ok "$site-config (options.yml + random_seeds.txt)"
+		ok "$site-config (options.yml)"
 
 		# Per-site backup credentials override the shared file, so one site can
 		# live in a different region or bucket without forking the whole setup.
@@ -490,7 +445,6 @@ Phases:
   preflight   Verify tooling, cluster context, manifests, build context
   infra       helm install ingress-nginx + cert-manager (creates NodeBalancer)
   base        Apply namespace + Let's Encrypt ClusterIssuer
-  seeds       Generate cfg/random_seeds.txt where missing (never overwrites)
   secrets     Create/update <site>-config and <site>-backup
   images      docker build + push one image per site
   sites       DNS precheck, apply site manifests, wait for rollout
@@ -516,8 +470,8 @@ main() {
 		case "$1" in
 			--yes|-y) ASSUME_YES=true ;;
 			-h|--help) usage; exit 0 ;;
-			preflight|infra|base|seeds|secrets|images|sites|verify) phases="$phases $1" ;;
-			all) phases="$phases preflight infra base seeds secrets images sites verify" ;;
+			preflight|infra|base|secrets|images|sites|verify) phases="$phases $1" ;;
+			all) phases="$phases preflight infra base secrets images sites verify" ;;
 			*) usage; die "unknown argument: $1" ;;
 		esac
 		shift

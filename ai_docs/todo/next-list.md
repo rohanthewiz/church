@@ -32,7 +32,7 @@ grmob's own session docs.
 - **N-001** · raised `2026-0719-1841` · value medium
   Provision LKE + Object Storage and fill `deploy/backup.env`. Then run
   `./deploy/deploy.sh preflight infra`, point DNS at the NodeBalancer IP, and
-  run `./deploy/deploy.sh base seeds secrets images sites verify`. Verify also
+  run `./deploy/deploy.sh base secrets images sites verify`. Verify also
   checks that WAL generations appear under `<prefix>/wal/gen/` and that
   `lag_seconds` is small. Blocked by N-006.
 - **N-002** · raised `2026-0719-1841` · value medium
@@ -146,21 +146,6 @@ grmob's own session docs.
 - **N-028** · raised `2026-0917-0259` · value low
   Optional: gofmt the files that were already unformatted (list under Gotchas
   in `2026-0917-0259`), in a formatting-only commit.
-- **N-048** · raised `2026-0920-0040` · value medium
-  Compare the live cema host's `cfg/random_seeds.txt` against the seeds that
-  were committed as `cfg/random_seeds.txt.sample` before N-014 (the pre-rotation
-  copy is `md5 fea717bf7f180b79e47d9c7f5f94a916`; the strings are still in
-  cema's and ccswm's git history from their initial commits). Rotate the host if
-  they match:
-  ```bash
-  for i in $(seq 72); do openssl rand -base64 24 | tr -d '/+=' | cut -c1-19; done > cfg/random_seeds.txt
-  chmod 600 cfg/random_seeds.txt   # then restart
-  ```
-  Rotation is safe and was re-verified under N-014: `GenSalt` never draws from
-  the pool and each user's salt is stored beside their hash, so logins survive.
-  Owner: Rohan — the host is not referenced anywhere in the repo, so no session
-  can reach it. Low urgency: both site repos are private, so the seeds were
-  never public.
 
 ## Non-goals
 
@@ -208,6 +193,16 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-048** · raised `2026-0920-0040` · closed 2026-09-20, superseded — The
+  seed pool no longer exists: `RandomKey()` draws 256 bits from `crypto/rand`
+  (same 64-hex shape), `resource/auth` has no `init()`, and
+  `cfg/random_seeds.txt`, its 15 per-package test fixtures, `checkSeedsForEnv`,
+  `deploy.sh seeds`, the Secret key and both site samples are removed. Whether
+  the live cema host's pool matched the once-committed sample stops mattering
+  the moment that host runs a build with this change, since nothing reads the
+  file; delete it there afterwards. Until then the host still keys off its old
+  pool, so deploying is the remaining (owner's) step. The detail in N-014 below
+  describes the retired mechanism and is kept as history.
 - **N-014** · raised `2026-0912-2125` · closed 2026-09-20,
   `2026-0920-0040-seed-sample-placeholders-and-cema-seed-rotation` — The committed
   samples held real seeds; both are now placeholders and cema's local pool is

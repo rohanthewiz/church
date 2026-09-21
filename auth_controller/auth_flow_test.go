@@ -6,10 +6,6 @@ package auth_controller
 // (Server.Request, in-process); only the DB is stubbed (go-sqlmock via
 // db.SetHandleForTesting through apitest.MockDB). Sessions use the real
 // in-process kvstore, and password verification runs the real scrypt path.
-//
-// Note: resource/auth's init() loads cfg/random_seeds.txt relative to the
-// test package dir, hence the committed cfg/ fixture (same workaround as the
-// apitoken and resource contract-test packages).
 
 import (
 	"net/http"

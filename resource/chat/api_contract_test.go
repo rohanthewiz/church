@@ -4,10 +4,6 @@ package chat
 // the DTO is shared, by the web widget). These freeze the message envelope,
 // the moderation 422 shape, and the Bearer guard placement — before the
 // Flutter side grows a chat client against them.
-//
-// Note: resource/auth's init() loads cfg/random_seeds.txt relative to the
-// test package dir, hence the committed cfg/ fixture (same workaround as the
-// apitoken/sermon/article/event test packages).
 
 import (
 	"encoding/json"

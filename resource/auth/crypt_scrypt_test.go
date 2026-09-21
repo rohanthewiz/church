@@ -1,7 +1,3 @@
-// Note: this package's init() (random.go) fatals without cfg/random_seeds.txt
-// relative to the working directory. Tests run with cwd = this package dir, so
-// a dummy fixture lives at resource/auth/cfg/random_seeds.txt purely to let
-// `go test` load the package; production reads the real file at the app root.
 package auth
 
 import "testing"

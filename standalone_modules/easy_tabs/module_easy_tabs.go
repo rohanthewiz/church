@@ -63,7 +63,7 @@ func (m *ModuleEasyTabs) Render(params map[string]map[string]string, loggedIn bo
 
 	if ln := len(articles); ln > 0 {
 		// Create unique class for module
-		modId := stringops.SlugWithRandomString(auth.RandomString()) // this needs to be more random
+		modId := stringops.SlugWithRandomString(auth.RandomString()) // RandomString is 128 bits from crypto/rand, so ids can't collide across module instances
 		// Create random ids for each article
 		ids := make([]string, ln)
 		for i, art := range articles {
