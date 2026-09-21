@@ -30,7 +30,7 @@ grmob's own session docs.
 - Open and Roadmap are kept in ID order. Sorted views (by age or value) come
   from `/next-list`.
 
-**Next ID: N-050**
+**Next ID: N-051**
 
 ## Open
 
@@ -95,6 +95,12 @@ grmob's own session docs.
 - **N-028** · raised `2026-0917-0259` · value low
   Optional: gofmt the files that were already unformatted (list under Gotchas
   in `2026-0917-0259`), in a formatting-only commit.
+- **N-050** · raised `2026-0920-2035-roadmap-section-and-v0.11.0-release` · value low
+  Delete the stale `cfg/random_seeds.txt` on each host and checkout once it
+  runs a build at or past church `v0.11.0`; nothing reads it any more. Carried
+  out of the closed N-048 and N-049, where it was the owner's remaining step.
+  The local cema on port 8088 was still the pre-change binary at the time
+  (started 19:32 on 2026-09-20), so restart it first.
 
 ## Roadmap
 
@@ -212,7 +218,7 @@ Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
 - **N-049** · raised `2026-0920-1957-drop-seed-pool-for-crypto-rand` · closed
-  2026-09-20 — church tagged `v0.11.0` at `e651064` (the first release since
+  2026-09-20, `2026-0920-2035-roadmap-section-and-v0.11.0-release` — church tagged `v0.11.0` at `e651064` (the first release since
   `v0.10.0`, 116 commits on, past the seed pool removal `9c796bd`), and cema
   (`a1bae84`) and ccswm (`feaa843`) pinned to it in place of the `18713dd`
   pseudo-version. Checked first: a fresh local cema build on workspace church
@@ -222,8 +228,7 @@ in the session docs' bodies.
   SIGTERM; all 26 church packages pass and church CI was green. After pinning,
   each site built with `GOWORK=off`, which is the build the pin exists for, and
   both sites' CI went green on the `pinned` and `church-master` jobs.
-  Still the owner's: delete the stale `cfg/random_seeds.txt` on each host and
-  checkout once it runs a build at or past this pin.
+  The stale seed files left behind are N-050.
 - **N-048** · raised `2026-0920-0040` · closed 2026-09-20,
   `2026-0920-1957-drop-seed-pool-for-crypto-rand`, superseded — The
   seed pool no longer exists: `RandomKey()` draws 256 bits from `crypto/rand`
