@@ -30,7 +30,7 @@ grmob's own session docs.
 - Open and Roadmap are kept in ID order. Sorted views (by age or value) come
   from `/next-list`.
 
-**Next ID: N-051**
+**Next ID: N-054**
 
 ## Open
 
@@ -101,6 +101,26 @@ grmob's own session docs.
   out of the closed N-048 and N-049, where it was the owner's remaining step.
   The local cema on port 8088 was still the pre-change binary at the time
   (started 19:32 on 2026-09-20), so restart it first.
+- **N-051** · raised `2026-0921` · value medium
+  The default main menu's **Calendar** item links to `/calendar`, which is the
+  FullCalendar JSON feed, so a visitor sees a bare `[]`. Point it at a real
+  page: e.g. have bootstrap create a `calendar` page holding the registered
+  `calendar` module (`resource/calendar/module_full_calendar.go`) and link
+  `/pages/calendar`, in both `admin/bootstrap.go` and the hardwired fallback in
+  `resource/menu/menu_def.go`. Found alongside the `/pages/articles` 500
+  (fixed in `d6a2b2e`).
+- **N-052** · raised `2026-0921` · value low
+  `bootstrapMenus` logs "refreshed uncustomized menu" for all three menus on
+  every boot, even when nothing changed. It compares the stored `items` bytes
+  to freshly marshaled JSON, and Postgres JSONB normalizes key order and
+  spacing, so they never match and each boot rewrites every uncustomized menu.
+  Compare decoded values instead.
+- **N-053** · raised `2026-0921` · value low
+  The fallback error module `Page.AddModules` substitutes when a module fails
+  to build (`page/page_add_modules.go`) doesn't set `Published`, and
+  `Page.Render` skips unpublished modules, so the "something isn't quite right"
+  message never shows; the slot is just empty. Set `Published: true`, as
+  `page.NotFound` does.
 
 ## Roadmap
 
