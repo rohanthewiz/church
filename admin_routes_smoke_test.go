@@ -479,6 +479,25 @@ func TestAdminRoutesSmoke(t *testing.T) {
 		os.IsNotExist(escErr) && os.IsNotExist(escErr2) && len(leftovers()) == 0,
 		fmt.Sprintf("status %d saved %d stat %v / %v", r.Status(), escSaved, escErr, escErr2))
 
+	// A failed save must not touch the audio already in place. The fault is
+	// injected at the database, not through a seam in the handler: with the
+	// sermons table renamed away, the audio copy succeeds (the root actor's
+	// publish check reads no row) and the Upsert that follows errors. The
+	// staged file must be removed and the old audio of the same name kept.
+	_, err = dbH.Exec(`ALTER TABLE sermons RENAME TO sermons_hidden`)
+	must("hide sermons table", err)
+	r = uploadSermon("Upload Fails", "upload-check.mp3", "third audio")
+	_, err = dbH.Exec(`ALTER TABLE sermons_hidden RENAME TO sermons`)
+	must("restore sermons table", err)
+	got, _ = os.ReadFile(audioPath)
+	failSaved := 0
+	_ = dbH.QueryRow(`SELECT COUNT(*) FROM sermons WHERE title = $1`, "Upload Fails").Scan(&failSaved)
+	check("a failed sermon save returns to the form, keeps the old audio and leaves no staged file",
+		r.Status() == 303 && r.Header("Location") == "/admin/sermons/new" &&
+			string(got) == "second audio" && failSaved == 0 && len(leftovers()) == 0,
+		fmt.Sprintf("status %d loc %q content %q saved %d leftovers %v",
+			r.Status(), r.Header("Location"), got, failSaved, leftovers()))
+
 	// ---- Refused saves keep what was typed (core/formdraft) ----
 	r = post(ed, "/admin/articles", url.Values{"article_id": {"0"}, "article_title": {"  "},
 		"article_summary": {"draft-summary-7f3a"}, "article_body": {"b"}, "categories": {"news"}})
