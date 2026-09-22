@@ -1,10 +1,10 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/resource/article"
-	"github.com/rohanthewiz/church/resource/sermon"
-	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/resource/event"
+	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/util/stringops"
 )
 
@@ -18,29 +18,29 @@ func Home() (*Page, error) {
 	}
 	modPres1 := module.Presenter{
 		Opts: module.Opts{
-			ModuleType: sermon.ModuleTypeRecentSermons,
-			Title: "Recent Sermons",
-			Published: true,
+			ModuleType:   sermon.ModuleTypeRecentSermons,
+			Title:        "Recent Sermons",
+			Published:    true,
 			LayoutColumn: "left",
-			Limit: 8,
+			Limit:        8,
 		},
 	}
 	modPres2 := module.Presenter{
 		Opts: module.Opts{
-			ModuleType: event.ModuleTypeUpcomingEvents,
-			Title: "Upcoming Events",
-			Published: true,
+			ModuleType:   event.ModuleTypeUpcomingEvents,
+			Title:        "Upcoming Events",
+			Published:    true,
 			LayoutColumn: "left",
-			Limit: 8,
+			Limit:        8,
 		},
 	}
 	modPres3 := module.Presenter{
 		Opts: module.Opts{
-			ModuleType: article.ModuleTypeArticlesBlog,
-			Title: "Homepage Articles",
-			Published: true,
+			ModuleType:   article.ModuleTypeArticlesBlog,
+			Title:        "Homepage Articles",
+			Published:    true,
 			IsMainModule: true,
-			Limit: 4,
+			Limit:        4,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modPres1, modPres2, modPres3}

@@ -1,9 +1,9 @@
 package page
 
 import (
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/payment"
 	"github.com/rohanthewiz/church/util/stringops"
-	"github.com/rohanthewiz/church/module"
 )
 
 func PaymentForm() (*Page, error) {
@@ -12,14 +12,14 @@ func PaymentForm() (*Page, error) {
 		Title: title, Slug: stringops.Slugify(title),
 		// The giving page is public — IsAdmin was a page-def copy-paste that
 		// loaded bootstrap/summernote for donors and skipped public-page JS
-		IsAdmin: false,
+		IsAdmin:            false,
 		AvailablePositions: []string{"center"}, //, "right"
 	}
 	modulePres1 := module.Presenter{
 		Opts: module.Opts{
-			Title:      "Show Payment",
-			ModuleType: payment.ModuleTypePaymentForm,
-			IsAdmin:    false,
+			Title:        "Show Payment",
+			ModuleType:   payment.ModuleTypePaymentForm,
+			IsAdmin:      false,
 			Published:    true,
 			IsMainModule: true,
 		},
@@ -32,17 +32,17 @@ func PaymentReceipt(meta string) (*Page, error) {
 	title := "Giving Receipt"
 	pgdef := Presenter{
 		Title: title, Slug: stringops.Slugify(title),
-		IsAdmin: false,
+		IsAdmin:            false,
 		AvailablePositions: []string{"center"},
 	}
 	modulePres1 := module.Presenter{
 		Opts: module.Opts{
-			Title:      "Giving Receipt",
-			ModuleType: payment.ModuleTypePaymentReceipt,
-			IsAdmin:    false,
+			Title:        "Giving Receipt",
+			ModuleType:   payment.ModuleTypePaymentReceipt,
+			IsAdmin:      false,
 			Published:    true,
 			IsMainModule: true,
-			Meta: meta,
+			Meta:         meta,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modulePres1} //, modulePres2

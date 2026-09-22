@@ -3,6 +3,7 @@ package page
 import (
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/calendar"
 	"github.com/rohanthewiz/church/resource/chat"
 	"github.com/rohanthewiz/church/resource/content"
@@ -12,7 +13,6 @@ import (
 	"github.com/rohanthewiz/church/resource/prayerwall"
 	"github.com/rohanthewiz/church/resource/sermon"
 	"github.com/rohanthewiz/church/resource/sermoncleanup"
-	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/user"
 	"github.com/rohanthewiz/church/standalone_modules/easy_tabs"
 	"github.com/rohanthewiz/church/standalone_modules/slick_carousel"

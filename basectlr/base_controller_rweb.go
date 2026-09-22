@@ -78,8 +78,8 @@ func RenderPageListRWeb(pg *page.Page, ctx rweb.Context) (out []byte) {
 			pg.MainModuleSlug(): {
 				"offset": ctx.Request().QueryParam("offset"), "limit": ctx.Request().QueryParam("limit")},
 			"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsernameFromRWeb(ctx),
-			// What the viewer may do, so admin modules offer only permitted actions
-			authz.ParamKey: authz.ParamValue(ctx)},
+				// What the viewer may do, so admin modules offer only permitted actions
+				authz.ParamKey: authz.ParamValue(ctx)},
 		}, IsLoggedInRWeb(ctx),
 	)
 	out = buf.Bytes()

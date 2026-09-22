@@ -14,25 +14,26 @@ import (
 
 // Store Page definition
 type Presenter struct {
-	Id           string
-	CreatedAt    string
-	UpdatedAt    string
-	UpdatedBy    string
-	Title string
-	Slug string  // slug is the unique identifier to the page instance
-	Published    bool
-	IsHome	bool
-	IsAdmin bool
+	Id                 string
+	CreatedAt          string
+	UpdatedAt          string
+	UpdatedBy          string
+	Title              string
+	Slug               string // slug is the unique identifier to the page instance
+	Published          bool
+	IsHome             bool
+	IsAdmin            bool
 	AvailablePositions []string
-	Modules []module.Presenter
+	Modules            []module.Presenter
 }
 
-
-func (p * Presenter) CreateSlug() {
-	if p.Title == "" { println("Title should be set before Slug"); return }
+func (p *Presenter) CreateSlug() {
+	if p.Title == "" {
+		println("Title should be set before Slug")
+		return
+	}
 	p.Slug = stringops.SlugWithRandomString(p.Title)
 }
-
 
 // Given an id, get the model and build a presenter from the model
 func PresenterById(exec db.Executor, paramId string) (presenter Presenter, err error) {

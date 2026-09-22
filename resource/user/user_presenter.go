@@ -14,31 +14,32 @@ import (
 )
 
 type Presenter struct {
-	Id string
-	CreatedAt string
-	UpdatedAt string
-	UpdatedBy string
-	Enabled bool
-	Role int
-	Username string
-	Firstname string
-	Lastname string
-	EmailAddress string
-	Summary string
-	Password string
+	Id                   string
+	CreatedAt            string
+	UpdatedAt            string
+	UpdatedBy            string
+	Enabled              bool
+	Role                 int
+	Username             string
+	Firstname            string
+	Lastname             string
+	EmailAddress         string
+	Summary              string
+	Password             string
 	PasswordConfirmation string
-	EncryptedPassword string
-	EncryptedSalt string
-	ResetPasswordToken string
-	PasswordResetAt time.Time
-	ConfirmationToken string
-	ConfirmedAt time.Time
+	EncryptedPassword    string
+	EncryptedSalt        string
+	ResetPasswordToken   string
+	PasswordResetAt      time.Time
+	ConfirmationToken    string
+	ConfirmedAt          time.Time
 	//Prefs
 }
 
 type role struct {
 	SuperAdmin, Admin, Publisher, Author, RegisteredUser int
 }
+
 var Roles = role{99, 1, 5, 7, 9}
 
 var RoleToString = map[int]string{99: "SuperAdmin", 1: "Admin", 5: "Publisher", 7: "Editor", 9: "RegisteredUser"}
@@ -67,7 +68,7 @@ func modelFromPresenter(exec db.Executor, pres Presenter) (usrmod *models.User, 
 	if usrmod.ID < 1 {
 		createOp = true
 	}
-	if pres.Password != "" {  // we are setting or changing a password
+	if pres.Password != "" { // we are setting or changing a password
 		if pres.Password != pres.PasswordConfirmation {
 			// An InputError, so the controller shows this on the form. Refused
 			// before any write.
@@ -78,7 +79,7 @@ func modelFromPresenter(exec db.Executor, pres Presenter) (usrmod *models.User, 
 		usrmod.EncryptedPassword = null.NewString(auth.PasswordHash(pres.Password, salt), true)
 	}
 	if createOp {
-		usrmod.Username = pres.Username  // username should be unique and can only be set once
+		usrmod.Username = pres.Username // username should be unique and can only be set once
 	}
 	usrmod.UpdatedBy = pres.UpdatedBy
 	usrmod.Enabled = pres.Enabled

@@ -17,10 +17,9 @@ import (
 
 type Presenter struct {
 	content.Content
-	Page string  // slug of the page it should appear on
+	Page     string // slug of the page it should appear on
 	Position int
 }
-
 
 func presenterFromSlug(exec db.Executor, slug string) (pres Presenter, err error) {
 	model, err := findArticleBySlug(exec, slug)
@@ -89,9 +88,9 @@ func modelFromPresenter(exec db.Executor, pres Presenter) (model *models.Article
 
 	if title := strings.TrimSpace(pres.Title); title != "" {
 		model.Title = title
-		if create_op {  // Allow slug update only on create to maintain external references
-			pres.CreateSlug() // could check ahead for uniqueness in Javascript
-			model.Slug = pres.Slug  // pass in slug only on create - slug has unique constraint
+		if create_op { // Allow slug update only on create to maintain external references
+			pres.CreateSlug()      // could check ahead for uniqueness in Javascript
+			model.Slug = pres.Slug // pass in slug only on create - slug has unique constraint
 		}
 	} else {
 		// An InputError, so the controller shows this on the form instead of a

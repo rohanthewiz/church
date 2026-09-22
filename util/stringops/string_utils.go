@@ -1,12 +1,12 @@
 package stringops
 
 import (
-	"fmt"
 	"crypto/sha1"
-	"time"
+	"fmt"
+	"github.com/pierrec/xxHash/xxHash64"
 	"github.com/rohanthewiz/church/util/stringops/slugify"
 	"strings"
-	"github.com/pierrec/xxHash/xxHash64"
+	"time"
 )
 
 func StringSliceContains(slice []string, given string) (contained bool) {
@@ -65,15 +65,19 @@ func NumericString(astr string) string {
 			}
 			continue
 		}
-		if startPos == -1 { startPos = i }
+		if startPos == -1 {
+			startPos = i
+		}
 		//fmt.Printf("pos: %d, rune: %c, int: %d\n", i, c, c)
 	}
 	//fmt.Println("startPos:", startPos, "- endPos:", endPos)
-	if startPos == -1 || endPos == -1 { return astr }
+	if startPos == -1 || endPos == -1 {
+		return astr
+	}
 	return astr[startPos:endPos]
 }
 
 func XXHash(str string) string {
 	const random_int = 492137458173718
-	return fmt.Sprintf("%x",xxHash64.Checksum([]byte(str), random_int))
+	return fmt.Sprintf("%x", xxHash64.Checksum([]byte(str), random_int))
 }

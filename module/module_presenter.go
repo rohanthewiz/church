@@ -1,4 +1,5 @@
 package module
+
 // A Module is a renderable unit within a page.
 // Modules will become instantiated based on an existing module initializer function
 // in the module registry when it's page object is initialized.
@@ -6,12 +7,12 @@ package module
 // but are created according to the parent page definition.
 
 import (
-	"math"
-	"fmt"
 	"bytes"
-	"strconv"
-	"github.com/rohanthewiz/logger"
+	"fmt"
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/logger"
+	"math"
+	"strconv"
 )
 
 // This is the module 'base class'
@@ -43,9 +44,9 @@ type Opts struct {
 	Offset          int64   `json:"offset"`
 	ShowUnpublished bool    `json:"show_unpublished"` // only admin can show unpublished
 	Ascending       bool    `json:"ascending"`        // false - normally descending - only needed for multiple
-	IsLoggedIn	bool `json:"-"`
-	CustomClass string `json:"custom_class"` // user specified css class
-	Meta string `json:"-"` // custom data for module
+	IsLoggedIn      bool    `json:"-"`
+	CustomClass     string  `json:"custom_class"` // user specified css class
+	Meta            string  `json:"-"`            // custom data for module
 }
 
 func (m Presenter) IsAdminModule() bool {

@@ -1,23 +1,23 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/user"
+	"github.com/rohanthewiz/church/util/stringops"
 )
 
 func UserForm() (*Page, error) {
 	title := "User Form"
 	pgdef := Presenter{
 		Title: title, Slug: stringops.Slugify(title),
-		IsAdmin: true,
+		IsAdmin:            true,
 		AvailablePositions: []string{"center"}, //, "right"
 	}
 	modulePres1 := module.Presenter{
 		Opts: module.Opts{
-			Title:      "Show User",
-			ModuleType: user.ModuleTypeUserForm,
-			IsAdmin:    true,
+			Title:        "Show User",
+			ModuleType:   user.ModuleTypeUserForm,
+			IsAdmin:      true,
 			Published:    true,
 			IsMainModule: true,
 			//LayoutColumn: "center",
@@ -42,14 +42,14 @@ func UsersList() (*Page, error) {
 	pgdef := Presenter{Title: title, Slug: stringops.Slugify(title), IsAdmin: true}
 	modPres := module.Presenter{
 		Opts: module.Opts{
-			Title: "Users List",
-			ModuleType: user.ModuleTypeUsersList,
-			IsAdmin: true,
-			Published: true,
+			Title:        "Users List",
+			ModuleType:   user.ModuleTypeUsersList,
+			IsAdmin:      true,
+			Published:    true,
 			IsMainModule: true,
-			Limit: 25,
+			Limit:        25,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modPres}
-	return  pageFromPresenter(pgdef), nil
+	return pageFromPresenter(pgdef), nil
 }

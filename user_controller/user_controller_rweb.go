@@ -58,7 +58,7 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 	efs.Summary = ctx.Request().FormValue("user_summary")
 	efs.Password = ctx.Request().FormValue("password")                     // do not trim space!
 	efs.PasswordConfirmation = ctx.Request().FormValue("password_confirm") // do not trim space!
-	
+
 	// Get username from session
 	sess, err := cctx.GetSessionFromRWeb(ctx)
 	if err == nil && sess != nil {
@@ -104,7 +104,7 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 		return app.RedirectRWebWarn(ctx, formURL,
 			"Your form has expired and was not saved. Your changes are still in the form except the password; please save again.")
 	}
-	
+
 	// Failures go back to the form as an error flash. UpsertUser is a single
 	// Insert or Update, so a failed save wrote nothing and the form (not the
 	// list) is the right place to retry from.
@@ -207,7 +207,7 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 			return refuse("Error saving the user. It was not saved.")
 		}
 		if locks {
-			return refuse(authz.RoleManagerLockoutMsg+" The user was not saved.")
+			return refuse(authz.RoleManagerLockoutMsg + " The user was not saved.")
 		}
 	}
 
@@ -215,7 +215,7 @@ func UpsertUserRWeb(ctx rweb.Context) error {
 	if err != nil {
 		if msg, isInput := inputerr.UserMessage(err); isInput {
 			// The admin's mistake, not ours: no error log, just the reason
-			return refuse(msg+". The user was not saved.")
+			return refuse(msg + ". The user was not saved.")
 		}
 		// Password fields are blanked before logging: %#v of the presenter would
 		// otherwise put the typed password in the log.

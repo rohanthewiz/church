@@ -27,7 +27,6 @@ func IsAdminFromRWeb(ctx rweb.Context) bool {
 	return false
 }
 
-
 // GetUsernameFromRWeb retrieves the username from context
 func GetUsernameFromRWeb(ctx rweb.Context) string {
 	if ctx.Has("username") {
@@ -60,7 +59,7 @@ func SetFormReferrerRWeb(ctx rweb.Context) error {
 	if err != nil {
 		return serr.Wrap(err, "unable to get session")
 	}
-	
+
 	// A form whose referrer is the form itself is a reload, or the redirect
 	// back after a refused save (the browser keeps the POSTing form as Referer
 	// across the 303). Recording that would make the next successful save
@@ -80,7 +79,7 @@ func SetLastDonationURLRWeb(ctx rweb.Context, url string) error {
 	if err != nil {
 		return serr.Wrap(err, "unable to get session")
 	}
-	
+
 	sess.LastGivingReceiptURL = url
 	return sess.Save(sess.Key)
 }

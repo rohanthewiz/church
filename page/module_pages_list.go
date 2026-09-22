@@ -90,7 +90,7 @@ func (m *ModulePagesList) Render(params map[string]map[string]string, loggedIn b
 		{Header: "Published"},
 		{Header: "Updated By"},
 		{Header: "Actions", NoSort: true, NoFilter: true, Shrink: true}, // edit
-		{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // delete
+		{Header: "", NoSort: true, NoFilter: true, Shrink: true},        // delete
 	}
 
 	for _, pg := range pgs {

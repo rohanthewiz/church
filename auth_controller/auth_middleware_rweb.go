@@ -34,7 +34,7 @@ func RedirectRWeb(ctx rweb.Context, url, fl_msg string) error {
 func UseCustomContextRWeb(ctx rweb.Context) error {
 	// Get Session key
 	sessKey := EnsureSessionCookieRWeb(ctx)
-	
+
 	// Get Session
 	sess, err := session.GetSession(sessKey)
 	if err != nil {
@@ -45,18 +45,18 @@ func UseCustomContextRWeb(ctx rweb.Context) error {
 		// so create a fresh session
 		sess = session.Session{Key: sessKey}
 	}
-	
+
 	// Store session data in RWeb context
 	cctx.SetSessionInRWeb(ctx, &sess)
-	
+
 	// Check if admin
 	if sess.Username != "" { // admins must have a username in session
 		ctx.Set("isAdmin", true)
 	}
-	
+
 	// Extend session
 	_ = sess.Extend()
-	
+
 	return ctx.Next()
 }
 

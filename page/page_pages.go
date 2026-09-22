@@ -4,9 +4,10 @@ package page
 import (
 	"github.com/rohanthewiz/church/module"
 	//"github.com/rohanthewiz/church/util/string_util"
-	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/church/resource/article"
+	"github.com/rohanthewiz/church/util/stringops"
 )
+
 // Possible format for page slug: title(snakecased).yyyy-mmdd-randstr
 
 // The Skinny on pages
@@ -23,14 +24,14 @@ func LoginPage() (*Page, error) {
 		Title: title,
 		//Slug: stringops.Slugify(title),
 		AvailablePositions: []string{"left", "center", "right"}, // we want to squash the login form in center
-		IsAdmin: false,
+		IsAdmin:            false,
 	}
 	modulePres1 := module.Presenter{
 		Opts: module.Opts{
-			Title:      "Login Form",
-			ModuleType: ModuleTypeLoginForm,
+			Title:        "Login Form",
+			ModuleType:   ModuleTypeLoginForm,
 			LayoutColumn: "center",
-			IsAdmin:    false,
+			IsAdmin:      false,
 			Published:    true,
 			IsMainModule: true,
 		},
@@ -43,16 +44,16 @@ func LoginPage() (*Page, error) {
 func PageForm() (*Page, error) {
 	const title = "Page Form"
 	pgdef := Presenter{
-		Title: title,
-		Slug: stringops.Slugify(title),
-		IsAdmin: true,
+		Title:              title,
+		Slug:               stringops.Slugify(title),
+		IsAdmin:            true,
 		AvailablePositions: []string{"center", "right"},
 	}
 	modulePres1 := module.Presenter{
 		Opts: module.Opts{
-			Title:      "Page Form",
-			ModuleType: ModuleTypePageForm,
-			IsAdmin:    true,
+			Title:        "Page Form",
+			ModuleType:   ModuleTypePageForm,
+			IsAdmin:      true,
 			Published:    true,
 			IsMainModule: true,
 			//ItemId:     1,
@@ -60,12 +61,12 @@ func PageForm() (*Page, error) {
 	}
 	modPres2 := module.Presenter{
 		Opts: module.Opts{
-			ModuleType: article.ModuleTypeRecentArticles,
-			Title: "Recent Articles",
+			ModuleType:   article.ModuleTypeRecentArticles,
+			Title:        "Recent Articles",
 			LayoutColumn: "right",
-			Published: true,
-			IsAdmin: true,
-			Limit: 10,
+			Published:    true,
+			IsAdmin:      true,
+			Limit:        10,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modulePres1, modPres2}
@@ -75,19 +76,19 @@ func PageForm() (*Page, error) {
 func PagesList() (*Page, error) {
 	const title = "Pages List"
 	pgdef := Presenter{Title: title,
-		Slug: stringops.Slugify(title),
+		Slug:    stringops.Slugify(title),
 		IsAdmin: true,
 	}
 	modPres := module.Presenter{
 		Opts: module.Opts{
-			Title: "Pages List",
-			ModuleType: ModuleTypePagesList,
-			IsAdmin: true,
-			Published: true,
+			Title:        "Pages List",
+			ModuleType:   ModuleTypePagesList,
+			IsAdmin:      true,
+			Published:    true,
 			IsMainModule: true,
-			Limit: 20,
+			Limit:        20,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modPres}
-	return  pageFromPresenter(pgdef), nil
+	return pageFromPresenter(pgdef), nil
 }

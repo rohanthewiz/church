@@ -1,19 +1,20 @@
 package page
+
 // A page is essentially an arrangement of modules
 import (
 	"errors"
-	"github.com/rohanthewiz/logger"
-	"github.com/rohanthewiz/church/module"
-	"github.com/rohanthewiz/church/errormodule"
 	"fmt"
+	"github.com/rohanthewiz/church/errormodule"
+	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/util/stringops"
+	"github.com/rohanthewiz/logger"
 )
 
 // Future think of a way to automatically register a module
 func (p *Page) AddModules(modules []module.Presenter) {
-	p.modules = map[string][]module.Module{}  // instantiate
+	p.modules = map[string][]module.Module{} // instantiate
 
-	for i, mod := range modules{  // todo sort by layout order
+	for i, mod := range modules { // todo sort by layout order
 		if fun, ok := modulesRegistry[mod.Opts.ModuleType]; ok {
 
 			// Fixup before add
@@ -23,9 +24,11 @@ func (p *Page) AddModules(modules []module.Presenter) {
 			}
 			if name, ok := moduleTypeToName[mod.Opts.ModuleType]; ok {
 				mod.Name = name
-				mod.Opts.ItemsURLPath = name.Plural  // todo - deprecate this - use name.Plural instead
+				mod.Opts.ItemsURLPath = name.Plural // todo - deprecate this - use name.Plural instead
 			}
-			if mod.Opts.LayoutColumn == "" { mod.Opts.LayoutColumn = "center" }
+			if mod.Opts.LayoutColumn == "" {
+				mod.Opts.LayoutColumn = "center"
+			}
 
 			// Instantiate the module
 			moduleInstance, err := fun(mod)
@@ -34,10 +37,10 @@ func (p *Page) AddModules(modules []module.Presenter) {
 				// Published must be set, or Page.Render skips the module and the
 				// slot renders empty instead of showing this message (see NotFound).
 				emod := errormodule.NewModuleError(module.Opts{
-					Title: "Hmm, something isn't quite right",
+					Title:      "Hmm, something isn't quite right",
 					ModuleType: errormodule.ModuleTypeError,
-					Published: true})
-				p.AddModule(emod, mod.Opts.LayoutColumn)  // add an error module instead
+					Published:  true})
+				p.AddModule(emod, mod.Opts.LayoutColumn) // add an error module instead
 				continue
 			}
 			//fmt.Printf("*|* module instance before add - %#v\n", moduleInstance )

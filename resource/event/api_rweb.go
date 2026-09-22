@@ -80,11 +80,11 @@ type EventLocationAPI struct {
 
 // RecurrenceAPI is the wire form of a Recurrence rule.
 type RecurrenceAPI struct {
-	Freq    string `json:"freq"`              // "weekly" | "monthly"
-	Weekday int    `json:"weekday"`           // 0=Sunday .. 6=Saturday
-	Week    int    `json:"week,omitempty"`    // monthly: 1..4, -1=last
-	Until   string `json:"until,omitempty"`   // YYYY-MM-DD, empty = open-ended
-	Desc    string `json:"desc"`              // human-readable, e.g. "Second Saturday of each month"
+	Freq    string `json:"freq"`            // "weekly" | "monthly"
+	Weekday int    `json:"weekday"`         // 0=Sunday .. 6=Saturday
+	Week    int    `json:"week,omitempty"`  // monthly: 1..4, -1=last
+	Until   string `json:"until,omitempty"` // YYYY-MM-DD, empty = open-ended
+	Desc    string `json:"desc"`            // human-readable, e.g. "Second Saturday of each month"
 }
 
 func eventToAPI(evt *models.Event, includeBody bool) EventAPI {

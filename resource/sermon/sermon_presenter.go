@@ -17,12 +17,12 @@ import (
 
 type Presenter struct {
 	content.Content
-	AudioLink string
-	DateTaught string
+	AudioLink       string
+	DateTaught      string
 	DateTaughtShort string
-	PlaceTaught string
-	Teacher string
-	ScriptureRefs []string
+	PlaceTaught     string
+	Teacher         string
+	ScriptureRefs   []string
 }
 
 func PresenterFromSlug(exec db.Executor, slug string) (pres Presenter, err error) {
@@ -106,7 +106,7 @@ func modelFromPresenter(exec db.Executor, ser Presenter) (sermod *models.Sermon,
 
 	if title := strings.TrimSpace(ser.Title); title != "" {
 		sermod.Title = title
-		if create_op {  // Allow slug update only on create to maintain external references
+		if create_op { // Allow slug update only on create to maintain external references
 			ser.CreateSlug() // could check for uniqueness
 			sermod.Slug = null.NewString(ser.Slug, true)
 		}
@@ -125,7 +125,7 @@ func modelFromPresenter(exec db.Executor, ser Presenter) (sermod *models.Sermon,
 		sermod.AudioLink = null.NewString(serAudioLink, true)
 	}
 	sermod.Teacher = strings.TrimSpace(ser.Teacher)
-	fmt.Println("[Debug] sermod.DateTaught:", sermod.DateTaught)  // debug
+	fmt.Println("[Debug] sermod.DateTaught:", sermod.DateTaught) // debug
 	sermod.Published = ser.Published
 	sermod.Summary = null.NewString(strings.TrimSpace(ser.Summary), true)
 	sermod.Body = null.NewString(strings.TrimSpace(ser.Body), true)

@@ -1,14 +1,14 @@
 package sermon
 
 import (
-	"github.com/rohanthewiz/logger"
-	"strings"
-	"path"
-	"strconv"
+	"database/sql"
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/db"
-	"database/sql"
 	"github.com/rohanthewiz/church/util/stringops"
+	"github.com/rohanthewiz/logger"
+	"path"
+	"strconv"
+	"strings"
 )
 
 const sqlGetSermons = `select name, summary, array_to_string(scripture_refs, ','), "text", teacher, date_taught, place_taught,
@@ -21,18 +21,18 @@ type importReceptor struct {
 
 func (i *importReceptor) Scan(rs *sql.Rows) error {
 	return rs.Scan(&i.Name, &i.Summary, &i.ScriptureRefs, &i.Body, &i.Teacher, &i.DateTaught, &i.PlaceTaught,
-			&i.AudioLink, &i.Categories)
+		&i.AudioLink, &i.Categories)
 }
 
 func Import() (byts []byte) {
 	fail := []byte(`{"success": false}`)
 	// fmt.Printf("%#v", config.Options.PG2) // never dump PG2 — it contains the DB password
 	err := db.InitDB2(db.DBOpts{
-		DBType: db.DBTypes.Postgres,
-		Host: config.Options.PG2.Host,
-		Port: config.Options.PG2.Port,
-		User: config.Options.PG2.User,
-		Word: config.Options.PG2.Word,
+		DBType:   db.DBTypes.Postgres,
+		Host:     config.Options.PG2.Host,
+		Port:     config.Options.PG2.Port,
+		User:     config.Options.PG2.User,
+		Word:     config.Options.PG2.Word,
 		Database: config.Options.PG2.Database,
 	})
 	if err != nil {
@@ -88,13 +88,17 @@ func Import() (byts []byte) {
 		pres.Title = ir.Name
 		pres.Summary = ir.Summary
 		pres.ScriptureRefs = stringops.StringSplitAndTrim(ir.ScriptureRefs, ",")
-		if len(pres.ScriptureRefs) < 1 { pres.ScriptureRefs = []string{""} }
-		pres.Teacher =  ir.Teacher
+		if len(pres.ScriptureRefs) < 1 {
+			pres.ScriptureRefs = []string{""}
+		}
+		pres.Teacher = ir.Teacher
 		pres.DateTaught = strings.SplitN(ir.DateTaught, "T", 2)[0]
 		pres.PlaceTaught = ir.PlaceTaught
-		pres.AudioLink =  transformAudioLink(ir.AudioLink)
+		pres.AudioLink = transformAudioLink(ir.AudioLink)
 		pres.Categories = stringops.StringSplitAndTrim(ir.Categories, ",")
-		if len(pres.Categories) < 1 { pres.Categories = []string{""} }
+		if len(pres.Categories) < 1 {
+			pres.Categories = []string{""}
+		}
 		pres.UpdatedBy = "Importer"
 		pres.Published = true
 		pres.CreateSlug()

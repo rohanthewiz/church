@@ -11,26 +11,26 @@ import (
 func ArticleShow() (*Page, error) {
 	const title = "Articles Show"
 	pgdef := Presenter{
-		Title: title,
-		Slug: stringops.Slugify(title),
+		Title:              title,
+		Slug:               stringops.Slugify(title),
 		AvailablePositions: []string{"center", "right"},
 	}
 	modPres := module.Presenter{
 		Opts: module.Opts{
-			ModuleType: article.ModuleTypeSingleArticle,
-			Title: "Single Article",
-			Published: true,
+			ModuleType:   article.ModuleTypeSingleArticle,
+			Title:        "Single Article",
+			Published:    true,
 			IsMainModule: true,
 		},
 	}
 	modPres2 := module.Presenter{
 		Opts: module.Opts{
-			ModuleType: article.ModuleTypeRecentArticles,
-			Title: "Recent Articles",
+			ModuleType:   article.ModuleTypeRecentArticles,
+			Title:        "Recent Articles",
 			LayoutColumn: "right",
-			Published: true,
-			IsAdmin: true,
-			Limit: 10,
+			Published:    true,
+			IsAdmin:      true,
+			Limit:        10,
 		},
 	}
 	// Comments: the chat discussion strip under the article. ItemSlug is the
@@ -54,18 +54,18 @@ func ArticlesList() (*Page, error) {
 	const title = "Articles List"
 	pgdef := Presenter{
 		Title: title,
-		Slug: stringops.Slugify(title),
+		Slug:  stringops.Slugify(title),
 	}
 	modPres := module.Presenter{
 		Opts: module.Opts{
 			ModuleType: article.ModuleTypeArticlesList,
-			Title: "Articles List",
-			Published: true,
-			Limit: 20,
+			Title:      "Articles List",
+			Published:  true,
+			Limit:      20,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modPres}
-	return  pageFromPresenter(pgdef), nil
+	return pageFromPresenter(pgdef), nil
 }
 
 func AdminArticlesList() (*Page, error) {
@@ -76,43 +76,43 @@ func AdminArticlesList() (*Page, error) {
 	}
 	modPres := module.Presenter{
 		Opts: module.Opts{
-			ModuleType: article.ModuleTypeArticlesList,
-			IsAdmin: true,
-			Title: "Admin Articles List",
-			Published: true,
+			ModuleType:   article.ModuleTypeArticlesList,
+			IsAdmin:      true,
+			Title:        "Admin Articles List",
+			Published:    true,
 			IsMainModule: true,
-			Limit: 20,
+			Limit:        20,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modPres}
-	return  pageFromPresenter(pgdef), nil
+	return pageFromPresenter(pgdef), nil
 }
 
 func ArticleForm() (*Page, error) {
 	const title = "Article Form"
 	pgdef := Presenter{
 		Title:              title,
-		Slug: stringops.Slugify(title),
+		Slug:               stringops.Slugify(title),
 		AvailablePositions: []string{"center", "right"},
-		IsAdmin: true,
+		IsAdmin:            true,
 	}
 	modPres1 := module.Presenter{
 		Opts: module.Opts{
-			ModuleType: article.ModuleTypeArticleForm,
-			Title: "Article Form",
-			Published: true,
+			ModuleType:   article.ModuleTypeArticleForm,
+			Title:        "Article Form",
+			Published:    true,
 			IsMainModule: true,
 		},
 	}
 	modPres2 := module.Presenter{
 		Opts: module.Opts{
-			ModuleType: article.ModuleTypeRecentArticles,
-			Title: "Recent Articles",
+			ModuleType:   article.ModuleTypeRecentArticles,
+			Title:        "Recent Articles",
 			LayoutColumn: "right",
-			Published: true,
-			Limit: 8,
+			Published:    true,
+			Limit:        8,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modPres1, modPres2}
-	return  pageFromPresenter(pgdef), nil
+	return pageFromPresenter(pgdef), nil
 }

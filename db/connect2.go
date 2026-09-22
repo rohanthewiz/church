@@ -1,11 +1,11 @@
 package db
 
 import (
-	"fmt"
 	"database/sql"
+	"errors"
+	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/rohanthewiz/serr"
-	"errors"
 )
 
 // Cache DB handle and options
@@ -33,7 +33,7 @@ func CloseDB2() {
 // Get a valid DB handle
 func Db2() (*sql.DB, error) {
 	if dbHandle2 != nil {
-		if dbHandle2.Ping() == nil {  // pings without error
+		if dbHandle2.Ping() == nil { // pings without error
 			return dbHandle2, nil
 		}
 	}

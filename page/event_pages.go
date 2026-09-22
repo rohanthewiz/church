@@ -2,10 +2,11 @@
 package page
 
 import (
-	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/util/stringops"
 )
+
 // Possible format for page slug: title(snakecased).yyyy-mmdd-randstr
 
 // The Skinny on pages
@@ -14,7 +15,6 @@ import (
 // Modules Presenters are just a representation of a registered module specified by ModuleType
 // If page is unpublished (redirect to home)
 // So, module will not have a controller, since a module can't exist outside of a page.
-
 
 // This is the reference page showing most all available options in comments
 func EventWithUpcomingEvents() (*Page, error) {
@@ -40,7 +40,7 @@ func EventWithUpcomingEvents() (*Page, error) {
 			Title:      "Upcoming Events",
 			ModuleType: event.ModuleTypeUpcomingEvents,
 			IsAdmin:    false,
-			Published:    true,
+			Published:  true,
 			//IsMainModule: false,
 			LayoutColumn: "right",
 			//LayoutOrder:  1,
@@ -50,21 +50,21 @@ func EventWithUpcomingEvents() (*Page, error) {
 		},
 	}
 	pgdef.Modules = []module.Presenter{modulePres1, modulePres2}
-	return  pageFromPresenter(pgdef), nil
+	return pageFromPresenter(pgdef), nil
 }
 
 func EventForm() (*Page, error) {
 	title := "Event Form"
 	pgdef := Presenter{
 		Title: title, Slug: stringops.Slugify(title),
-		IsAdmin: true,
+		IsAdmin:            true,
 		AvailablePositions: []string{"center", "right"},
 	}
 	modulePres1 := module.Presenter{
 		Opts: module.Opts{
-			Title:      "Show Event",
-			ModuleType: event.ModuleTypeEventForm,
-			IsAdmin:    true,
+			Title:        "Show Event",
+			ModuleType:   event.ModuleTypeEventForm,
+			IsAdmin:      true,
 			Published:    true,
 			IsMainModule: true,
 			//LayoutColumn: "center",
@@ -73,16 +73,17 @@ func EventForm() (*Page, error) {
 	}
 	modulePres2 := module.Presenter{
 		Opts: module.Opts{
-			Title:      "Upcoming Events",
-			ModuleType: event.ModuleTypeUpcomingEvents,
+			Title:        "Upcoming Events",
+			ModuleType:   event.ModuleTypeUpcomingEvents,
 			Published:    true,
 			LayoutColumn: "right",
-			Limit: 8,
+			Limit:        8,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modulePres1, modulePres2}
 	return pageFromPresenter(pgdef), nil
 }
+
 // --------------------------------------------------------------
 // A Simple and single Event Show
 func EventShow() (*Page, error) {
@@ -90,9 +91,9 @@ func EventShow() (*Page, error) {
 	pgdef := Presenter{Title: title, Slug: stringops.Slugify(title)}
 	modPres := module.Presenter{
 		Opts: module.Opts{
-			Title: "Show Event",
-			ModuleType: event.ModuleTypeSingleEvent,
-			Published: true,
+			Title:        "Show Event",
+			ModuleType:   event.ModuleTypeSingleEvent,
+			Published:    true,
 			IsMainModule: true,
 		},
 	}
@@ -105,15 +106,15 @@ func EventsList() (*Page, error) {
 	pgdef := Presenter{Title: title, Slug: stringops.Slugify(title)}
 	modPres := module.Presenter{
 		Opts: module.Opts{
-			Title: "Events List",
-			ModuleType: event.ModuleTypeEventsList,
-			Published: true,
+			Title:        "Events List",
+			ModuleType:   event.ModuleTypeEventsList,
+			Published:    true,
 			IsMainModule: true,
-			Limit: 20,
+			Limit:        20,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modPres}
-	return  pageFromPresenter(pgdef), nil
+	return pageFromPresenter(pgdef), nil
 }
 
 func AdminEventsList() (*Page, error) {
@@ -121,14 +122,14 @@ func AdminEventsList() (*Page, error) {
 	pgdef := Presenter{Title: title, Slug: stringops.Slugify(title), IsAdmin: true}
 	modPres := module.Presenter{
 		Opts: module.Opts{
-			Title: "Admin Events List",
-			ModuleType: event.ModuleTypeEventsList,
-			IsAdmin: true,
-			Published: true,
+			Title:        "Admin Events List",
+			ModuleType:   event.ModuleTypeEventsList,
+			IsAdmin:      true,
+			Published:    true,
 			IsMainModule: true,
-			Limit: 20,
+			Limit:        20,
 		},
 	}
 	pgdef.Modules = []module.Presenter{modPres}
-	return  pageFromPresenter(pgdef), nil
+	return pageFromPresenter(pgdef), nil
 }

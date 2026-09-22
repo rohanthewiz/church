@@ -15,7 +15,7 @@ import (
 
 // Fixup Received data for Presenter
 func modelFromPresenter(exec db.Executor, pres Presenter) (*models.Event, bool, error) {
-	var create_op bool  // inits to false
+	var create_op bool // inits to false
 	model := findModelByIdOrCreate(exec, pres.Id)
 	if model.ID < 1 {
 		create_op = true
@@ -29,13 +29,13 @@ func modelFromPresenter(exec db.Executor, pres Presenter) (*models.Event, bool, 
 		return model, create_op, errors.New(msg)
 	}
 	// Todo - do this for other resources
-	if create_op {  // Allow slug update only on create to maintain external references
-		pres.CreateSlug() // could check ahead for uniqueness in Javascript, but good randomness should get us by
-		model.Slug = pres.Slug  // we update slug only on create - slug has unique constraint
+	if create_op { // Allow slug update only on create to maintain external references
+		pres.CreateSlug()      // could check ahead for uniqueness in Javascript, but good randomness should get us by
+		model.Slug = pres.Slug // we update slug only on create - slug has unique constraint
 	}
-	zone, _ := time.Now().Zone()  // server timezone should be good enough? I hope!
+	zone, _ := time.Now().Zone() // server timezone should be good enough? I hope!
 	datetimez := pres.EventDate + " " + pres.EventTime + " " + zone
-	fmt.Println("[Debug] datetimez:", datetimez)  // debug
+	fmt.Println("[Debug] datetimez:", datetimez) // debug
 	dte, err := time.Parse(config.IncomingDateTimeFormat, datetimez)
 	if err != nil {
 		Log("Error", "Error parsing event date", "error", err.Error())

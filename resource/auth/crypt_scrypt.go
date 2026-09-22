@@ -2,8 +2,8 @@ package auth
 
 import (
 	"fmt"
-	"golang.org/x/crypto/scrypt"
 	. "github.com/rohanthewiz/logger"
+	"golang.org/x/crypto/scrypt"
 	"time"
 )
 

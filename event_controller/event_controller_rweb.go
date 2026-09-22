@@ -106,13 +106,13 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 	efs.Summary = ctx.Request().FormValue("event_summary")
 	efs.Body = ctx.Request().FormValue("event_body")
 	efs.Categories = stringops.StringSplitAndTrim(ctx.Request().FormValue("categories"), ",")
-	
+
 	// Get username from session
 	sess, err := cctx.GetSessionFromRWeb(ctx)
 	if err == nil && sess != nil {
 		efs.UpdatedBy = sess.Username
 	}
-	
+
 	if ctx.Request().FormValue("published") == "on" {
 		efs.Published = true
 	}
@@ -166,7 +166,7 @@ func UpsertEventRWeb(ctx rweb.Context) error {
 	if err != nil {
 		if msg, isInput := event.UserMessage(err); isInput {
 			// The admin's mistake, not ours: no error log, just the reason
-			return refuse(msg+". The event was not saved.")
+			return refuse(msg + ". The event was not saved.")
 		}
 		logger.LogErr(err, "Error in event upsert", "event_presenter", fmt.Sprintf("%#v", efs))
 		return app.RedirectRWebError(ctx, "/admin/events",

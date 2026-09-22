@@ -40,20 +40,20 @@ func CreateTestEventsRWeb(ctx rweb.Context) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Get username from session
 	username := ""
 	sess, err := cctx.GetSessionFromRWeb(ctx)
 	if err == nil && sess != nil {
 		username = sess.Username
 	}
-	
+
 	dte, err := time.Parse("01/02/2006 -07", "06/15/2017 -05")
 	if err != nil {
 		return errors.New("Error parsing provided event values")
 	}
 	evt := &models.Event{
-		Title:      "Picnic", Summary: null.NewString("It's gonna be great!", true),
+		Title: "Picnic", Summary: null.NewString("It's gonna be great!", true),
 		Slug:       stringops.SlugWithRandomString("Picnic"),
 		EventDate:  dte,
 		EventTime:  "14:30pm",
@@ -70,7 +70,7 @@ func CreateTestEventsRWeb(ctx rweb.Context) error {
 		return errors.New("Error parsing provided event values")
 	}
 	evt = &models.Event{
-		Title:      "Retreat", Summary: null.NewString("Get refreshed!", true),
+		Title: "Retreat", Summary: null.NewString("Get refreshed!", true),
 		Slug:       stringops.SlugWithRandomString("Retreat"),
 		EventDate:  dte,
 		EventTime:  "10:00AM",

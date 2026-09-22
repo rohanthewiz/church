@@ -94,7 +94,7 @@ func (m *ModuleMenusList) Render(params map[string]map[string]string, loggedIn b
 			grid.Column{Header: "Published"},
 			grid.Column{Header: "Updated By"},
 			grid.Column{Header: "Actions", NoSort: true, NoFilter: true, Shrink: true}, // edit
-			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // delete
+			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true},        // delete
 		)
 	}
 

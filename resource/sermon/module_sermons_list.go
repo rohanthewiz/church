@@ -105,7 +105,7 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 			grid.Column{Header: "Updated By"},
 			grid.Column{Header: "Published"},
 			grid.Column{Header: "Actions", NoSort: true, NoFilter: true, Shrink: true}, // edit
-			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true}, // delete
+			grid.Column{Header: "", NoSort: true, NoFilter: true, Shrink: true},        // delete
 		)
 	}
 

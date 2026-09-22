@@ -1,11 +1,10 @@
 package agrid
 
-
 type ColumnDef struct {
-	HeaderName string `json:"headerName"`
-	Field string `json:"field"`
+	HeaderName   string `json:"headerName"`
+	Field        string `json:"field"`
 	CellRenderer string `json:"cellRenderer"`
-	Width int `json:"width"`
+	Width        int    `json:"width"`
 }
 
 // Some useful functions for setting up AgGrid these should run probably in head
@@ -52,6 +51,3 @@ var ConfirmDelete = `function chConfirmDelete() {
 	  } else { return false; }
 	});
 	}`
-
-
-
