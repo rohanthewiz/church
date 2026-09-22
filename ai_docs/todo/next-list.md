@@ -99,9 +99,10 @@ grmob's own session docs.
   Delete the stale `cfg/random_seeds.txt` on each host and checkout once it
   runs a build at or past church `v0.11.0`; nothing reads it any more. Carried
   out of the closed N-048 and N-049, where it was the owner's remaining step.
-  The local cema on port 8088 was still the pre-change binary at the time
-  (started 19:32 on 2026-09-20), so restart it first.
-- **N-051** · raised `2026-0921` · value medium
+  Locally that precondition is now met: cema was rebuilt and booted past
+  `v0.11.0` on 2026-09-21 (no seed-file read), so `cema/cfg/random_seeds.txt`
+  can go; it was still present then. The live hosts wait on a deploy.
+- **N-051** · raised `2026-0921-2302-menu-links-page-404-and-v0.11.1` · value medium
   The default main menu's **Calendar** item links to `/calendar`, which is the
   FullCalendar JSON feed, so a visitor sees a bare `[]`. Point it at a real
   page: e.g. have bootstrap create a `calendar` page holding the registered
@@ -109,13 +110,13 @@ grmob's own session docs.
   `/pages/calendar`, in both `admin/bootstrap.go` and the hardwired fallback in
   `resource/menu/menu_def.go`. Found alongside the `/pages/articles` 500
   (fixed in `d6a2b2e`).
-- **N-052** · raised `2026-0921` · value low
+- **N-052** · raised `2026-0921-2302-menu-links-page-404-and-v0.11.1` · value low
   `bootstrapMenus` logs "refreshed uncustomized menu" for all three menus on
   every boot, even when nothing changed. It compares the stored `items` bytes
   to freshly marshaled JSON, and Postgres JSONB normalizes key order and
   spacing, so they never match and each boot rewrites every uncustomized menu.
   Compare decoded values instead.
-- **N-053** · raised `2026-0921` · value low
+- **N-053** · raised `2026-0921-2302-menu-links-page-404-and-v0.11.1` · value low
   The fallback error module `Page.AddModules` substitutes when a module fails
   to build (`page/page_add_modules.go`) doesn't set `Published`, and
   `Page.Render` skips unpublished modules, so the "something isn't quite right"
