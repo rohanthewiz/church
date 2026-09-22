@@ -72,7 +72,7 @@ func TestBuildMenuFiltersAdminSubmenu(t *testing.T) {
 	if strings.Contains(anon, "/admin") || strings.Contains(anon, ">Admin<") {
 		t.Errorf("anonymous nav shows admin links:\n%s", anon)
 	}
-	if !strings.Contains(anon, `href="/pages/articles"`) {
+	if !strings.Contains(anon, `href="/articles"`) {
 		t.Errorf("anonymous nav lost public links:\n%s", anon)
 	}
 

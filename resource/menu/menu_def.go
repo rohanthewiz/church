@@ -81,9 +81,10 @@ func hardwiredMenuDef(slug string) (MenuDef, bool) {
 			Published: true,
 			Items: []MenuItemDef{
 				{Label: "Home", Url: "/"},
-				{Label: "Articles", Url: "/pages/articles"},
-				{Label: "Sermons", Url: "/pages/sermons"},
-				{Label: "Events", Url: "/pages/events"},
+				// Public list routes; mirrors bootstrapMenus in admin/bootstrap.go.
+				{Label: "Articles", Url: "/articles"},
+				{Label: "Sermons", Url: "/sermons"},
+				{Label: "Events", Url: "/events"},
 				{Label: "Calendar", Url: "/calendar"},
 				// Admin dropdown — only shown when logged in because
 				// the submenu has IsAdmin: true (see buildMenu filtering).

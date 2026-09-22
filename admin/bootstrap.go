@@ -119,9 +119,13 @@ func bootstrapMenus() {
 			title: "Main Menu",
 			items: []bootstrapMenuItem{
 				{Label: "Home", Url: "/"},
-				{Label: "Articles", Url: "/pages/articles"},
-				{Label: "Sermons", Url: "/pages/sermons"},
-				{Label: "Events", Url: "/pages/events"},
+				// The public list routes, not /pages/<slug>: bootstrap creates
+				// only the "home" page, so /pages/articles etc. would 500 on a
+				// fresh install. A site that builds its own pages for these can
+				// repoint the links in the menu editor.
+				{Label: "Articles", Url: "/articles"},
+				{Label: "Sermons", Url: "/sermons"},
+				{Label: "Events", Url: "/events"},
 				{Label: "Calendar", Url: "/calendar"},
 				{Label: "Admin", SubMenuSlug: "admin-submenu"},
 			},
