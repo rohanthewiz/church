@@ -30,7 +30,7 @@ grmob's own session docs.
 - Open and Roadmap are kept in ID order. Sorted views (by age or value) come
   from `/next-list`.
 
-**Next ID: N-054**
+**Next ID: N-055**
 
 ## Open
 
@@ -50,20 +50,30 @@ grmob's own session docs.
   Consider a `UNIQUE INDEX on charges(payment_token)` as a DB-level backstop to
   the recording mutex (only if bytdb supports unique indexes). Lapsed after
   `2026-0801-0956`; recovered 2026-09-19.
+  Checked 2026-09-21: bytdb v0.11.0 does support `CREATE UNIQUE INDEX`, so
+  the premise holds. What remains is the owner's call: a Postgres migration
+  fails on any live site holding duplicate or repeated empty tokens (the dev
+  DB has no charges, so this can't be checked locally), and an existing bytdb
+  file would never get the index, because `ensureBytDBSchema` only creates
+  missing tables. `TestRecordPaymentIntentOnDB` now proves the mutex under 8
+  concurrent deliveries on both backends.
 - **N-005** · raised `2026-0801-0956` · value low
   Site theme stylus tidy-up:
   - add `--af-*` / `--chg-*` overrides to the sites' theme files (none exist)
   - slim the old material-form classes; `page/login_form.go` is their only user
 
   Lapsed after `2026-0801-0956`; recovered 2026-09-19.
-- **N-009** · raised `2026-0912-1655` · value medium
-  Postgres coverage still missing (Postgres is the default):
-  - sermon create/import + audio
-  - Stripe intent/history/webhook
-  - `/chat/stream` SSE
-  - image upload
-  - the giving report with data
-  - optionally let `test_scripts/bytdb_wire_check` take a Postgres DSN
+- **N-009** · raised `2026-0912-1655` · value low
+  Postgres coverage still missing (Postgres is the default). Narrowed
+  2026-09-21 (`4f59179`): `internal/testdb` runs the DB-backed tests on a
+  throwaway Postgres database when `CHURCH_TEST_PG_DSN` is set, which now
+  covers sermon create + audio (with the failed-save path), the giving report
+  with data, charge recording + history, and the `bytdb_wire_check` checks.
+  `/chat/stream` and image upload never touch the database, so they need no
+  Postgres run. Left, both needing something outside the repo:
+  - sermon import (`sermon.Import` reads a legacy `PG2` database)
+  - the Stripe webhook → `finalizePayment` round trip (re-fetches the intent
+    from Stripe, so it needs test-mode keys)
 - **N-010** · raised `2026-0912-1655` · value medium
   Run the roles and `event_locations` migrations (`dbc migrate up`) on any
   Postgres site before deploying current church to it. The dev DB has both.
@@ -75,7 +85,9 @@ grmob's own session docs.
   Site CI warns when a pin lags.
 - **N-020** · raised `2026-0913-1820` · value low
   Delete cema's `feature/site-themes`. It is fully merged into `master`
-  (checked 2026-09-19), so deleting it loses nothing.
+  (checked 2026-09-19), so deleting it loses nothing. Local and
+  `origin/feature/site-themes` both still exist (2026-09-21); left for the
+  owner as a hard-to-reverse step.
 - **N-021** · raised `2026-0913-1820` · value low
   Mobile moderation UI for a permission-only moderator: check that the
   controls appear once the server sends `can_moderate: true`. The app is on
@@ -84,17 +96,6 @@ grmob's own session docs.
   Optional: add `chat.moderate` by hand to Publisher and Editor on sites whose
   default roles were seeded before it existed. Legacy roles moderate either
   way.
-- **N-025** · raised `2026-0917-0259` · value medium
-  Keep `resource/menu/admin_links.go` in step with `router_rweb.go` and the
-  dashboard cards in `page/admin_home.go` when adding admin routes. Three
-  hand-synced copies of one route→permission table: a single shared table
-  would retire this.
-- **N-026** · raised `2026-0917-0259` · value low
-  Optional: a test for the sermon upload failed-save path, e.g. by injecting
-  an upsert failure.
-- **N-028** · raised `2026-0917-0259` · value low
-  Optional: gofmt the files that were already unformatted (list under Gotchas
-  in `2026-0917-0259`), in a formatting-only commit.
 - **N-050** · raised `2026-0920-2035-roadmap-section-and-v0.11.0-release` · value low
   Delete the stale `cfg/random_seeds.txt` on each host and checkout once it
   runs a build at or past church `v0.11.0`; nothing reads it any more. Carried
@@ -102,26 +103,17 @@ grmob's own session docs.
   Locally that precondition is now met: cema was rebuilt and booted past
   `v0.11.0` on 2026-09-21 (no seed-file read), so `cema/cfg/random_seeds.txt`
   can go; it was still present then. The live hosts wait on a deploy.
-- **N-051** · raised `2026-0921-2302-menu-links-page-404-and-v0.11.1` · value medium
-  The default main menu's **Calendar** item links to `/calendar`, which is the
-  FullCalendar JSON feed, so a visitor sees a bare `[]`. Point it at a real
-  page: e.g. have bootstrap create a `calendar` page holding the registered
-  `calendar` module (`resource/calendar/module_full_calendar.go`) and link
-  `/pages/calendar`, in both `admin/bootstrap.go` and the hardwired fallback in
-  `resource/menu/menu_def.go`. Found alongside the `/pages/articles` 500
-  (fixed in `d6a2b2e`).
-- **N-052** · raised `2026-0921-2302-menu-links-page-404-and-v0.11.1` · value low
-  `bootstrapMenus` logs "refreshed uncustomized menu" for all three menus on
-  every boot, even when nothing changed. It compares the stored `items` bytes
-  to freshly marshaled JSON, and Postgres JSONB normalizes key order and
-  spacing, so they never match and each boot rewrites every uncustomized menu.
-  Compare decoded values instead.
-- **N-053** · raised `2026-0921-2302-menu-links-page-404-and-v0.11.1` · value low
-  The fallback error module `Page.AddModules` substitutes when a module fails
-  to build (`page/page_add_modules.go`) doesn't set `Published`, and
-  `Page.Render` skips unpublished modules, so the "something isn't quite right"
-  message never shows; the slot is just empty. Set `Published: true`, as
-  `page.NotFound` does.
+  2026-09-21: a session's `rm` of `cema/cfg/random_seeds.txt` was refused by
+  the permission gate; nothing reads it (only a comment names it), so the
+  owner can delete it by hand.
+- **N-054** · raised `2026-0921-2339-next-list-sweep` · value medium
+  Run the Postgres half of the tests in CI: add a `postgres` service to
+  `.github/workflows/ci.yml` and set `CHURCH_TEST_PG_DSN`. The role must be
+  `devuser` (or a member of it) because the charges migration runs `OWNER TO
+  devuser`, and needs CREATEDB. Worth it because bytdb is laxer than Postgres
+  in ways only a Postgres run catches (the wire check bound one parameter to a
+  timestamptz and a timestamp column; bytdb accepted it, Postgres refused
+  with 42P08). Can only be verified by a push.
 
 ## Roadmap
 
@@ -237,6 +229,38 @@ dropped; an item can move back to Open if its reason stops holding.
 
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
+
+- **N-053** · raised `2026-0921-2302-menu-links-page-404-and-v0.11.1` · closed
+  2026-09-21, `5b88272` — The error module `AddModules` substitutes is now
+  `Published`. `TestAddModulesShowsErrorModuleOnBuildFailure` fails without
+  the fix.
+- **N-052** · raised `2026-0921-2302-menu-links-page-404-and-v0.11.1` · closed
+  2026-09-21, `5b88272` — `bootstrapMenus` compares decoded items
+  (`menuItemsEqual`). bytdb normalizes stored JSON too (sorted keys, compact),
+  not only Postgres JSONB, so the rewrite happened on both. The bootstrap test
+  plants a past `updated_at` and requires it to survive a second boot; it
+  fails with the byte compare on both backends. A second boot of cema logged
+  no refresh.
+- **N-051** · raised `2026-0921-2302-menu-links-page-404-and-v0.11.1` · closed
+  2026-09-21, `5b88272` — The default main menu (bootstrap and the hardwired
+  fallback) links `/pages/calendar`. Bootstrap creates an editable `calendar`
+  page with the FullCalendar module, and with no row the page controller
+  serves the hardwired `page.Calendar`. Existing uncustomized menus pick up the
+  new link on their next boot. Checked by booting cema on a fresh bytdb: menu
+  link present, page 200, the calendar draws in a browser.
+- **N-028** · raised `2026-0917-0259` · closed 2026-09-21, `eae93ac` — gofmt
+  over the 41 hand-written files `gofmt -l` listed, formatting only. The two
+  generated `pack/packed` files are left alone (the packer would regenerate
+  them unformatted).
+- **N-026** · raised `2026-0917-0259` · closed 2026-09-21, `212ae0d` — The
+  smoke test hides the `sermons` table for one upload, so the Upsert fails
+  after the audio is staged: back to the form, no row, no staged file, the old
+  audio of the same name intact. Runs on both backends.
+- **N-025** · raised `2026-0917-0259` · closed 2026-09-21, `920db40` —
+  `authz.AdminRoutes` is the one route→permission table. The router takes each
+  guard from it and panics at startup on a route it lacks; the nav and the
+  dashboard cards look URLs up in it. The smoke test probes every row (with an
+  unregistered route as the control) to catch stale rows.
 
 - **N-049** · raised `2026-0920-1957-drop-seed-pool-for-crypto-rand` · closed
   2026-09-20, `2026-0920-2035-roadmap-section-and-v0.11.0-release` — church tagged `v0.11.0` at `e651064` (the first release since
