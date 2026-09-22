@@ -2,7 +2,10 @@ package page_controller
 
 import (
 	"bytes"
+	"database/sql"
+	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/rohanthewiz/church/app"
@@ -44,8 +47,20 @@ func HomePageRWeb(ctx rweb.Context) error {
 
 // Non-Admin dynamic pages (the majority of the pages)
 func PageHandlerRWeb(ctx rweb.Context) error {
-	pg, err := loadPageBySlug(strings.ToLower(ctx.Request().PathParam("slug")))
+	slug := strings.ToLower(ctx.Request().PathParam("slug"))
+	pg, err := loadPageBySlug(slug)
 	if err != nil {
+		// No row for the slug is the visitor's problem (a stale link, a
+		// typo), not a server fault: answer 404 with a page in the site
+		// layout. Both backends reach the finder through database/sql, whose
+		// Row.Scan reports a missing row as sql.ErrNoRows, and serr.Wrap
+		// keeps it reachable via Unwrap. Any other error is a real failure
+		// and stays a 500.
+		if errors.Is(err, sql.ErrNoRows) {
+			logger.Debug("Page not found", "slug", slug)
+			ctx.Status(http.StatusNotFound)
+			return ctx.WriteHTML(string(base.RenderPageSingleRWeb(page.NotFound(), ctx)))
+		}
 		return serr.Wrap(err)
 	}
 	return ctx.WriteHTML(string(base.RenderPageSingleRWeb(pg, ctx)))

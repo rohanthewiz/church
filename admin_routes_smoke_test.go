@@ -41,6 +41,7 @@ import (
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/page_controller"
 	"github.com/rohanthewiz/church/resource/auth"
 	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/resource/chat"
@@ -112,6 +113,9 @@ func TestAdminRoutesSmoke(t *testing.T) {
 	cht := s.Group("/chat", authctlr.UseCustomContextRWeb)
 	cht.Get("/messages", chat.ListMessagesRWeb)
 	cht.Post("/keep/:id", chat.KeepMessageRWeb)
+	// Public dynamic pages, wired as in ServeRWeb, for the not-found check.
+	pgs := s.Group("/pages", authctlr.UseCustomContextRWeb)
+	pgs.Get("/:slug", page_controller.PageHandlerRWeb)
 
 	// signIn plants a session for username and returns its cookie header.
 	signIn := func(username string) []rweb.Header {
@@ -257,6 +261,12 @@ func TestAdminRoutesSmoke(t *testing.T) {
 		r.Header("Location") == "/login", fmt.Sprintf("status %d loc %q", r.Status(), r.Header("Location")))
 	r, _ = get(root, "/debug/show")
 	check("a SuperAdmin opens /debug", r.Status() == 200, fmt.Sprintf("status %d", r.Status()))
+
+	// ---- An unknown dynamic page is a 404 in the site layout, not a 500 ----
+	// On bytdb as well as Postgres: the handler keys off sql.ErrNoRows.
+	r, body = get(nil, "/pages/no-such-page")
+	check("an unknown page slug answers 404 with the not-found page", r.Status() == 404 &&
+		strings.Contains(body, "couldn't find that page"), fmt.Sprintf("status %d", r.Status()))
 
 	// ---- Giving by month, year navigation, CSV exports ----
 	now := time.Now()
