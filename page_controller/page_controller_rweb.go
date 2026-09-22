@@ -57,6 +57,11 @@ func PageHandlerRWeb(ctx rweb.Context) error {
 		// keeps it reachable via Unwrap. Any other error is a real failure
 		// and stays a 500.
 		if errors.Is(err, sql.ErrNoRows) {
+			// The calendar page has a hardwired stand-in, because the
+			// default main menu links to it (see page.Calendar).
+			if slug == page.CalendarSlug {
+				return ctx.WriteHTML(string(base.RenderPageSingleRWeb(page.Calendar(), ctx)))
+			}
 			logger.Debug("Page not found", "slug", slug)
 			ctx.Status(http.StatusNotFound)
 			return ctx.WriteHTML(string(base.RenderPageSingleRWeb(page.NotFound(), ctx)))

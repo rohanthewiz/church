@@ -31,9 +31,12 @@ func (p *Page) AddModules(modules []module.Presenter) {
 			moduleInstance, err := fun(mod)
 			if err != nil {
 				logger.LogErr(err, "Error building module", "module_type", mod.Opts.ModuleType)
+				// Published must be set, or Page.Render skips the module and the
+				// slot renders empty instead of showing this message (see NotFound).
 				emod := errormodule.NewModuleError(module.Opts{
 					Title: "Hmm, something isn't quite right",
-					ModuleType: errormodule.ModuleTypeError})
+					ModuleType: errormodule.ModuleTypeError,
+					Published: true})
 				p.AddModule(emod, mod.Opts.LayoutColumn)  // add an error module instead
 				continue
 			}

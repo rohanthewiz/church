@@ -3,14 +3,17 @@ package admin
 import (
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/rohanthewiz/church/config"
 	theDB "github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/module"
+	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/resource/article"
 	"github.com/rohanthewiz/church/resource/authz"
+	"github.com/rohanthewiz/church/resource/calendar"
 	"github.com/rohanthewiz/church/resource/content"
 	"github.com/rohanthewiz/church/resource/event"
 	"github.com/rohanthewiz/church/resource/sermon"
@@ -37,6 +40,7 @@ func Bootstrap() {
 	bootstrapRoles()
 	bootstrapMenus()
 	bootstrapHomePage()
+	bootstrapCalendarPage()
 	bootstrapWelcomeArticle()
 }
 
@@ -126,7 +130,9 @@ func bootstrapMenus() {
 				{Label: "Articles", Url: "/articles"},
 				{Label: "Sermons", Url: "/sermons"},
 				{Label: "Events", Url: "/events"},
-				{Label: "Calendar", Url: "/calendar"},
+				// /calendar itself is the FullCalendar JSON feed, not a page;
+				// bootstrapCalendarPage creates the page that renders it.
+				{Label: "Calendar", Url: "/pages/calendar"},
 				{Label: "Admin", SubMenuSlug: "admin-submenu"},
 			},
 		},
@@ -178,7 +184,7 @@ func bootstrapMenus() {
 					logger.LogErr(serr.Wrap(jerr), "Bootstrap: error marshaling menu items", "slug", m.slug)
 					continue
 				}
-				if string(existing.Items.JSON) != string(itemsJSON) {
+				if !menuItemsEqual(existing.Items.JSON, m.items) {
 					existing.Items = null.NewJSON(itemsJSON, true)
 					if uerr := existing.Update(dbH); uerr != nil {
 						logger.LogErr(serr.Wrap(uerr), "Bootstrap: error refreshing menu items", "slug", m.slug)
@@ -286,6 +292,76 @@ func bootstrapHomePage() {
 		return
 	}
 	logger.Log("Info", "Bootstrap: created home page")
+}
+
+// menuItemsEqual reports whether a menu's stored items JSON decodes to the
+// same items bootstrap would write. Comparing raw bytes instead never matches
+// on Postgres, because JSONB returns its own key order and spacing, not what
+// was written; every boot would then rewrite every uncustomized menu and log
+// it as a refresh. Stored JSON that does not decode counts as different, so
+// bootstrap rewrites it with good items.
+func menuItemsEqual(stored []byte, want []bootstrapMenuItem) bool {
+	var got []bootstrapMenuItem
+	if err := json.Unmarshal(stored, &got); err != nil {
+		return false
+	}
+	return slices.Equal(got, want)
+}
+
+// bootstrapCalendarPage creates the page with slug "calendar" that the default
+// main menu's Calendar item links to (/pages/calendar), holding the
+// FullCalendar module. Without it the link would fall to the hardwired
+// page.Calendar, which works but can't be edited in the page builder. A site
+// that already has a "calendar" page keeps it untouched.
+func bootstrapCalendarPage() {
+	dbH, err := theDB.Db()
+	if err != nil {
+		logger.LogErr(err, "Bootstrap: cannot get DB handle for calendar page")
+		return
+	}
+
+	exists, err := models.Pages(dbH, qm.Where("slug = ?", page.CalendarSlug)).Exists()
+	if err != nil {
+		logger.LogErr(serr.Wrap(err), "Bootstrap: error checking calendar page existence")
+		return
+	}
+	if exists {
+		return
+	}
+
+	// Module definition mirrors page.Calendar() in page/calendar_page.go
+	modules := []module.Presenter{
+		{
+			Opts: module.Opts{
+				ModuleType:   calendar.ModuleTypeFullCalendar,
+				Title:        "Calendar",
+				Published:    true,
+				IsMainModule: true,
+				LayoutColumn: "center",
+			},
+		},
+	}
+
+	modulesJSON, err := json.Marshal(modules)
+	if err != nil {
+		logger.LogErr(serr.Wrap(err), "Bootstrap: error marshaling calendar page modules")
+		return
+	}
+
+	model := &models.Page{
+		Title:              "Calendar",
+		Slug:               page.CalendarSlug,
+		Published:          true,
+		UpdatedBy:          "bootstrap",
+		AvailablePositions: []string{"center"},
+		Data:               null.NewJSON(modulesJSON, true),
+	}
+
+	if err = model.Insert(dbH); err != nil {
+		logger.LogErr(serr.Wrap(err), "Bootstrap: error inserting calendar page")
+		return
+	}
+	logger.Log("Info", "Bootstrap: created calendar page")
 }
 
 // bootstrapWelcomeArticle creates an initial article so the home page has

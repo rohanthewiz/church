@@ -105,7 +105,7 @@ func TestBuildMenuFiltersAdminSubmenu(t *testing.T) {
 	if strings.Contains(member, ">Admin<") || strings.Contains(member, "/admin") {
 		t.Errorf("member nav shows the Admin dropdown:\n%s", member)
 	}
-	if !strings.Contains(member, `href="/calendar"`) {
+	if !strings.Contains(member, `href="/pages/calendar"`) {
 		t.Errorf("member nav lost public links:\n%s", member)
 	}
 

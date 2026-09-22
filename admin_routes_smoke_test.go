@@ -267,6 +267,12 @@ func TestAdminRoutesSmoke(t *testing.T) {
 	r, body = get(nil, "/pages/no-such-page")
 	check("an unknown page slug answers 404 with the not-found page", r.Status() == 404 &&
 		strings.Contains(body, "couldn't find that page"), fmt.Sprintf("status %d", r.Status()))
+	// The default main menu links /pages/calendar. With no "calendar" row
+	// (this harness never runs Bootstrap) it gets the hardwired page.
+	r, body = get(nil, "/pages/calendar")
+	check("the calendar page falls back to the hardwired FullCalendar page", r.Status() == 200 &&
+		strings.Contains(body, "ch-calendar") && strings.Contains(body, "events: '/calendar'"),
+		fmt.Sprintf("status %d", r.Status()))
 
 	// ---- Giving by month, year navigation, CSV exports ----
 	now := time.Now()

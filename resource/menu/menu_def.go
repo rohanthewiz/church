@@ -85,7 +85,9 @@ func hardwiredMenuDef(slug string) (MenuDef, bool) {
 				{Label: "Articles", Url: "/articles"},
 				{Label: "Sermons", Url: "/sermons"},
 				{Label: "Events", Url: "/events"},
-				{Label: "Calendar", Url: "/calendar"},
+				// Not /calendar, the JSON feed. The page controller serves a
+				// hardwired calendar page when no DB row exists.
+				{Label: "Calendar", Url: "/pages/calendar"},
 				// Admin dropdown — only shown when logged in because
 				// the submenu has IsAdmin: true (see buildMenu filtering).
 				{Label: "Admin", SubMenuSlug: "admin-submenu"},
