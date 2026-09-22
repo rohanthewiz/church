@@ -262,6 +262,28 @@ func TestAdminRoutesSmoke(t *testing.T) {
 	r, _ = get(root, "/debug/show")
 	check("a SuperAdmin opens /debug", r.Status() == 200, fmt.Sprintf("status %d", r.Status()))
 
+	// ---- Every row of the route→permission table is a registered route ----
+	// RegisterAdminRoutes panics on a route the table lacks; this is the other
+	// direction, a stale row (a route since removed) that the nav and the
+	// dashboard would still offer. A registered admin route sends an
+	// anonymous request to /login through the guard; an unregistered one is
+	// a 404. The made-up route probed last is the control that shows the
+	// probe can tell the two apart.
+	probe := func(rt authz.AdminRoute) int {
+		p := config.AdminPrefix + strings.ReplaceAll(rt.Path, ":id", "1")
+		return s.Request(rt.Method, p, nil, nil).Status()
+	}
+	unregistered := 0
+	for _, rt := range authz.AdminRoutes {
+		if st := probe(rt); st != 303 {
+			unregistered++
+			check("table row "+rt.Method+" "+rt.Path+" is a registered route", false, fmt.Sprintf("status %d", st))
+		}
+	}
+	check(fmt.Sprintf("all %d table rows are registered routes", len(authz.AdminRoutes)), unregistered == 0, "")
+	check("the probe reports an unregistered route as a 404",
+		probe(authz.AdminRoute{Method: "GET", Path: "/no-such-admin-route"}) == 404, "")
+
 	// ---- An unknown dynamic page is a 404 in the site layout, not a 500 ----
 	// On bytdb as well as Postgres: the handler keys off sql.ErrNoRows.
 	r, body = get(nil, "/pages/no-such-page")

@@ -18,38 +18,21 @@ import (
 //
 // Like the dashboard cards (page/admin_home.go), this is a convenience, not
 // the access control: every admin route is wrapped in auth_controller.Require
-// in router_rweb.go, and that is what refuses a request. The mapping below
-// mirrors that router by convention and has to be kept in step by hand. If it
-// drifts, the nav shows a dead link or hides a live one. It never grants
+// in router_rweb.go, and that is what refuses a request. The permission each
+// link needs comes from authz.AdminRoutes, the same table the router takes
+// its guards from, so the nav cannot drift from the routes. It never grants
 // anything.
 //
-// URL → permission, by path segment under /admin:
+// URL → what the viewer needs:
 //
-//	/admin, /admin/home, /admin/logout  → admin access (any admin permission)
-//	/admin/<res>                        → <res>.read
-//	/admin/<res>/new                    → <res>.create
-//	/admin/<res>/edit/:id               → <res>.update
-//	/admin/pages/:id                    → pages.read     (preview)
-//	/admin/sermons/import               → sermons.create
-//	/admin/sermons/cleanup              → sermons.update
-//	/admin/giving[/csv[/summary]]       → charges.read
-//	/admin/<unknown>                    → admin access
 //	/debug/...                          → SuperAdmin
+//	/admin (bare prefix)                → admin access (any admin permission)
+//	/admin/<path> matching a GET route  → that route's permission, from
+//	                                      authz.AdminRoutes (e.g.
+//	                                      /admin/articles/edit/5 → articles.update;
+//	                                      /admin/home → admin access)
+//	/admin/<unknown>                    → admin access
 //	anything else (public, external)    → always shown
-
-// adminResourcePerms maps the first path segment under /admin to its catalog
-// resource prefix. Giving is the one resource whose URL and permission names
-// differ.
-var adminResourcePerms = map[string]string{
-	"pages":    "pages",
-	"menus":    "menus",
-	"articles": "articles",
-	"sermons":  "sermons",
-	"events":   "events",
-	"users":    "users",
-	"roles":    "roles",
-	"giving":   "charges",
-}
 
 // linkPermitted reports whether a nav link should be shown to actor. A nil
 // actor (anonymous, or a lookup that failed) sees no admin links.
@@ -68,39 +51,17 @@ func linkPermitted(actor *authz.Actor, rawURL string) bool {
 		return true // public route
 	}
 
-	// Split what follows the prefix: "/articles/edit/12" → [articles edit 12]
-	segs := strings.FieldsFunc(strings.TrimPrefix(path, prefix), func(r rune) bool { return r == '/' })
-	if len(segs) == 0 || segs[0] == "home" || segs[0] == "logout" {
-		return actor.HasAdminAccess()
-	}
-
-	res, known := adminResourcePerms[segs[0]]
+	perm, known := authz.AdminURLPerm(strings.TrimPrefix(path, prefix))
 	if !known {
-		// A route a site added, or one this table doesn't know yet. Hiding
-		// it could strand a real screen, so any admin sees it and the route's
-		// own guard decides.
+		// The bare prefix, a route a site added, or one the table doesn't
+		// know. Hiding it could strand a real screen, so any admin sees it
+		// and the route's own guard decides.
 		return actor.HasAdminAccess()
 	}
-
-	action := authz.ActRead
-	if len(segs) > 1 {
-		switch segs[1] {
-		case "new":
-			action = authz.ActCreate
-		case "edit":
-			action = authz.ActUpdate
-		case "import":
-			if res == "sermons" {
-				action = authz.ActCreate
-			}
-		case "cleanup":
-			if res == "sermons" {
-				action = authz.ActUpdate
-			}
-		}
-		// Everything else ("/pages/:id" preview, "/giving/csv") is a read.
+	if perm == authz.AdminAccess {
+		return actor.HasAdminAccess()
 	}
-	return actor.Can(authz.Permission(res + "." + action))
+	return actor.Can(perm)
 }
 
 // localPath returns the cleaned path of a same-site link. ok is false for a

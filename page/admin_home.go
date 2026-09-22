@@ -1,6 +1,9 @@
 package page
 
 import (
+	"strings"
+
+	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/module"
 	"github.com/rohanthewiz/church/resource/authz"
 	"github.com/rohanthewiz/church/util/stringops"
@@ -28,45 +31,59 @@ func NewModuleAdminDashboard(pres module.Presenter) (module.Module, error) {
 
 // dashCard is one admin area: where it lives, what it is for, and its actions.
 //
-// Each card carries the permissions its links need, so the dashboard offers
-// only what the viewer can use. This filtering is a convenience, not the
-// access control: every linked route is wrapped in auth_controller.Require,
-// which is what refuses a request. The two lists are kept in step by hand
-// (see router_rweb.go), and a drift here shows a dead link or hides a live
-// one, never grants anything.
+// The dashboard offers only what the viewer can use: a card shows if the
+// viewer may open its listURL, and its "+ New" action if they may open its
+// newURL. The permission for each URL comes from authz.AdminRoutes, the table
+// the router takes its guards from, so the cards cannot drift from the
+// routes. This filtering is a convenience, not the access control: every
+// linked route is wrapped in auth_controller.Require, which is what refuses a
+// request.
 type dashCard struct {
-	title      string
-	desc       string
-	listURL    string
-	newURL     string           // empty = no "+ New" action (e.g. utility screens)
-	readPerm   authz.Permission // needed to show the card at all (listURL's route)
-	createPerm authz.Permission // needed to show "+ New" (newURL's route)
+	title   string
+	desc    string
+	listURL string
+	newURL  string // empty = no "+ New" action (e.g. utility screens)
+}
+
+// canOpen reports whether actor may open the admin URL u, by the permission
+// of the GET route it matches. A URL the table lacks is refused, so a card
+// pointing at a route that doesn't exist stays hidden instead of offering a
+// dead link.
+func canOpen(actor *authz.Actor, u string) bool {
+	perm, ok := authz.AdminURLPerm(strings.TrimPrefix(u, config.AdminPrefix))
+	if !ok {
+		return false
+	}
+	if perm == authz.AdminAccess {
+		return actor.HasAdminAccess()
+	}
+	return actor.Can(perm)
 }
 
 func (m *ModuleAdminDashboard) Render(params map[string]map[string]string, loggedIn bool) string {
 	allCards := []dashCard{
 		{"Pages", "Build site pages from modules — articles, lists, calendars and more.",
-			"/admin/pages", "/admin/pages/new", authz.PagesRead, authz.PagesCreate},
+			"/admin/pages", "/admin/pages/new"},
 		{"Menus", "Site navigation: the main menu, footer menu and submenus.",
-			"/admin/menus", "/admin/menus/new", authz.MenusRead, authz.MenusCreate},
+			"/admin/menus", "/admin/menus/new"},
 		{"Articles", "Write and publish articles and announcements.",
-			"/admin/articles", "/admin/articles/new", authz.ArticlesRead, authz.ArticlesCreate},
+			"/admin/articles", "/admin/articles/new"},
 		{"Sermons", "Manage sermon recordings, scripture references and categories.",
-			"/admin/sermons", "/admin/sermons/new", authz.SermonsRead, authz.SermonsCreate},
+			"/admin/sermons", "/admin/sermons/new"},
 		{"Events", "One-time and recurring events; they feed the site calendar.",
-			"/admin/events", "/admin/events/new", authz.EventsRead, authz.EventsCreate},
+			"/admin/events", "/admin/events/new"},
 		{"Users", "Admin and editor accounts and their roles.",
-			"/admin/users", "/admin/users/new", authz.UsersRead, authz.UsersCreate},
+			"/admin/users", "/admin/users/new"},
 		{"Roles", "Define roles from any combination of permissions, then assign them to users.",
-			"/admin/roles", "/admin/roles/new", authz.RolesRead, authz.RolesCreate},
+			"/admin/roles", "/admin/roles/new"},
 		{"Giving", "Giving received through Stripe, by month for each year, with CSV export.",
-			"/admin/giving", "", authz.ChargesRead, ""},
-		// Utility screens: the permission their route requires stands in for
-		// "read", since there is no list behind them.
+			"/admin/giving", ""},
+		// Utility screens: no list behind them, so the card follows the
+		// permission of the screen's own route.
 		{"Sermon Import", "Bulk-import sermons from uploaded files.",
-			"/admin/sermons/import", "", authz.SermonsCreate, ""},
+			"/admin/sermons/import", ""},
 		{"Sermon Cleanup", "Reclaim disk by removing locally-cached sermon copies.",
-			"/admin/sermons/cleanup", "", authz.SermonsUpdate, ""},
+			"/admin/sermons/cleanup", ""},
 	}
 
 	// The viewer's permissions arrive through render params (the module has no
@@ -74,10 +91,10 @@ func (m *ModuleAdminDashboard) Render(params map[string]map[string]string, logge
 	actor := authz.FromParams(params)
 	var cards []dashCard
 	for _, c := range allCards {
-		if !actor.Can(c.readPerm) {
+		if !canOpen(actor, c.listURL) {
 			continue
 		}
-		if c.createPerm == "" || !actor.Can(c.createPerm) {
+		if c.newURL != "" && !canOpen(actor, c.newURL) {
 			c.newURL = "" // hides "+ New"
 		}
 		cards = append(cards, c)
