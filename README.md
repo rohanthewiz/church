@@ -210,6 +210,21 @@ cd church
 go build
 ```
 
+### Tests
+
+```bash
+go test ./...   # every DB-backed test runs on an embedded bytdb
+```
+
+Tests that use `internal/testdb` (the admin smoke test, bootstrap, charge
+recording, the wire checks) also run on Postgres when `CHURCH_TEST_PG_DSN`
+is set. Each run creates a throwaway `church_smoke_<n>` database, applies
+`db/migrate`, and drops the database afterwards. The role needs CREATEDB:
+
+```bash
+CHURCH_TEST_PG_DSN="postgres://devuser:secret@localhost:5432/church_development?sslmode=disable" go test ./...
+```
+
 ### Initial Run
 - I do apologize that there is some seeding required here
 - Start the server `./church`

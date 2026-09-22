@@ -5,14 +5,15 @@ package church_test
 // `go test ./...` (and any CI running it) fails if a route loses its Require
 // decorator.
 //
-// It boots an embedded bytdb exactly as a site binary does (db.InitDB), seeds
-// the default roles through the real bootstrap function, and wires the admin
-// and debug areas with the production RegisterAdminRoutes and
-// RegisterDebugRoutes. It then drives the HTTP handlers in-process (rweb
-// Server.Request), so every request passes through the real guard,
-// decorators, handlers, page renders and SQL:
+// It boots a database exactly as a site binary does (db.InitDB): an embedded
+// bytdb always, and a throwaway Postgres database when CHURCH_TEST_PG_DSN is
+// set (internal/testdb). It seeds the default roles through the real
+// bootstrap function, and wires the admin and debug areas with the production
+// RegisterAdminRoutes and RegisterDebugRoutes. It then drives the HTTP
+// handlers in-process (rweb Server.Request), so every request passes through
+// the real guard, decorators, handlers, page renders and SQL:
 //
-//	sessions ─► AdminGuardRWeb ─► Require(perm) ─► handler ─► module render ─► bytdb
+//	sessions ─► AdminGuardRWeb ─► Require(perm) ─► handler ─► module render ─► bytdb | Postgres
 //
 // Sessions are planted straight into the in-process kvstore rather than
 // logging in, because login is covered by auth_controller's tests. Outcomes
@@ -40,6 +41,7 @@ import (
 	authctlr "github.com/rohanthewiz/church/auth_controller"
 	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/internal/testdb"
 	"github.com/rohanthewiz/church/page"
 	"github.com/rohanthewiz/church/page_controller"
 	"github.com/rohanthewiz/church/resource/auth"
@@ -53,6 +55,15 @@ func TestAdminRoutesSmoke(t *testing.T) {
 	if testing.Short() {
 		t.Skip("boots an embedded database and renders pages; skipped with -short")
 	}
+	// The same checks on both backends. Postgres runs only when
+	// CHURCH_TEST_PG_DSN names a server to create a throwaway database on
+	// (see internal/testdb); CI has none, so there it is skipped.
+	testdb.Each(t, runAdminRoutesSmoke)
+}
+
+// runAdminRoutesSmoke is the whole smoke run, on whichever backend
+// testdb.Each has opened (an empty, migrated schema).
+func runAdminRoutesSmoke(t *testing.T) {
 
 	// lastBody is the most recent response body, shown when a check fails so
 	// a render error is visible without a debugger.
@@ -76,8 +87,6 @@ func TestAdminRoutesSmoke(t *testing.T) {
 		}
 	}
 
-	must("InitDB", db.InitDB(db.DBOpts{DBType: db.DBTypes.BytDB, File: filepath.Join(t.TempDir(), "church.db")}))
-	t.Cleanup(db.CloseDB)
 	dbH, err := db.Db()
 	must("Db", err)
 

@@ -20,8 +20,12 @@ package main
 // (the sermon search), and FK ON DELETE CASCADE fan-out.
 //
 // Run from the church module root:  go run ./test_scripts/bytdb_wire_check
+// Or on both backends, as a test (see internal/testdb for the Postgres DSN):
+//
+//	go test ./test_scripts/bytdb_wire_check
 
 import (
+	"database/sql"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -79,6 +83,23 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
+
+	runChecks(dbH)
+
+	fmt.Println()
+	if failures > 0 {
+		fmt.Printf("RESULT: %d check(s) FAILED\n", failures)
+		os.Exit(1)
+	}
+	fmt.Println("RESULT: all checks passed — bytdb wire compatibility proven for the phase-1 surface")
+}
+
+// runChecks drives every check against dbH and counts failures in the
+// package-level counter. Split out of main so wire_check_test.go can run the
+// same checks on Postgres as well as bytdb (internal/testdb), proving the
+// hand-written SQL on both backends rather than bytdb alone.
+func runChecks(dbH *sql.DB) {
+	var err error
 
 	// ---- users: raw insert exercising timestamptz binding + RETURNING ----
 	now := time.Now().UTC().Truncate(time.Microsecond) // pg wire format carries microseconds
@@ -186,11 +207,14 @@ func main() {
 		fmt.Sprintf("rows=%d last=%v", cacheRows, lastAccess))
 
 	// ---- sermons: StringArray round-trip + the live search shape ----
+	// date_taught gets its own parameter: it is timestamp (no zone) while
+	// created_at is timestamptz, and Postgres refuses one parameter bound to
+	// both ("inconsistent types deduced"). bytdb accepts the shared one.
 	_, err = dbH.Exec(
 		`INSERT INTO sermons (created_at, updated_at, updated_by, title, slug, published,
 			date_taught, teacher, scripture_refs, categories)
-		 VALUES ($1, $1, 'wire_check', 'On Hope', 'on-hope', true, $1, 'R. Allison', $2, $3)`,
-		now, types.StringArray{"John 3:16", "Rom 5:5"}, types.StringArray{"hope"})
+		 VALUES ($1, $1, 'wire_check', 'On Hope', 'on-hope', true, $4, 'R. Allison', $2, $3)`,
+		now, types.StringArray{"John 3:16", "Rom 5:5"}, types.StringArray{"hope"}, now)
 	check("sermons insert with two text[] columns", err)
 
 	var refs types.StringArray
@@ -215,11 +239,4 @@ func main() {
 	check("cascade leftovers query", err)
 	expect("ON DELETE CASCADE cleared chat, prayer, and token rows", leftovers == 0,
 		fmt.Sprintf("%d rows survived", leftovers))
-
-	fmt.Println()
-	if failures > 0 {
-		fmt.Printf("RESULT: %d check(s) FAILED\n", failures)
-		os.Exit(1)
-	}
-	fmt.Println("RESULT: all checks passed — bytdb wire compatibility proven for the phase-1 surface")
 }

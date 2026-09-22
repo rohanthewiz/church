@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +11,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/rohanthewiz/church/config"
 	theDB "github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/internal/testdb"
 	"github.com/rohanthewiz/church/models"
 	"github.com/rohanthewiz/church/page"
 	"github.com/vattle/sqlboiler/queries/qm"
@@ -77,17 +77,17 @@ func TestMenuItemsEqualAfterJSONB(t *testing.T) {
 	}
 }
 
-// TestBootstrapCalendarPageAndMenus runs the real Bootstrap on an embedded
-// bytdb, twice, as consecutive boots of a site would.
+// TestBootstrapCalendarPageAndMenus runs the real Bootstrap twice, as
+// consecutive boots of a site would, on each backend (internal/testdb).
+// Postgres is where the per-boot menu rewrite (N-052) was seen.
 func TestBootstrapCalendarPageAndMenus(t *testing.T) {
 	if testing.Short() {
-		t.Skip("boots an embedded database; skipped with -short")
+		t.Skip("boots a database; skipped with -short")
 	}
-	if err := theDB.InitDB(theDB.DBOpts{DBType: theDB.DBTypes.BytDB,
-		File: filepath.Join(t.TempDir(), "church.db")}); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(theDB.CloseDB)
+	testdb.Each(t, bootstrapCalendarPageAndMenus)
+}
+
+func bootstrapCalendarPageAndMenus(t *testing.T) {
 	dbH, err := theDB.Db()
 	if err != nil {
 		t.Fatal(err)
