@@ -222,7 +222,7 @@ Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
 - **N-054** · raised `2026-0921-2339-next-list-sweep` · closed 2026-09-23,
-  `80193e2` — CI runs a `postgres:16` service (user `devuser`, a superuser as
+  `2026-0923-1556-ci-postgres-tests`, `80193e2` — CI runs a `postgres:16` service (user `devuser`, a superuser as
   the image's `POSTGRES_USER`, so it has CREATEDB and satisfies the charges
   migration's `OWNER TO devuser`) and sets `CHURCH_TEST_PG_DSN`. It also sets
   the new `CHURCH_TEST_PG_REQUIRED`, which makes `testdb.OpenPostgres` fail
