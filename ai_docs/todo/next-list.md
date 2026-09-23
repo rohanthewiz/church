@@ -106,15 +106,6 @@ grmob's own session docs.
   2026-09-21: a session's `rm` of `cema/cfg/random_seeds.txt` was refused by
   the permission gate; nothing reads it (only a comment names it), so the
   owner can delete it by hand.
-- **N-054** · raised `2026-0921-2339-next-list-sweep` · value medium
-  Run the Postgres half of the tests in CI: add a `postgres` service to
-  `.github/workflows/ci.yml` and set `CHURCH_TEST_PG_DSN`. The role must be
-  `devuser` (or a member of it) because the charges migration runs `OWNER TO
-  devuser`, and needs CREATEDB. Worth it because bytdb is laxer than Postgres
-  in ways only a Postgres run catches (the wire check bound one parameter to a
-  timestamptz and a timestamp column; bytdb accepted it, Postgres refused
-  with 42P08). Can only be verified by a push.
-
 ## Roadmap
 
 Wanted, but not now. These are things we mean to do once the immediate work in
@@ -230,6 +221,14 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-054** · raised `2026-0921-2339-next-list-sweep` · closed 2026-09-23,
+  `80193e2` — CI runs a `postgres:16` service (user `devuser`, a superuser as
+  the image's `POSTGRES_USER`, so it has CREATEDB and satisfies the charges
+  migration's `OWNER TO devuser`) and sets `CHURCH_TEST_PG_DSN`. It also sets
+  the new `CHURCH_TEST_PG_REQUIRED`, which makes `testdb.OpenPostgres` fail
+  rather than skip when the DSN is missing, since a skipped subtest passes and
+  would drop the Postgres half without turning CI red. Run `35918667843`
+  was green.
 - **N-053** · raised `2026-0921-2302-menu-links-page-404-and-v0.11.1` · closed
   2026-09-21, `5b88272` — The error module `AddModules` substitutes is now
   `Published`. `TestAddModulesShowsErrorModuleOnBuildFailure` fails without
