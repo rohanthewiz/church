@@ -8,6 +8,16 @@
 #            real admin route wiring on a temp bytdb, so a route that lost its
 #            Require guard or a broken permission check fails here
 #
+# The DB-backed tests run on both backends (internal/testdb): bytdb in a temp
+# dir, and Postgres in a throwaway database on the postgres service below.
+# Both matter because bytdb is laxer than Postgres in places (it accepted one
+# bind parameter used for a timestamptz and a timestamp column; Postgres
+# refuses that with 42P08). The service user is devuser because the charges
+# migration runs `OWNER TO devuser`; as the image's POSTGRES_USER it is a
+# superuser, which covers the CREATEDB the throwaway databases need.
+# CHURCH_TEST_PG_REQUIRED makes a missing DSN fail instead of skip, so the
+# Postgres half can't drop out while CI stays green.
+#
 # The sites (cema, ccswm) are private repos with their own CI, which builds
 # them against their pinned church and against church master.
 name: ci
@@ -24,6 +34,22 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GOWORK: "off"
+    services:
+      postgres:
+        # Matches the dev machines' major version
+        image: postgres:16
+        env:
+          POSTGRES_USER: devuser
+          POSTGRES_PASSWORD: devpass
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        # Steps start only once the service reports healthy
+        options: >-
+          --health-cmd "pg_isready -U devuser -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -42,4 +68,7 @@ jobs:
         run: go vet ./...
 
       - name: Test
+        env:
+          CHURCH_TEST_PG_DSN: postgres://devuser:devpass@localhost:5432/postgres?sslmode=disable
+          CHURCH_TEST_PG_REQUIRED: "1"
         run: go test ./...

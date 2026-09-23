@@ -16,8 +16,11 @@
 //	        ▼
 //	db.InitDB(Postgres) ──► test body ──► CloseDB ──► DROP DATABASE
 //
-// Postgres runs only when CHURCH_TEST_PG_DSN is set; CI has no server, so
-// there the Postgres subtest skips and bytdb alone runs. A throwaway database
+// Postgres runs only when CHURCH_TEST_PG_DSN is set; without it the Postgres
+// subtest skips and bytdb alone runs. CI runs a postgres service and also
+// sets CHURCH_TEST_PG_REQUIRED, which turns that skip into a failure: a
+// skipped subtest passes, so a lost DSN would otherwise quietly drop Postgres
+// coverage while CI stayed green. A throwaway database
 // rather than a shared one because tests insert fixed names and assert on
 // counts, and so that no run can touch data anyone cares about. The DSN's
 // role needs CREATEDB. The charges migration runs `ALTER TABLE ... OWNER TO
@@ -50,6 +53,10 @@ import (
 // EnvPostgresDSN names the variable that enables the Postgres backend.
 const EnvPostgresDSN = "CHURCH_TEST_PG_DSN"
 
+// EnvPostgresRequired, when non-empty, makes a missing EnvPostgresDSN fail
+// the test instead of skipping it. CI sets it next to the DSN.
+const EnvPostgresRequired = "CHURCH_TEST_PG_REQUIRED"
+
 // Each runs body once per backend, as subtests named "bytdb" and "postgres",
 // with the db package opened on that backend.
 func Each(t *testing.T, body func(t *testing.T)) {
@@ -78,6 +85,9 @@ func OpenPostgres(t testing.TB) {
 	t.Helper()
 	dsn := os.Getenv(EnvPostgresDSN)
 	if dsn == "" {
+		if os.Getenv(EnvPostgresRequired) != "" {
+			t.Fatalf("%s is set but %s is not", EnvPostgresRequired, EnvPostgresDSN)
+		}
 		t.Skip(EnvPostgresDSN + " not set")
 	}
 	u, err := url.Parse(dsn)

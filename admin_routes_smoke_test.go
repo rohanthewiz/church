@@ -57,7 +57,7 @@ func TestAdminRoutesSmoke(t *testing.T) {
 	}
 	// The same checks on both backends. Postgres runs only when
 	// CHURCH_TEST_PG_DSN names a server to create a throwaway database on
-	// (see internal/testdb); CI has none, so there it is skipped.
+	// (see internal/testdb); CI provides one, and requires it.
 	testdb.Each(t, runAdminRoutesSmoke)
 }
 
