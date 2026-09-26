@@ -27,7 +27,7 @@ import (
 )
 
 // NewServer returns a routable in-process server. Tests register the same
-// handlers the production router does (router_rweb.go) and drive them with
+// handlers the production router does (router.go) and drive them with
 // Server.Request — no port, no goroutine.
 func NewServer() *rweb.Server {
 	return rweb.NewServer(rweb.ServerOptions{})

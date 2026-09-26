@@ -13,7 +13,7 @@ package church_test
 // handlers in-process (rweb Server.Request), so every request passes through
 // the real guard, decorators, handlers, page renders and SQL:
 //
-//	sessions ─► AdminGuardRWeb ─► Require(perm) ─► handler ─► module render ─► bytdb | Postgres
+//	sessions ─► AdminGuard ─► Require(perm) ─► handler ─► module render ─► bytdb | Postgres
 //
 // Sessions are planted straight into the in-process kvstore rather than
 // logging in, because login is covered by auth_controller's tests. Outcomes
@@ -117,14 +117,14 @@ func runAdminRoutesSmoke(t *testing.T) {
 	s := rweb.NewServer(rweb.ServerOptions{})
 	church.RegisterAdminRoutes(s)
 	church.RegisterDebugRoutes(s)
-	// The chat moderation endpoints, wired as in ServeRWeb (session middleware
+	// The chat moderation endpoints, wired as in Serve (session middleware
 	// only; the handlers do their own identity and permission checks).
-	cht := s.Group("/chat", authctlr.UseCustomContextRWeb)
-	cht.Get("/messages", chat.ListMessagesRWeb)
-	cht.Post("/keep/:id", chat.KeepMessageRWeb)
-	// Public dynamic pages, wired as in ServeRWeb, for the not-found check.
-	pgs := s.Group("/pages", authctlr.UseCustomContextRWeb)
-	pgs.Get("/:slug", page_controller.PageHandlerRWeb)
+	cht := s.Group("/chat", authctlr.UseCustomContext)
+	cht.Get("/messages", chat.WebListMessages)
+	cht.Post("/keep/:id", chat.WebKeepMessage)
+	// Public dynamic pages, wired as in Serve, for the not-found check.
+	pgs := s.Group("/pages", authctlr.UseCustomContext)
+	pgs.Get("/:slug", page_controller.PageHandler)
 
 	// signIn plants a session for username and returns its cookie header.
 	signIn := func(username string) []rweb.Header {

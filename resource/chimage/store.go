@@ -12,7 +12,7 @@ package chimage
 //	                                        ├─ write dist/img/<name>  (temp + rename)
 //	                                        └─ IDrive enabled: PUT images/<name> (async)
 //
-//	GET /assets/img/<name> ─► ServeImageRWeb
+//	GET /assets/img/<name> ─► ServeImage
 //	                            ├─ local file present ─► serve it
 //	                            ├─ IDrive enabled ─► GET images/<name> ─► cache locally ─► serve
 //	                            └─ otherwise 404
@@ -163,8 +163,8 @@ var imageTypes = map[string]string{
 	".ico":  "image/x-icon",
 }
 
-// ServeImageRWeb serves GET /assets/img/:filename.
-func ServeImageRWeb(ctx rweb.Context) error {
+// ServeImage serves GET /assets/img/:filename.
+func ServeImage(ctx rweb.Context) error {
 	// Path params arrive still percent-encoded, and file names keep the
 	// editor's spelling (spaces included)
 	name, err := url.PathUnescape(ctx.Request().PathParam("filename"))

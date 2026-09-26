@@ -1,0 +1,140 @@
+package basectlr
+
+import (
+	"bytes"
+
+	"github.com/rohanthewiz/church/config"
+	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/core/formdraft"
+	"github.com/rohanthewiz/church/flash"
+	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/authz"
+	"github.com/rohanthewiz/church/template"
+	"github.com/rohanthewiz/rweb"
+)
+
+func RenderPageNew(pg *page.Page, ctx rweb.Context) (out []byte) {
+	defer func() {
+		if config.AppEnv != config.Environments.Production {
+			return
+		}
+		if p := recover(); p != nil {
+			logPanic(p)
+			out = []byte(recoverMsg)
+		}
+	}()
+	buf := new(bytes.Buffer)
+	template.Page(buf, pg, flash.GetOrNew(ctx), map[string]map[string]string{
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsername(ctx),
+			// What the viewer may do, so admin modules offer only permitted actions
+			authz.ParamKey: authz.ParamValue(ctx),
+			// Typed values from a refused save of this form, if any
+			formdraft.ParamKey: TakeFormDraft(pg, ctx)},
+	}, IsLoggedIn(ctx))
+	out = buf.Bytes()
+	return
+}
+
+// RenderPageListWithOpts renders like RenderPageList but hands the
+// main module its own options instead of offset/limit, e.g. a report's
+// {"year": "2025"}. It shares the production panic recovery, which a direct
+// template.Page call in a controller would skip.
+func RenderPageListWithOpts(pg *page.Page, ctx rweb.Context, mainOpts map[string]string) (out []byte) {
+	defer func() {
+		if config.AppEnv != config.Environments.Production {
+			return
+		}
+		if p := recover(); p != nil {
+			logPanic(p)
+			out = []byte(recoverMsg)
+		}
+	}()
+	buf := new(bytes.Buffer)
+	template.Page(buf, pg, flash.GetOrNew(ctx),
+		map[string]map[string]string{
+			pg.MainModuleSlug(): mainOpts,
+			"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsername(ctx),
+				// What the viewer may do, so admin modules offer only permitted actions
+				authz.ParamKey: authz.ParamValue(ctx)},
+		}, IsLoggedIn(ctx),
+	)
+	out = buf.Bytes()
+	return
+}
+
+func RenderPageList(pg *page.Page, ctx rweb.Context) (out []byte) {
+	defer func() {
+		if config.AppEnv != config.Environments.Production {
+			return
+		}
+		if p := recover(); p != nil {
+			logPanic(p)
+			out = []byte(recoverMsg)
+		}
+	}()
+	buf := new(bytes.Buffer)
+	template.Page(buf, pg, flash.GetOrNew(ctx),
+		map[string]map[string]string{
+			pg.MainModuleSlug(): {
+				"offset": ctx.Request().QueryParam("offset"), "limit": ctx.Request().QueryParam("limit")},
+			"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsername(ctx),
+				// What the viewer may do, so admin modules offer only permitted actions
+				authz.ParamKey: authz.ParamValue(ctx)},
+		}, IsLoggedIn(ctx),
+	)
+	out = buf.Bytes()
+	return
+}
+
+func RenderPageSingle(pg *page.Page, ctx rweb.Context) (out []byte) {
+	defer func() {
+		if config.AppEnv != config.Environments.Production {
+			return
+		} // bypass recovery for non-prod envs
+		if p := recover(); p != nil {
+			logPanic(p)
+			out = []byte(recoverMsg)
+		}
+	}()
+	loggedIn := "no"
+	if IsLoggedIn(ctx) {
+		loggedIn = "yes"
+	}
+
+	buf := new(bytes.Buffer)
+	template.Page(buf, pg, flash.GetOrNew(ctx), map[string]map[string]string{
+		pg.MainModuleSlug(): {"id": ctx.Request().PathParam("id"), "loggedIn": loggedIn},
+		// item_id rides _global (not just the main module's params) so
+		// secondary modules can key off the displayed item — the chat
+		// discussion strip derives its per-article channel from it.
+		// username likewise lets modules tailor controls to the viewer.
+		"_global": {"user_agent": ctx.UserAgent(), "item_id": ctx.Request().PathParam("id"),
+			"username": cctx.GetUsername(ctx), authz.ParamKey: authz.ParamValue(ctx),
+			// Typed values from a refused save of this form, if any
+			formdraft.ParamKey: TakeFormDraft(pg, ctx)},
+	}, IsLoggedIn(ctx))
+	out = buf.Bytes()
+	return
+}
+
+// TakeFormDraft claims the draft a refused save left for this form (see
+// core/formdraft). Only admin pages are checked: drafts are only saved by
+// admin form handlers, and public renders then skip the store lookup.
+// Exported for controllers that call template.Page directly.
+func TakeFormDraft(pg *page.Page, ctx rweb.Context) string {
+	if !pg.IsAdmin {
+		return ""
+	}
+	return formdraft.Take(ctx, ctx.Request().Path())
+}
+
+// IsLoggedIn checks if user is logged in based on RWeb context
+func IsLoggedIn(ctx rweb.Context) bool {
+	// Check if we have a valid session in context
+	sess, err := cctx.GetSession(ctx)
+	if err != nil {
+		return false
+	}
+	// Check if session has a username (indicating logged in user)
+	return sess != nil && sess.Username != ""
+}

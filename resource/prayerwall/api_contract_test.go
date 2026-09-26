@@ -16,14 +16,14 @@ import (
 	"github.com/rohanthewiz/rweb"
 )
 
-// Routes registered exactly as in router_rweb.go so paths are part of the test.
+// Routes registered exactly as in router.go so paths are part of the test.
 func newPrayerAPIServer() *rweb.Server {
 	s := apitest.NewServer()
 	api := s.Group("/api/v1")
-	api.Get("/prayer-requests", APIPrayerRequestsRWeb)
-	api.Post("/prayer-requests", apitoken.APIGuard(APIPrayerPostRWeb))
-	api.Post("/prayer-requests/:id/answered", apitoken.APIGuard(APIPrayerAnsweredRWeb))
-	api.Delete("/prayer-requests/:id", apitoken.APIGuard(APIPrayerDeleteRWeb))
+	api.Get("/prayer-requests", APIPrayerRequests)
+	api.Post("/prayer-requests", apitoken.APIGuard(APIPrayerPost))
+	api.Post("/prayer-requests/:id/answered", apitoken.APIGuard(APIPrayerAnswered))
+	api.Delete("/prayer-requests/:id", apitoken.APIGuard(APIPrayerDelete))
 	return s
 }
 

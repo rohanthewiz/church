@@ -16,7 +16,7 @@ import (
 
 func newFeedAPIServer() *rweb.Server {
 	s := apitest.NewServer()
-	s.Group("/api/v1").Get("/feed", APIFeedRWeb)
+	s.Group("/api/v1").Get("/feed", APIFeed)
 	return s
 }
 

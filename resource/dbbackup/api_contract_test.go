@@ -23,12 +23,12 @@ const (
 	replicationPath = "/api/admin/db/replication"
 )
 
-// Routes registered exactly as in router_rweb.go so the paths (and methods)
+// Routes registered exactly as in router.go so the paths (and methods)
 // are part of the test.
 func newBackupServer() *rweb.Server {
 	s := apitest.NewServer()
-	s.Post(backupPath, APIBackupRWeb)
-	s.Get(replicationPath, APIReplicationStatusRWeb)
+	s.Post(backupPath, APIBackup)
+	s.Get(replicationPath, APIReplicationStatus)
 	return s
 }
 

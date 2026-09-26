@@ -219,7 +219,7 @@ func runChecks(dbH *sql.DB) {
 
 	var refs types.StringArray
 	var title string
-	// Same predicate resource/sermon/api_rweb.go builds for ?ref= searches.
+	// Same predicate resource/sermon/api.go builds for ?ref= searches.
 	err = dbH.QueryRow(
 		`SELECT title, scripture_refs FROM sermons
 		 WHERE array_to_string(scripture_refs, '|') ILIKE $1`, "%john%").Scan(&title, &refs)

@@ -83,7 +83,7 @@ func CanModerate(role int) bool {
 
 // StartRetentionSweep launches the background goroutine that enforces
 // RetentionTTL. Mirrors idrive.StartCacheCleanup: started once from
-// ServeRWeb, runs for the life of the process. An immediate first sweep
+// Serve, runs for the life of the process. An immediate first sweep
 // clears any backlog from downtime before the ticker cadence takes over.
 func StartRetentionSweep() {
 	go func() {

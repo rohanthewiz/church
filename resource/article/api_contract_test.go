@@ -17,8 +17,8 @@ import (
 func newArticleAPIServer() *rweb.Server {
 	s := apitest.NewServer()
 	api := s.Group("/api/v1")
-	api.Get("/articles", APIArticlesRWeb)
-	api.Get("/articles/:id", APIArticleRWeb)
+	api.Get("/articles", APIArticles)
+	api.Get("/articles/:id", APIArticle)
 	return s
 }
 

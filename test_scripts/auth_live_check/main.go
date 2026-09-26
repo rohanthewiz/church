@@ -58,12 +58,12 @@ func main() {
 	}
 	fmt.Printf("Seeded user %s (id %d)\n\n", smokeUser, userID)
 
-	// Same route shapes as router_rweb.go
+	// Same route shapes as router.go
 	s := rweb.NewServer(rweb.ServerOptions{})
 	api := s.Group("/api/v1")
-	api.Post("/auth/login", apitoken.APILoginRWeb)
-	api.Get("/auth/me", apitoken.APIGuard(apitoken.APIMeRWeb))
-	api.Post("/auth/logout", apitoken.APIGuard(apitoken.APILogoutRWeb))
+	api.Post("/auth/login", apitoken.APILogin)
+	api.Get("/auth/me", apitoken.APIGuard(apitoken.APIMe))
+	api.Post("/auth/logout", apitoken.APIGuard(apitoken.APILogout))
 
 	jsonHdr := []rweb.Header{{Key: "Content-Type", Value: "application/json"}}
 

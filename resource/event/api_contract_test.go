@@ -20,8 +20,8 @@ import (
 func newEventAPIServer() *rweb.Server {
 	s := apitest.NewServer()
 	api := s.Group("/api/v1")
-	api.Get("/events", APIEventsRWeb)
-	api.Get("/events/:id", APIEventRWeb)
+	api.Get("/events", APIEvents)
+	api.Get("/events/:id", APIEvent)
 	return s
 }
 

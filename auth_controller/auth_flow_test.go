@@ -22,19 +22,19 @@ import (
 	"github.com/rohanthewiz/rweb"
 )
 
-// Test credentials: a real scrypt hash so AuthHandlerRWeb's PasswordHash
+// Test credentials: a real scrypt hash so AuthHandler's PasswordHash
 // comparison runs for real — the mock only fakes the DB, not the crypto.
 var (
 	webTestSalt = auth.GenSalt("web-auth-flow-test")
 	webTestHash = auth.PasswordHash("secret", webTestSalt)
 )
 
-// newWebAuthServer wires the routes exactly as router_rweb.go does, so the
+// newWebAuthServer wires the routes exactly as router.go does, so the
 // paths and the middleware order are part of what's under test.
 func newWebAuthServer() *rweb.Server {
 	s := apitest.NewServer()
-	s.Post("/auth", AuthHandlerRWeb)
-	ad := s.Group("/admin", UseCustomContextRWeb, AdminGuardRWeb)
+	s.Post("/auth", AuthHandler)
+	ad := s.Group("/admin", UseCustomContext, AdminGuard)
 	// Every admin route is wrapped in a permission decorator, as in the router:
 	// the group guard alone cannot stop a handler from running.
 	ad.Get("/home", RequireAdmin(func(ctx rweb.Context) error {
@@ -71,7 +71,7 @@ func expectCredsQuery(mock sqlmock.Sqlmock) {
 }
 
 // sessionCookie extracts the session cookie pair ("church_session=<key>") from
-// the login response. StartSessionRWeb sets the session cookie before the
+// the login response. StartSession sets the session cookie before the
 // redirect adds its flash cookie, so the first Set-Cookie is the one we want —
 // asserted here so a reordering shows up as a test failure, not silence.
 func sessionCookie(t *testing.T, resp rweb.Response) string {

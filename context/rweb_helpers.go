@@ -8,8 +8,8 @@ import (
 	"github.com/rohanthewiz/serr"
 )
 
-// GetSessionFromRWeb retrieves the session from RWeb context
-func GetSessionFromRWeb(ctx rweb.Context) (*session.Session, error) {
+// GetSession retrieves the session from RWeb context
+func GetSession(ctx rweb.Context) (*session.Session, error) {
 	if ctx.Has("session") {
 		sess, ok := ctx.Get("session").(*session.Session)
 		if ok && sess != nil {
@@ -19,16 +19,16 @@ func GetSessionFromRWeb(ctx rweb.Context) (*session.Session, error) {
 	return nil, serr.New("no session found in context")
 }
 
-// IsAdminFromRWeb checks if the current user is an admin
-func IsAdminFromRWeb(ctx rweb.Context) bool {
+// IsAdmin checks if the current user is an admin
+func IsAdmin(ctx rweb.Context) bool {
 	if ctx.Has("isAdmin") {
 		return ctx.Get("isAdmin").(bool)
 	}
 	return false
 }
 
-// GetUsernameFromRWeb retrieves the username from context
-func GetUsernameFromRWeb(ctx rweb.Context) string {
+// GetUsername retrieves the username from context
+func GetUsername(ctx rweb.Context) string {
 	if ctx.Has("username") {
 		if username, ok := ctx.Get("username").(string); ok {
 			return username
@@ -37,8 +37,8 @@ func GetUsernameFromRWeb(ctx rweb.Context) string {
 	return ""
 }
 
-// SetSessionInRWeb stores session data in RWeb context
-func SetSessionInRWeb(ctx rweb.Context, sess *session.Session) {
+// SetSession stores session data in RWeb context
+func SetSession(ctx rweb.Context, sess *session.Session) {
 	if sess != nil {
 		ctx.Set("session", sess)
 		// Note: isAdmin is set separately in the middleware based on whether username exists
@@ -46,16 +46,16 @@ func SetSessionInRWeb(ctx rweb.Context, sess *session.Session) {
 	}
 }
 
-// ClearSessionFromRWeb removes session data from RWeb context
-func ClearSessionFromRWeb(ctx rweb.Context) {
+// ClearSession removes session data from RWeb context
+func ClearSession(ctx rweb.Context) {
 	ctx.Delete("session")
 	ctx.Delete("isAdmin")
 	ctx.Delete("username")
 }
 
-// SetFormReferrerRWeb saves the referrer URL to the session
-func SetFormReferrerRWeb(ctx rweb.Context) error {
-	sess, err := GetSessionFromRWeb(ctx)
+// SetFormReferrer saves the referrer URL to the session
+func SetFormReferrer(ctx rweb.Context) error {
+	sess, err := GetSession(ctx)
 	if err != nil {
 		return serr.Wrap(err, "unable to get session")
 	}
@@ -73,9 +73,9 @@ func SetFormReferrerRWeb(ctx rweb.Context) error {
 	return sess.Save(sess.Key)
 }
 
-// SetLastDonationURLRWeb saves the last donation receipt URL to the session
-func SetLastDonationURLRWeb(ctx rweb.Context, url string) error {
-	sess, err := GetSessionFromRWeb(ctx)
+// SetLastDonationURL saves the last donation receipt URL to the session
+func SetLastDonationURL(ctx rweb.Context, url string) error {
+	sess, err := GetSession(ctx)
 	if err != nil {
 		return serr.Wrap(err, "unable to get session")
 	}

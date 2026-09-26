@@ -79,7 +79,7 @@ func (m *ModuleUserForm) Render(params map[string]map[string]string, loggedIn bo
 
 	// ---- Authorization context for the form ----
 	// What the viewer may change here. All of it is re-checked by
-	// user_controller.UpsertUserRWeb; the form only avoids offering what
+	// user_controller.UpsertUser; the form only avoids offering what
 	// would be refused.
 	actor := authz.FromParams(params)
 	var roles []authz.Role

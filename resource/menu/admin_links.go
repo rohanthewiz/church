@@ -18,7 +18,7 @@ import (
 //
 // Like the dashboard cards (page/admin_home.go), this is a convenience, not
 // the access control: every admin route is wrapped in auth_controller.Require
-// in router_rweb.go, and that is what refuses a request. The permission each
+// in router.go, and that is what refuses a request. The permission each
 // link needs comes from authz.AdminRoutes, the same table the router takes
 // its guards from, so the nav cannot drift from the routes. It never grants
 // anything.

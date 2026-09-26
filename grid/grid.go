@@ -14,7 +14,7 @@
 // large row sets (lazy row attachment), degrades to a plain readable table when
 // JS is unavailable, and needs no extra data endpoints. Server-side paging across
 // larger datasets rides on the existing ?limit=&offset= query params that
-// basectlr.RenderPageListRWeb already routes to the main module.
+// basectlr.RenderPageList already routes to the main module.
 package grid
 
 import (

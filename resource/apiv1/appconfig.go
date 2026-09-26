@@ -241,10 +241,10 @@ func resolveLocation(opts *config.EnvConfig) Location {
 	}
 }
 
-// APIAppConfigRWeb handles GET /api/v1/app-config.
+// APIAppConfig handles GET /api/v1/app-config.
 // Public and unauthenticated by design: the app needs this before any login,
 // and nothing in it is secret.
-func APIAppConfigRWeb(ctx rweb.Context) error {
+func APIAppConfig(ctx rweb.Context) error {
 	opts := config.Options
 
 	contacts := opts.GivingContacts

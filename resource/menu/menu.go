@@ -71,7 +71,7 @@ type navRender struct {
 //
 // Sources, in order:
 //  1. Not signed in: nil, which sees no admin links.
-//  2. Admin pages: the permissions AdminGuardRWeb already resolved, passed in
+//  2. Admin pages: the permissions AdminGuard already resolved, passed in
 //     render params. No query.
 //  3. Public pages resolve no actor, so a signed-in viewer's permissions are
 //     loaded by username. That is up to one lookup per nav render (main and

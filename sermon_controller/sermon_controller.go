@@ -1,0 +1,455 @@
+package sermon_controller
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/url"
+	"os"
+	"path"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/rohanthewiz/church/app"
+	base "github.com/rohanthewiz/church/basectlr"
+	"github.com/rohanthewiz/church/config"
+	cctx "github.com/rohanthewiz/church/context"
+	"github.com/rohanthewiz/church/core/formdraft"
+	"github.com/rohanthewiz/church/core/idrive"
+	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/flash"
+	"github.com/rohanthewiz/church/page"
+	"github.com/rohanthewiz/church/resource/authz"
+	"github.com/rohanthewiz/church/resource/sermon"
+	"github.com/rohanthewiz/church/template"
+	"github.com/rohanthewiz/church/util/fileops"
+	"github.com/rohanthewiz/church/util/inputerr"
+	"github.com/rohanthewiz/logger"
+	"github.com/rohanthewiz/rweb"
+	"github.com/rohanthewiz/serr"
+)
+
+func NewSermon(ctx rweb.Context) error {
+	pg, err := page.SermonForm()
+	if err != nil {
+		return err
+	}
+	buf := new(bytes.Buffer)
+	template.Page(buf, pg, flash.GetOrNew(ctx), map[string]map[string]string{
+		"_global": {"user_agent": ctx.UserAgent(), "username": cctx.GetUsername(ctx),
+			// What the viewer may do, so admin modules offer only permitted actions
+			authz.ParamKey: authz.ParamValue(ctx),
+			// Typed values from a refused save of this form, if any
+			formdraft.ParamKey: base.TakeFormDraft(pg, ctx)},
+	}, app.IsLoggedIn(ctx))
+	return ctx.WriteHTML(buf.String())
+}
+
+// Import shows a confirmation screen for the legacy-DB sermon import.
+// The import itself moved behind ImportRun (POST + CSRF): a GET that
+// bulk-writes the sermons table could be re-triggered by a browser refresh or
+// even a link prefetcher, and it answered with raw JSON instead of a page.
+func Import(ctx rweb.Context) error {
+	csrf, err := app.GenerateFormToken()
+	if err != nil {
+		return serr.Wrap(err, "Could not generate form token")
+	}
+	// Self-contained confirmation card (this endpoint predates the shared
+	// admin page template and stays standalone).
+	return ctx.WriteHTML(`<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sermon Import</title></head>
+<body style="font-family:system-ui,sans-serif;background:#f4f6f4;margin:0;padding:2rem 1rem;">
+<div style="max-width:34rem;margin:0 auto;background:#fff;border:1px solid #dfe6e0;border-radius:8px;padding:1.2rem 1.4rem;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+<h2 style="margin-top:0">Import sermons from legacy database?</h2>
+<p>This connects to the configured secondary (PG2) database and imports every
+sermon found there into this site, marking them published. It is not
+idempotent &mdash; running it twice can duplicate sermons.</p>
+<form method="post" action="/admin/sermons/import">
+<input type="hidden" name="csrf" value="` + csrf + `">
+<button type="submit" style="background:#c0392b;color:#fff;border:none;border-radius:6px;padding:0.55rem 1.4rem;font-size:1rem;cursor:pointer">Run Import</button>
+<a href="/admin/sermons" style="margin-left:1rem">Cancel</a>
+</form></div></body></html>`)
+}
+
+// ImportRun performs the import (POST + CSRF) and reports via flash.
+func ImportRun(ctx rweb.Context) error {
+	if ok, err := app.VerifyRequestFormToken(ctx, "/admin/sermons"); !ok {
+		return err
+	}
+	result := struct {
+		Success bool `json:"success"`
+		Count   int  `json:"count"`
+	}{}
+	if err := json.Unmarshal(sermon.Import(), &result); err != nil || !result.Success {
+		return app.RedirectError(ctx, "/admin/sermons", "Sermon import failed — check the server logs.")
+	}
+	return app.Redirect(ctx, "/admin/sermons", fmt.Sprintf("Imported %d sermon(s)", result.Count))
+}
+
+// Show a particular sermon - for given by id
+func ShowSermon(ctx rweb.Context) error {
+	pg, err := page.SermonShow()
+	if err != nil {
+		return err
+	}
+	return ctx.WriteHTML(string(base.RenderPageSingle(pg, ctx)))
+}
+
+func ListSermons(ctx rweb.Context) error {
+	pg, err := page.SermonsList()
+	if err != nil {
+		return err
+	}
+	return ctx.WriteHTML(string(base.RenderPageList(pg, ctx)))
+}
+
+func AdminListSermons(ctx rweb.Context) error {
+	pg, err := page.AdminSermonsList()
+	if err != nil {
+		return err
+	}
+	return ctx.WriteHTML(string(base.RenderPageList(pg, ctx)))
+}
+
+func EditSermon(ctx rweb.Context) error {
+	pg, err := page.SermonForm()
+	if err != nil {
+		return err
+	}
+	cctx.SetFormReferrer(ctx) // save the referrer calling for edit
+	return ctx.WriteHTML(string(base.RenderPageSingle(pg, ctx)))
+}
+
+func UpsertSermon(ctx rweb.Context) error {
+	const sermonsURLPrefix = "sermon-audio"
+	const cloudUploadDelay = time.Second * 45
+	var fileUploaded bool
+	var localFileSpec string
+	// stagedAudio is the uploaded audio's temp file, beside localFileSpec. It
+	// is renamed into place only after the row saves, so a failed save leaves
+	// neither a partial file nor a truncated old one. Removed on any early
+	// return; cleared once renamed.
+	var stagedAudio string
+	defer func() {
+		if stagedAudio != "" {
+			_ = os.Remove(stagedAudio)
+		}
+	}()
+
+	// An expired token is routine (a form left open too long), so send the admin
+	// back to the same form with a warning rather than a bare 500. The check runs
+	// before the audio file is copied or anything is written, so a refused
+	// upload leaves no file behind; the admin must re-select the file.
+	id := strings.TrimSpace(ctx.Request().FormValue("sermon_id"))
+	formURL := "/admin/sermons/new"
+	if id != "" && id != "0" {
+		formURL = "/admin/sermons/edit/" + id
+	}
+	// apparently embedded fields cannot be set immediately in a literal struct
+	// we'll set those after the object is created
+	serPres := sermon.Presenter{}
+	serPres.Id = ctx.Request().FormValue("sermon_id")
+	serPres.Title = ctx.Request().FormValue("sermon_title")
+	serPres.Summary = ctx.Request().FormValue("sermon_summary")
+	serPres.Body = ctx.Request().FormValue("sermon_body")
+	serPres.DateTaught = ctx.Request().FormValue("sermon_date")
+	serPres.PlaceTaught = ctx.Request().FormValue("sermon_place")
+	serPres.Teacher = ctx.Request().FormValue("pastor-teacher")
+	serPres.Categories = strings.Split(ctx.Request().FormValue("categories"), ",")
+	serPres.ScriptureRefs = strings.Split(ctx.Request().FormValue("scripture_refs"), ",")
+
+	// Get username from session
+	sess, err := cctx.GetSession(ctx)
+	if err == nil && sess != nil {
+		serPres.UpdatedBy = sess.Username
+	}
+
+	if ctx.Request().FormValue("published") == "on" {
+		serPres.Published = true
+	}
+	// refuse sends the admin back to the form, keeping what they typed
+	// (core/formdraft). Only the text fields come back: a browser can't
+	// refill a file input, so any audio has to be chosen again.
+	refuse := func(msg string) error {
+		draft := serPres
+		draft.AudioLink = "" // the form keeps the stored link
+		formdraft.Save(ctx, formURL, draft)
+		return app.RedirectError(ctx, formURL, msg)
+	}
+
+	// The token is checked after reading the text fields (which has no side
+	// effects) so an expired form still hands back what was typed.
+	csrf := ctx.Request().FormValue("csrf")
+	// Check that this token is present and valid in the in-process kvstore
+	if !app.VerifyFormToken(csrf) {
+		draft := serPres
+		draft.AudioLink = ""
+		formdraft.Save(ctx, formURL, draft)
+		return app.RedirectWarn(ctx, formURL,
+			"Your form has expired and was not saved. Your changes are still in the form (except any audio file); please save again.")
+	}
+
+	// Refuse bad input before touching the filesystem. The audio is streamed
+	// to a temp file before the DB save, so refusing input first avoids
+	// writing an upload only to throw it away. Also, GetYear picks the upload
+	// directory from DateTaught.
+	//
+	//	expired token / refused input ──► form, warn/error   nothing written
+	//	audio copy fault              ──► form, error        no DB write; temp
+	//	                                                     file removed
+	//	DB handle / upsert fault      ──► form, error        no DB write (single
+	//	                                                     Insert/Update); temp
+	//	                                                     file removed, any old
+	//	                                                     audio untouched
+	//	rename fault (after save)     ──► list, error        row saved; temp file
+	//	                                                     removed, old audio
+	//	                                                     (if any) untouched
+	if err := serPres.Validate(); err != nil {
+		msg, _ := inputerr.UserMessage(err) // Validate returns only InputErrors
+		return refuse(msg + ". The sermon was not saved.")
+	}
+
+	// The DB handle is fetched here, before the audio copy, because resolving
+	// the publish flag reads the stored value. A refusal at this point must
+	// cost no file, for the same reason Validate runs first (see above).
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return refuse("The sermon could not be saved: the database is unavailable.")
+	}
+
+	// Publishing is its own permission, resolved field by field rather than by
+	// refusing the save: someone who may edit but not publish can still save
+	// their edits, and the flag keeps its stored value (false on create). See
+	// authz.ResolveFlag.
+	actor, ok := authz.ActorFrom(ctx)
+	if !ok {
+		// Admin routes always run behind AdminGuard, so no actor means a
+		// wiring bug. Fail closed rather than publish unchecked.
+		return refuse("Your permissions could not be confirmed. The sermon was not saved.")
+	}
+	submittedFlag := serPres.Published
+	serPres.Published, err = authz.ResolveFlag(dbH, actor, authz.SermonsPublish, authz.FlagSermonPublished, serPres.Id, submittedFlag)
+	if err != nil {
+		logger.LogErr(err, "Error resolving sermon published flag", "sermon_id", serPres.Id)
+		return refuse("Error saving the sermon. It was not saved.")
+	}
+	// The form renders the switch disabled (with the stored value in a hidden
+	// field) for anyone lacking the permission, so a difference here means a
+	// stale form or a hand-built post. Say what happened instead of silently
+	// ignoring the box.
+	flagNote := ""
+	if serPres.Published != submittedFlag {
+		flagNote = " Publishing needs the sermons.publish permission, so the published setting was left as it was."
+	}
+	serYear := serPres.GetYear()
+
+	// Here we don't want to always err if form file is just not set
+	sermonAudio, sermonHeader, err := ctx.Request().GetFormFile("sermon_audio")
+	if err == nil && sermonAudio != nil && sermonHeader != nil && sermonHeader.Filename != "" { // If all conditions are good upload the sermon contents
+		defer sermonAudio.Close()
+
+		const audioFailMsg = "The audio file could not be stored, so the sermon was not saved."
+
+		// Apparently sermonHeader.Filename is coming in url encoded
+		filenameDecoded, err := url.QueryUnescape(sermonHeader.Filename)
+		if err != nil {
+			logger.LogErr(err, "when", "un-escaping filename", "filename", sermonHeader.Filename)
+			return refuse("The audio file name could not be read; please rename the file and try again. The sermon was not saved.")
+		}
+
+		// The name must be a plain file name. Browsers send only the base
+		// name, so a path ("../../cfg/options.yml") is a hand-built request
+		// that would otherwise write outside the sermons directory. It is
+		// refused rather than trimmed, because the audio link below is built
+		// from the name as sent and would no longer match the stored file.
+		// A leading dot is refused too: staged uploads and the cache cleanup
+		// walker both treat dot files as not-a-sermon.
+		baseName := filepath.Base(filenameDecoded)
+		if baseName != filenameDecoded || strings.ContainsAny(filenameDecoded, `/\`) ||
+			baseName == ".." || strings.HasPrefix(baseName, ".") {
+			return refuse("The audio file name isn't usable; please rename the file and try again. The sermon was not saved.")
+		}
+
+		localFileSpec = path.Join(config.Options.IDrive.LocalSermonsDir, serYear, baseName)
+
+		sermonDir := filepath.Dir(localFileSpec)
+		err = fileops.EnsureDir(sermonDir)
+		if err != nil {
+			logger.LogErr(err, "error ensuring local directory exists for sermon", "localFileSpec", localFileSpec)
+			return refuse(audioFailMsg)
+		}
+
+		sermonAudioURL := path.Join(sermonsURLPrefix, serYear, sermonHeader.Filename)
+
+		// Stage in the destination directory, so the final rename stays on one
+		// filesystem and is atomic. The leading dot keeps the cache cleanup
+		// walker from treating a staged file as a sermon (it skips hidden files).
+		dest, err := os.CreateTemp(sermonDir, "."+baseName+".upload-*")
+		if err != nil {
+			logger.LogErr(err, "when", "creating temp file for sermon upload", "dir", sermonDir)
+			return refuse(audioFailMsg)
+		}
+		stagedAudio = dest.Name()
+
+		// Copy file contents. Close is checked too: a write can fail only
+		// when the buffered data is flushed on close.
+		_, copyErr := io.Copy(dest, sermonAudio)
+		closeErr := dest.Close()
+		if copyErr != nil || closeErr != nil {
+			logger.LogErr(serr.New("sermon upload copy failed"), "copy_err", fmt.Sprint(copyErr),
+				"close_err", fmt.Sprint(closeErr), "filename", sermonHeader.Filename)
+			return refuse(audioFailMsg)
+		}
+
+		fileUploaded = true
+
+		serPres.AudioLink = "/" + sermonAudioURL
+		logger.Info("New sermon file uploaded", "upload_path", serPres.AudioLink)
+
+	} else { // We are not uploading a sermon, what else can we do?
+		if ctx.Request().FormValue("audio-link-ovrd") == "on" {
+			serPres.AudioLink = ctx.Request().FormValue("audio_link")
+			logger.Warn("Audio link manually overridden to: " + serPres.AudioLink)
+		} else {
+			logger.Info("Sermon updated, but audio file not updated")
+		}
+	}
+
+	// Save it (dbH was obtained above, before the audio copy)
+	slug, err := serPres.Upsert(dbH)
+	// fmt.Printf("*|* serPres --> %#v\n", serPres)
+	if err != nil {
+		if msg, isInput := inputerr.UserMessage(err); isInput {
+			// Validate already ran, so this is a rule it does not cover yet
+			return refuse(msg + ". The sermon was not saved.")
+		}
+		logger.LogErr(err, "Error in sermon upsert", "sermon_id", serPres.Id, "sermon_title", serPres.Title)
+		return refuse("Error saving the sermon. It was not saved.")
+	}
+
+	msg := "Created"
+	if serPres.Id != "0" && serPres.Id != "" {
+		msg = "Updated"
+	}
+
+	// The row is saved: put the staged audio in place. The rename replaces
+	// any older file of the same name in one step.
+	if stagedAudio != "" {
+		if err := os.Rename(stagedAudio, localFileSpec); err != nil {
+			logger.LogErr(err, "when", "moving staged sermon audio into place", "staged", stagedAudio,
+				"fileSpec", localFileSpec)
+			// The deferred cleanup removes the staged file. The row already
+			// points at the new audio link, so say so plainly.
+			return app.RedirectError(ctx, "/admin/sermons", "Sermon "+msg+
+				", but its audio file could not be put in place. Please upload the audio again.")
+		}
+		stagedAudio = ""
+	}
+
+	if config.Options.IDrive.Enabled && fileUploaded { // Transfer to sermon archive
+		go func() {
+			time.Sleep(cloudUploadDelay)
+
+			logger.Info("Transferring", localFileSpec, "to IDriveE2")
+			err = idrive.PutSermonToIDrive(serYear, localFileSpec)
+			if err != nil {
+				logger.LogErr(err, "Error transferring sermon to IDriveE2", "sermon", localFileSpec)
+				return
+			}
+			logger.Info("Sermon transferred to IDriveE2", "sermonFile", localFileSpec, "slug", slug)
+		}()
+	}
+
+	// Backup will be similar
+	redirectTo := "/admin/sermons"
+	if sess != nil && sess.FormReferrer != "" {
+		redirectTo = sess.FormReferrer // return to the form caller
+	}
+	return app.Redirect(ctx, redirectTo, "Sermon "+msg+flagNote)
+}
+
+func DeleteSermon(ctx rweb.Context) error {
+	// POST + token: the route rejects GET, and the token ties the request to a
+	// page we actually rendered (see grid CSRFToken / app.VerifyRequestFormToken).
+	if ok, err := app.VerifyRequestFormToken(ctx, "/admin/sermons"); !ok {
+		return err
+	}
+	dbH, err := db.Db()
+	if err != nil {
+		logger.LogErr(err, "Could not obtain DB handle")
+		return app.Redirect(ctx, "/admin/sermons", "Error deleting sermon")
+	}
+	err = sermon.DeleteSermonById(dbH, ctx.Request().PathParam("id"))
+	msg := "Sermon with id: " + ctx.Request().PathParam("id") + " deleted"
+	if err != nil {
+		msg = "Error attempting to delete sermon with id: " + ctx.Request().PathParam("id")
+		logger.LogErr(err, msg, "when", "deleting sermon")
+	}
+	return app.Redirect(ctx, "/admin/sermons", msg)
+}
+
+// AdminSermonCleanup renders the admin Sermon Cleanup page: locally-cached
+// sermons whose copy is verified present on IDrive e2, grouped by year, with a
+// batch-delete form.
+func AdminSermonCleanup(ctx rweb.Context) error {
+	// The cleanup tool verifies each local copy against IDrive e2 before deleting,
+	// so it is meaningless (and unsafe) when IDrive is disabled. Flash a notice and
+	// bounce back to the sermons list instead of rendering an empty/broken page.
+	if !config.Options.IDrive.Enabled {
+		return app.RedirectWarn(ctx, "/admin/sermons",
+			"IDrive e2 is not enabled — sermon cleanup is unavailable.")
+	}
+
+	pg, err := page.AdminSermonCleanup()
+	if err != nil {
+		return err
+	}
+	return ctx.WriteHTML(string(base.RenderPageList(pg, ctx)))
+}
+
+// AdminSermonCleanupRun handles the batch-delete POST. The selected IDrive
+// keys arrive in a single newline-delimited hidden field (rweb's FormValue exposes
+// only one value per field), so we split them here. Each is independently
+// re-verified against IDrive e2 inside the service before its local copy is deleted.
+func AdminSermonCleanupRun(ctx rweb.Context) error {
+	// Guard against a stale/forged POST while IDrive is disabled — never delete a
+	// local copy when we cannot verify a cloud copy.
+	if !config.Options.IDrive.Enabled {
+		return app.RedirectWarn(ctx, "/admin/sermons",
+			"IDrive e2 is not enabled — sermon cleanup is unavailable.")
+	}
+
+	csrf := ctx.Request().FormValue("csrf")
+	if !app.VerifyFormToken(csrf) {
+		// Back to the cleanup page, which re-verifies against IDrive and issues a
+		// fresh token. Nothing has been deleted yet.
+		return app.RedirectWarn(ctx, "/admin/sermons/cleanup",
+			"Your form has expired and nothing was deleted. Please review the list and try again.")
+	}
+
+	raw := ctx.Request().FormValue("selected_specs")
+	var specs []string
+	for _, line := range strings.Split(raw, "\n") {
+		if s := strings.TrimSpace(line); s != "" {
+			specs = append(specs, s)
+		}
+	}
+
+	if len(specs) == 0 {
+		return app.Redirect(ctx, "/admin/sermons/cleanup", "No sermons were selected for cleanup")
+	}
+
+	res := idrive.DeleteVerifiedLocalCopies(specs)
+
+	msg := "Deleted " + strconv.Itoa(len(res.Deleted)) + " local sermon copy(ies)"
+	if len(res.Skipped) > 0 {
+		msg += "; " + strconv.Itoa(len(res.Skipped)) + " skipped (kept local)"
+		logger.Warn("Sermon cleanup skipped some files", "skipped", fmt.Sprintf("%v", res.Skipped))
+	}
+	return app.Redirect(ctx, "/admin/sermons/cleanup", msg)
+}

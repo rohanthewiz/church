@@ -16,12 +16,12 @@ import (
 	"github.com/rohanthewiz/rweb"
 )
 
-// Routes registered exactly as in router_rweb.go so paths are part of the test.
+// Routes registered exactly as in router.go so paths are part of the test.
 func newSermonAPIServer() *rweb.Server {
 	s := apitest.NewServer()
 	api := s.Group("/api/v1")
-	api.Get("/sermons", APISermonsRWeb)
-	api.Get("/sermons/:id", APISermonRWeb)
+	api.Get("/sermons", APISermons)
+	api.Get("/sermons/:id", APISermon)
 	return s
 }
 

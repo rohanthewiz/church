@@ -79,8 +79,8 @@ func InitDB(opts DBOpts) error {
 func CloseDB() {
 	// The replicator closes first, before anything below can take the engine
 	// away: its shutdown performs one final ship, and that read needs a live
-	// source. On SIGTERM, ServeRWeb calls this after draining in-flight
-	// requests (see shutdown_rweb.go). If the process dies without getting
+	// source. On SIGTERM, Serve calls this after draining in-flight
+	// requests (see shutdown.go). If the process dies without getting
 	// here (SIGKILL, OOM) that costs little: the next boot starts a fresh
 	// generation and re-ships the whole small file from offset zero.
 	//

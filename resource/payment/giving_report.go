@@ -2,7 +2,7 @@ package payment
 
 // Giving report: one calendar year of charges grouped by month, shared by the
 // admin giving page (module_giving_list.go) and its CSV export
-// (payment_controller.AdminGivingCSVRWeb), so the screen and the download
+// (payment_controller.AdminGivingCSV), so the screen and the download
 // always agree on which gifts a year contains and how they are totalled.
 //
 //	LoadGivingYear ──► EarliestGivingYear  (bounds "« previous year")

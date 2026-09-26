@@ -17,14 +17,14 @@ import (
 	"github.com/rohanthewiz/rweb"
 )
 
-// Routes registered exactly as in router_rweb.go so paths are part of the test.
+// Routes registered exactly as in router.go so paths are part of the test.
 func newChatAPIServer() *rweb.Server {
 	s := apitest.NewServer()
 	api := s.Group("/api/v1")
-	api.Get("/chat/messages", APIChatMessagesRWeb)
-	api.Post("/chat/messages", apitoken.APIGuard(APIChatPostRWeb))
-	api.Post("/chat/messages/:id/keep", apitoken.APIGuard(APIChatKeepRWeb))
-	api.Delete("/chat/messages/:id", apitoken.APIGuard(APIChatDeleteRWeb))
+	api.Get("/chat/messages", APIChatMessages)
+	api.Post("/chat/messages", apitoken.APIGuard(APIChatPost))
+	api.Post("/chat/messages/:id/keep", apitoken.APIGuard(APIChatKeep))
+	api.Delete("/chat/messages/:id", apitoken.APIGuard(APIChatDelete))
 	return s
 }
 

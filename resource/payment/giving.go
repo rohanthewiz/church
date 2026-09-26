@@ -1,7 +1,7 @@
 package payment
 
 // Giving-domain constants and helpers shared by both HTTP layers — the web
-// giving form (payment_controller) and the mobile JSON API (api_rweb.go in
+// giving form (payment_controller) and the mobile JSON API (api.go in
 // this package). They lived in payment_controller until the mobile endpoint
 // needed them; controllers may import resources but never the reverse, so the
 // shared home has to be here.

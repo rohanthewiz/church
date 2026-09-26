@@ -21,8 +21,8 @@ func NewFlash() *Flash {
 	return new(Flash)
 }
 
-// SetRWeb sets flash message for RWeb context
-func (f Flash) SetRWeb(ctx rweb.Context) error {
+// Set sets flash message for RWeb context
+func (f Flash) Set(ctx rweb.Context) error {
 	byts, err := json.Marshal(f)
 	if err != nil {
 		return err
@@ -31,8 +31,8 @@ func (f Flash) SetRWeb(ctx rweb.Context) error {
 	return ctx.SetCookie(flash_cookie_name, b64d)
 }
 
-// GetRWeb retrieves flash message from RWeb context
-func GetRWeb(ctx rweb.Context) (*Flash, error) {
+// Get retrieves flash message from RWeb context
+func Get(ctx rweb.Context) (*Flash, error) {
 	cookieVal, err := ctx.GetCookieAndClear(flash_cookie_name)
 	if err != nil {
 		return nil, err
@@ -47,9 +47,9 @@ func GetRWeb(ctx rweb.Context) (*Flash, error) {
 	return fl, err
 }
 
-// GetOrNewRWeb retrieves flash or creates new one for RWeb
-func GetOrNewRWeb(ctx rweb.Context) *Flash {
-	fl, err := GetRWeb(ctx)
+// GetOrNew retrieves flash or creates new one for RWeb
+func GetOrNew(ctx rweb.Context) *Flash {
+	fl, err := Get(ctx)
 	if err != nil {
 		fl = NewFlash()
 	}

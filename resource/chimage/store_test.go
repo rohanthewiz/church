@@ -62,7 +62,7 @@ func TestStoreAndServeLocal(t *testing.T) {
 	}
 
 	s := rweb.NewServer(rweb.ServerOptions{})
-	s.Get("/assets/img/:filename", ServeImageRWeb)
+	s.Get("/assets/img/:filename", ServeImage)
 
 	r := s.Request("GET", "/assets/img/photo.png.abc.png", nil, nil)
 	if r.Status() != 200 || string(r.Body()) != string(png) {

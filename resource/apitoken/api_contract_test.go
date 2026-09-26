@@ -17,14 +17,14 @@ import (
 	"github.com/rohanthewiz/rweb"
 )
 
-// Routes registered exactly as in router_rweb.go so paths are part of the test.
+// Routes registered exactly as in router.go so paths are part of the test.
 func newAuthAPIServer() *rweb.Server {
 	s := apitest.NewServer()
 	api := s.Group("/api/v1")
-	api.Post("/auth/login", APILoginRWeb)
-	api.Get("/auth/me", APIGuard(APIMeRWeb))
-	api.Post("/auth/logout", APIGuard(APILogoutRWeb))
-	api.Post("/auth/logout-all", APIGuard(APILogoutAllRWeb))
+	api.Post("/auth/login", APILogin)
+	api.Get("/auth/me", APIGuard(APIMe))
+	api.Post("/auth/logout", APIGuard(APILogout))
+	api.Post("/auth/logout-all", APIGuard(APILogoutAll))
 	return s
 }
 

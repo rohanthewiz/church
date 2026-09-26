@@ -35,7 +35,7 @@ func ArticleShow() (*Page, error) {
 	}
 	// Comments: the chat discussion strip under the article. ItemSlug is the
 	// channel PREFIX — combined with the article id (via the _global item_id
-	// param, see basectlr.RenderPageSingleRWeb) it yields a per-article
+	// param, see basectlr.RenderPageSingle) it yields a per-article
 	// channel like "article-42". Comments share chat's lifecycle: gone after
 	// a day unless an editor keeps them.
 	modPres3 := module.Presenter{

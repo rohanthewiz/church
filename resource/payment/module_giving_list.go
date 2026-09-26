@@ -36,7 +36,7 @@ import (
 //
 // The summary is chronological like a ledger; the detail is newest first,
 // because the current month is what's looked at most. The same year is
-// exported by /admin/giving/csv (see payment_controller.AdminGivingCSVRWeb).
+// exported by /admin/giving/csv (see payment_controller.AdminGivingCSV).
 const ModuleTypeGivingList = "giving_list"
 
 type ModuleGivingList struct {

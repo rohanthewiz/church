@@ -263,10 +263,10 @@ exec chpst -e /etc/service/church/env_dir "/home/myuser/go/src/github.com/rohant
 Known improvements queued up, roughly in priority order:
 
 ### Security / correctness
-- **Role-level enforcement in `AdminGuardRWeb`** — the middleware currently only checks that a user is logged in (username present in session). The 5-level role model (SuperAdmin 99, Admin 1, Publisher 5, Editor 7, RegisteredUser 9) should be enforced per route: carry the role in the session and guard admin routes with an appropriate role threshold.
+- **Role-level enforcement in `AdminGuard`** — the middleware currently only checks that a user is logged in (username present in session). The 5-level role model (SuperAdmin 99, Admin 1, Publisher 5, Editor 7, RegisteredUser 9) should be enforced per route: carry the role in the session and guard admin routes with an appropriate role threshold.
 
 ### Architecture
-- **Extract lifecycle from `ServeRWeb`** — seeding (`admin.Bootstrap`), module registration, and IDrive client init are buried inside the serve call; extract so they can be run/tested independently and support multiple instances.
+- **Extract lifecycle from `Serve`** — seeding (`admin.Bootstrap`), module registration, and IDrive client init are buried inside the serve call; extract so they can be run/tested independently and support multiple instances.
 - **Durable kvstore backend** — sessions and CSRF/mobile tokens live in the in-process `core/kvstore`, so a restart logs everyone out and blocks horizontal scaling. Add a pluggable durable backend (e.g. DuckDB/Postgres-backed) behind the same interface.
 - **Reduce package-level globals** — config, db handle, module registry, kvstore, and S3 clients are all package globals, which hinders testing and multi-site-in-one-process setups.
 
@@ -275,7 +275,7 @@ Known improvements queued up, roughly in priority order:
 - **Integration with BlueLetterBible.org** — link scripture references in sermons/articles out to BlueLetterBible (and possibly pull passage text/tools into sermon pages).
 
 ### Ops
-- Verify HTTP Range support in `basectlr.SendAudioFileRWeb` for mobile audio seeking.
+- Verify HTTP Range support in `basectlr.SendAudioFile` for mobile audio seeking.
 
 ## Contributing
 - Contribute only non-styling changes. Styling should be done in your main project

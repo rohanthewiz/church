@@ -39,7 +39,7 @@ func withStripeConfig(t *testing.T, webhookSecret string) {
 
 func newWebhookServer() *rweb.Server {
 	s := apitest.NewServer()
-	s.Post("/webhooks/stripe", StripeWebhookRWeb)
+	s.Post("/webhooks/stripe", StripeWebhook)
 	return s
 }
 

@@ -2,7 +2,7 @@ package auth
 
 import "testing"
 
-// Login verification (auth_controller.AuthHandlerRWeb) recomputes the hash from
+// Login verification (auth_controller.AuthHandler) recomputes the hash from
 // the submitted password and the stored salt, so PasswordHash must be a pure
 // function of (password, salt) — same inputs, same output, across restarts.
 func TestPasswordHashDeterministic(t *testing.T) {

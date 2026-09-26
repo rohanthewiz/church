@@ -21,7 +21,7 @@ func withConfig(t *testing.T, cfg *config.EnvConfig) {
 
 func appConfigServer() *rweb.Server {
 	s := rweb.NewServer(rweb.ServerOptions{})
-	s.Get("/api/v1/app-config", APIAppConfigRWeb)
+	s.Get("/api/v1/app-config", APIAppConfig)
 	return s
 }
 

@@ -565,7 +565,7 @@ func PermsByUser(exec db.Executor) (map[int64]Set, error) {
 //
 // Sources, in order:
 //  1. Not signed in: nil, which is permitted nothing.
-//  2. Admin pages: the permissions AdminGuardRWeb already resolved and passed
+//  2. Admin pages: the permissions AdminGuard already resolved and passed
 //     in render params under ParamKey. No query.
 //  3. Public pages resolve no actor up front, so a signed-in viewer's
 //     permissions are loaded by username — one lookup per render that asks.

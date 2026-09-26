@@ -14,7 +14,7 @@ const ModuleTypeChatDiscussion = "chat_discussion"
 // Channel derivation is what distinguishes it from the top-level module.
 // Opts.ItemSlug acts as the channel PREFIX (e.g. "article"); when the page
 // renders a specific item, the item's id (published by the single-item
-// controllers into the _global params — see basectlr.RenderPageSingleRWeb)
+// controllers into the _global params — see basectlr.RenderPageSingle)
 // is appended, yielding a per-item conversation like "article-42". With no
 // item id in play the prefix alone is the channel, which is exactly right
 // for singleton placements like the prayer wall.

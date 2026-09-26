@@ -8,7 +8,7 @@ import "strings"
 // Three consumers read it, and before it existed each kept its own hand-synced
 // copy:
 //
-//	                    ┌─► router_rweb.go RegisterAdminRoutes — wraps each
+//	                    ┌─► router.go RegisterAdminRoutes — wraps each
 //	                    │   handler in auth_controller.Require(perm); a route
 //	                    │   missing from the table panics at startup
 //	 AdminRoutes ───────┼─► menu.linkPermitted — shows a nav link only if the
