@@ -30,7 +30,7 @@ grmob's own session docs.
 - Open and Roadmap are kept in ID order. Sorted views (by age or value) come
   from `/next-list`.
 
-**Next ID: N-055**
+**Next ID: N-056**
 
 ## Open
 
@@ -221,6 +221,11 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-055** · raised `2026-0926-0818-prod-db-copy-setup` (cema) · closed
+  2026-09-26, `2026-0926-1519-quiet-slack-not-authed`, cema `eb950a0` — cema
+  now enables the logger's Slack hook only when `SLACK_API_TOKEN` is set, so
+  runs without a token no longer print `Error sending log to Slack:
+  not_authed` on every log line. ccswm never enabled the hook.
 - **N-054** · raised `2026-0921-2339-next-list-sweep` · closed 2026-09-23,
   `2026-0923-1556-ci-postgres-tests`, `80193e2` — CI runs a `postgres:16` service (user `devuser`, a superuser as
   the image's `POSTGRES_USER`, so it has CREATEDB and satisfies the charges
