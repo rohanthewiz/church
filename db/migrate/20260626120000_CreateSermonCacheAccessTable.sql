@@ -4,7 +4,11 @@
 -- Tracks locally-cached sermon files downloaded from IDrive e2 so a background
 -- process can evict (delete) stale local copies in LRU fashion once they have
 -- not been accessed for a configured window (see core/idrive cleanup).
-create table sermon_cache_access
+--
+-- `if not exists` throughout: the cema production DB got this table by hand
+-- before the migration was recorded in goose_db_version, so a plain create
+-- would stop `dbc migrate up` there. The existing table matches this DDL.
+create table if not exists sermon_cache_access
 (
 	id bigserial not null
 		constraint sermon_cache_access_pkey
@@ -24,11 +28,11 @@ alter table sermon_cache_access
   owner to devuser; -- be sure to change to the owner of the production DB
 
 -- One row per cached object; the upsert on access relies on this uniqueness.
-create unique index idx_sermon_cache_access_rel_file_spec
+create unique index if not exists idx_sermon_cache_access_rel_file_spec
   on sermon_cache_access (rel_file_spec);
 
 -- The cleanup scan filters/sorts on last_accessed_at.
-create index idx_sermon_cache_access_last_accessed_at
+create index if not exists idx_sermon_cache_access_last_accessed_at
   on sermon_cache_access (last_accessed_at);
 
 -- +goose Down
