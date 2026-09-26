@@ -28,7 +28,7 @@ import (
 // 256 bits, which is unguessable by brute force, and hex-encodes to the same
 // 64-character lowercase string the scrypt-based version produced — so session
 // keys, form tokens and the SuperAdmin bootstrap token keep their shape for
-// anything that stores or compares them (Redis keys, cookies, hidden fields).
+// anything that stores or compares them (kvstore keys, cookies, hidden fields).
 const randomKeyBytes = 32
 
 // randomStringBytes sizes RandomString: 16 bytes = 128 bits → 32 hex chars.

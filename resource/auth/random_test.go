@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// hexOnly pins the alphabet: consumers put these values in cookies, Redis
+// hexOnly pins the alphabet: consumers put these values in cookies, kvstore
 // keys and hidden form fields, all of which are safe with [0-9a-f] and none
 // of which should have to escape anything.
 var hexOnly = regexp.MustCompile(`^[0-9a-f]+$`)

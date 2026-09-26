@@ -2,7 +2,7 @@
 // (multi-year dates, links, edit/delete, popup and HTML cells) into a
 // standalone HTML file so the client-side behavior (sorting, filtering,
 // pagination, year grouping) can be exercised in a browser without the app's
-// Postgres/Redis stack.
+// Postgres stack.
 package main
 
 import (

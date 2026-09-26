@@ -1,8 +1,8 @@
 package payment_controller
 
 // PaymentIntents-flow support shared by the RWeb (and any future) controllers.
-// Kept free of echo/rweb imports so both HTTP layers, and later a webhook handler
-// or mobile API endpoint, can call into it.
+// Kept free of HTTP-framework imports so the RWeb handlers, and later a webhook
+// handler or mobile API endpoint, can call into it.
 
 import (
 	"encoding/json"

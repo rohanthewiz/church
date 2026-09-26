@@ -245,8 +245,7 @@ func finalizePayment(piID string) (receiptURL string, pi *stripe.PaymentIntent, 
 
 // Legacy token+Charges handler, superseded by CreatePaymentIntentRWeb above
 // (Charges API is deprecated by Stripe: no SCA/3DS, no wallets, and it never
-// recorded the giver's name on the Stripe transaction). Kept for reference;
-// its Echo twin was removed along with the rest of the Echo stack.
+// recorded the giver's name on the Stripe transaction). Kept for reference.
 //
 // func UpsertPaymentRWeb(ctx rweb.Context) error {
 // 	csrf := ctx.Request().FormValue("csrf")

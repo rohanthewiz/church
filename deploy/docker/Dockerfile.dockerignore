@@ -26,7 +26,6 @@ church_mobile/          # Flutter app, ~2.6 GB — unrelated to the server image
 *.zip                   # archived legacy projects (~53 MB)
 **/node_modules/        # SCSS/Stylus toolchain; dist/ is built before packaging
 **/sermons/             # cema/sermons is ~92 MB of media; served from IDrive e2
-**/dump.rdb             # leftover from the retired Redis session store
 **/.git/
 **/.idea/
 **/.DS_Store

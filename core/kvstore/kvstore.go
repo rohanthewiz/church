@@ -1,6 +1,6 @@
 // Package kvstore is an in-process key-value store with per-entry TTL.
 //
-// It replaces the previous roredis-backed session/token store. The store is a
+// It holds sessions and short-lived tokens. The store is a
 // map guarded by a sync.RWMutex; each entry carries its own expiresAt time.
 // Expiry is enforced two ways:
 //
@@ -94,8 +94,8 @@ func sweepExpired(now time.Time) {
 }
 
 // Set writes value under key. A positive ttl sets an expiry; a zero or
-// negative ttl stores the entry with no expiry (matches roredis semantics
-// where a zero expiration means persist).
+// negative ttl stores the entry with no expiry (a zero expiration means
+// persist).
 func Set(key, value string, ttl time.Duration) error {
 	if key == "" {
 		return serr.New("kvstore: key is empty on Set")
@@ -134,7 +134,8 @@ func Get(key string) (string, error) {
 	return e.value, nil
 }
 
-// Del removes key. It is a no-op if the key is absent, matching roredis.Del.
+// Del removes key. It is a no-op if the key is absent, so callers can delete
+// unconditionally without a prior existence check.
 func Del(key string) error {
 	mu.Lock()
 	delete(items, key)

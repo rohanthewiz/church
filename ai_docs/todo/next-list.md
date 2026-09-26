@@ -30,7 +30,7 @@ grmob's own session docs.
 - Open and Roadmap are kept in ID order. Sorted views (by age or value) come
   from `/next-list`.
 
-**Next ID: N-056**
+**Next ID: N-057**
 
 ## Open
 
@@ -106,6 +106,13 @@ grmob's own session docs.
   2026-09-21: a session's `rm` of `cema/cfg/random_seeds.txt` was refused by
   the permission gate; nothing reads it (only a comment names it), so the
   owner can delete it by hand.
+- **N-056** · raised `2026-0926-1843-drop-redis-echo-residue` · value low
+  Drop the `_rweb` / `RWeb` suffixes now that Echo is gone and nothing needs
+  telling apart: 37 `*_rweb*.go` files (e.g. `router_rweb.go`,
+  `payment_controller/payment_controller_rweb.go`) and 122 `*RWeb`
+  identifiers. Exported ones are called from cema's and ccswm's `main.go`, so
+  it is a breaking change for the sites (rename in church, bump, re-pin
+  both). Nobody has hit a problem with the names; it's naming noise only.
 ## Roadmap
 
 Wanted, but not now. These are things we mean to do once the immediate work in

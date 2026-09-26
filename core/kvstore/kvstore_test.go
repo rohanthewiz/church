@@ -41,7 +41,7 @@ func TestSetEmptyKeyErrors(t *testing.T) {
 }
 
 func TestZeroTTLPersists(t *testing.T) {
-	// ttl<=0 means no expiry (matches roredis semantics).
+	// ttl<=0 means no expiry.
 	if err := Set("persist:a", "v", 0); err != nil {
 		t.Fatalf("Set: %v", err)
 	}
