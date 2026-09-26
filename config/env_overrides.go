@@ -66,6 +66,15 @@ func envOverride(envCfg *EnvConfig) *EnvConfig {
 	if pgWord := strings.TrimSpace(os.Getenv("PG_WORD")); len(pgWord) > 0 {
 		envCfg.PG.Word = pgWord
 	}
+	// Database name. Environment names are fixed (development/test/production)
+	// and each yaml section names one database, so without this, running the
+	// app against a second database — e.g. a restored copy of prod for
+	// testing — meant hand-editing options.yml. Typical use:
+	//   APP_ENV=test PG_DATABASE=cema_prodcopy ./cema
+	// (the test section also keeps uploads off the live object store).
+	if pgDatabase := strings.TrimSpace(os.Getenv("PG_DATABASE")); len(pgDatabase) > 0 {
+		envCfg.PG.Database = pgDatabase
+	}
 	// Database backup destination + trigger token. Names match the k8s secret
 	// the manifests mount (deploy/k8s/sites/*.yaml, secret <site>-backup) so
 	// one secret feeds both the app pod and the backup CronJob. OBJ_* because
