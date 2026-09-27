@@ -3,8 +3,8 @@
 The one living list of open follow-ups for church and the sites that pin it
 (cema, ccswm). Sessions edit this file in place; they do not copy it forward.
 Each session doc's `## Next` section records only what that session changed
-here (`Closed: … Raised: …`). Mobile follow-ups live in church_mobile's and
-grmob's own session docs.
+here (`Closed: … Raised: …`). Mobile follow-ups live in church_mobile's own
+next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 
 **Conventions**
 
@@ -34,18 +34,6 @@ grmob's own session docs.
 
 ## Open
 
-- **N-003** · raised `2026-0801-0956` · value low
-  API additions for the mobile app, none built (checked 2026-09-19):
-  - item image/thumbnail URLs
-  - event start/end as RFC3339 datetimes
-  - sermon duration/size
-  - a search endpoint and filter facets
-  - a chat `before_id` for deeper history (from `2026-0801-1124`)
-  - a channel discovery endpoint (from `2026-0801-1124`)
-
-  Lapsed after `2026-0801-1124`; recovered 2026-09-19. The app is now on
-  grmob and its docs don't ask for these. Candidate for deletion or for
-  handing to church_mobile.
 - **N-004** · raised `2026-0801-0956` · value low
   Consider a `UNIQUE INDEX on charges(payment_token)` as a DB-level backstop to
   the recording mutex (only if bytdb supports unique indexes). Lapsed after
@@ -221,6 +209,12 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-003** · raised `2026-0801-0956` · closed 2026-09-26, handed off to
+  church_mobile as its N-016 — The mobile API additions (image URLs, RFC3339
+  event times, sermon duration/size, search and facets, chat `before_id`,
+  channel discovery) are driven by what the app needs, and the grmob app
+  doesn't ask for any of them yet, so the item now lives on the app's list.
+  Server work comes back here as a new ID when a screen needs one.
 - **N-056** · raised `2026-0926-1843-drop-redis-echo-residue` · closed
   2026-09-26, `2026-0926-1923-drop-rweb-suffixes`, `a16be77`, v0.12.0 — The `_rweb` file and `RWeb` identifier
   suffixes are gone (36 files, every identifier). Names that would have
