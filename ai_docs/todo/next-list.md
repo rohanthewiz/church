@@ -71,11 +71,6 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 - **N-019** · raised `2026-0913-1747` · value low
   Recurring: after each church push a site depends on, re-pin ccswm and cema.
   Site CI warns when a pin lags.
-- **N-020** · raised `2026-0913-1820` · value low
-  Delete cema's `feature/site-themes`. It is fully merged into `master`
-  (checked 2026-09-19), so deleting it loses nothing. Local and
-  `origin/feature/site-themes` both still exist (2026-09-21); left for the
-  owner as a hard-to-reverse step.
 - **N-021** · raised `2026-0913-1820` · value low
   Mobile moderation UI for a permission-only moderator: check that the
   controls appear once the server sends `can_moderate: true`. The app is on
@@ -209,6 +204,9 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-020** · raised `2026-0913-1820` · closed 2026-09-27 — Both local and
+  `origin/feature/site-themes` deleted from cema; the branch was fully merged
+  into `master` and no longer needed.
 - **N-003** · raised `2026-0801-0956` · closed 2026-09-26, handed off to
   church_mobile as its N-016 — The mobile API additions (image URLs, RFC3339
   event times, sermon duration/size, search and facets, chat `before_id`,
