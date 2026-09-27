@@ -13,6 +13,8 @@ package payment_controller
 
 import (
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -74,7 +76,7 @@ func TestWebhookAcksUnhandledEventTypes(t *testing.T) {
 	// stripe-go binding, so the test event must claim the library's version.
 	signed := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{
 		Payload: []byte(`{"id":"evt_test_1","object":"event","api_version":"` + stripe.APIVersion +
-			`","type":"charge.refunded","data":{"object":{}}}`),
+			`","type":"customer.created","data":{"object":{}}}`),
 		Secret: testSigningSecret,
 	})
 	resp := newWebhookServer().Request("POST", "/webhooks/stripe",
@@ -87,6 +89,74 @@ func TestWebhookAcksUnhandledEventTypes(t *testing.T) {
 	}
 	if !strings.Contains(string(resp.Body()), `"received":"true"`) {
 		t.Errorf("body should ack receipt, got %s", resp.Body())
+	}
+}
+
+// signedEvent builds a Stripe-signed request body for event type typ with
+// data.object obj, claiming the binding's API version (ConstructEvent rejects
+// any other).
+func signedEvent(typ, obj string) *webhook.SignedPayload {
+	return webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{
+		Payload: []byte(`{"id":"evt_test_r","object":"event","api_version":"` + stripe.APIVersion +
+			`","type":"` + typ + `","data":{"object":` + obj + `}}`),
+		Secret: testSigningSecret,
+	})
+}
+
+func postSigned(signed *webhook.SignedPayload) rweb.Response {
+	return newWebhookServer().Request("POST", "/webhooks/stripe",
+		[]rweb.Header{{Key: "Stripe-Signature", Value: signed.Header}},
+		strings.NewReader(string(signed.Payload)))
+}
+
+// A refund on a pre-PaymentIntents charge has no intent to re-record by. It
+// must be acked (so Stripe stops retrying) without touching the DB.
+func TestWebhookRefundWithoutPaymentIntentIsAcked(t *testing.T) {
+	withStripeConfig(t, testSigningSecret)
+	apitest.MockDB(t) // no expectations: nothing may be written
+
+	resp := postSigned(signedEvent("charge.refunded",
+		`{"id":"ch_legacy_1","object":"charge","amount_refunded":500}`))
+	if resp.Status() != http.StatusOK {
+		t.Errorf("status = %d, want 200 (body: %s)", resp.Status(), resp.Body())
+	}
+}
+
+// A refund on a PaymentIntent charge goes to finalizePayment, which must
+// re-retrieve the intent from Stripe instead of trusting the payload's
+// amount_refunded. stripe-go is pointed at a local server that records the
+// request and refuses it, which proves: the intent named in the charge is
+// fetched (with latest_charge expanded, where the refund fields live), the
+// payload alone never reaches the DB, and a failure answers 500 so Stripe
+// retries the refund later. No network access.
+func TestWebhookRefundReRetrievesAndRetriesOnFailure(t *testing.T) {
+	withStripeConfig(t, testSigningSecret)
+	apitest.MockDB(t) // no expectations: the payload must not be written as-is
+
+	var gotPath, gotQuery string
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		// 400, not 5xx: stripe-go retries 5xx, which would only slow the test.
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":{"type":"invalid_request_error","message":"test"}}`))
+	}))
+	defer fake.Close()
+	prevBackend := stripe.GetBackend(stripe.APIBackend)
+	stripe.SetBackend(stripe.APIBackend, stripe.GetBackendWithConfig(stripe.APIBackend,
+		&stripe.BackendConfig{URL: stripe.String(fake.URL), MaxNetworkRetries: stripe.Int64(0)}))
+	t.Cleanup(func() { stripe.SetBackend(stripe.APIBackend, prevBackend) })
+
+	resp := postSigned(signedEvent("charge.refunded",
+		`{"id":"ch_test_1","object":"charge","amount_refunded":500,"refunded":false,"payment_intent":"pi_test_refund"}`))
+	if resp.Status() != http.StatusInternalServerError {
+		t.Errorf("status = %d, want 500 (body: %s)", resp.Status(), resp.Body())
+	}
+	if gotPath != "/v1/payment_intents/pi_test_refund" {
+		t.Errorf("Stripe request path = %q, want the charge's payment intent", gotPath)
+	}
+	if q, _ := url.QueryUnescape(gotQuery); !strings.Contains(q, "expand[0]=latest_charge") {
+		t.Errorf("Stripe request query = %q, want latest_charge expanded", q)
 	}
 }
 

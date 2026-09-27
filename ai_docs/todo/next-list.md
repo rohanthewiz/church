@@ -68,6 +68,17 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 - **N-017** · raised `2026-0913-1725` · value medium
   Check the giving report and the summary CSV against real charge data on
   Postgres, and against Stripe for one month, with `time_zone` set.
+  2026-09-27: `test_scripts/giving_reconcile` does both checks (read-only)
+  and passes on church_test's seeded rows in Chicago, UTC and Auckland. No
+  local database holds real charges and no Stripe key is configured, so the
+  owner's step is to run it against production with
+  `-tz <site zone> -stripe-month YYYY-MM` and a read-only `STRIPE_SECRET_KEY`.
+  Dashboard refunds used to be lost: the webhook handled only
+  `payment_intent.succeeded`. It now handles `charge.refunded` (2026-09-27),
+  but only once each site's Stripe webhook endpoint subscribes to that event.
+  Refunds issued before then still show as `refunded` mismatches. Re-save
+  each one from Stripe (resend the event from the dashboard) or fix it by
+  hand.
 - **N-019** · raised `2026-0913-1747` · value low
   Recurring: after each church push a site depends on, re-pin ccswm and cema.
   Site CI warns when a pin lags.
