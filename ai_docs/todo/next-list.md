@@ -222,11 +222,12 @@ Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
 - **N-056** · raised `2026-0926-1843-drop-redis-echo-residue` · closed
-  2026-09-26, `a16be77`, v0.12.0 — The `_rweb` file and `RWeb` identifier
+  2026-09-26, `2026-0926-1923-drop-rweb-suffixes`, `a16be77`, v0.12.0 — The `_rweb` file and `RWeb` identifier
   suffixes are gone (36 files, every identifier). Names that would have
   clashed got clearer ones: `app.VerifyRequestFormToken`, and `Web`-prefixed
   chat and prayer wall web handlers. `church.ServeRWeb()` is now
-  `church.Serve()`; cema and ccswm re-pinned to v0.12.0.
+  `church.Serve()`; cema (`a337548`) and ccswm (`a53674f`) re-pinned to
+  v0.12.0, CI green on all three.
 - **N-055** · raised `2026-0926-0818-prod-db-copy-setup` (cema) · closed
   2026-09-26, `2026-0926-1519-quiet-slack-not-authed`, cema `eb950a0` — cema
   now enables the logger's Slack hook only when `SLACK_API_TOKEN` is set, so
