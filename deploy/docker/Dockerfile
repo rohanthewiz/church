@@ -24,15 +24,15 @@ ARG SITE=ccswm
 
 # go1.26 matches the toolchain directive in go.work.
 #
-# CGO IS REQUIRED. resource/chimage (inline article-image resizing) imports
-# github.com/h2non/bimg, which is a cgo binding to libvips — with
-# CGO_ENABLED=0 the package does not compile at all ("undefined: Options",
-# "undefined: Gravity", …), so this was never a size/portability trade-off.
-# The rest of the tree genuinely is pure Go (lib/pq, bytdb embedded), which
-# is why the earlier CGO_ENABLED=0 looked plausible right up until it was
-# built. Consequence: the binary links libvips dynamically, so the runtime
-# stage must install matching vips libraries (below) and cannot be scratch
-# or distroless.
+# CGO IS ON HERE BY CHOICE. resource/chimage (inline article-image resizing)
+# uses github.com/h2non/bimg, a cgo binding to libvips, when cgo is enabled
+# (resize_vips.go). With CGO_ENABLED=0 it falls back to a pure-Go resampler
+# (resize_purego.go): slower, and no EXIF auto-rotation. That fallback exists
+# for cross-compiled static binaries (e.g. building linux/amd64 on a Mac for a
+# low-memory VM), not for this image. The rest of the tree is pure Go (lib/pq,
+# bytdb embedded). Consequence of keeping cgo: the binary links libvips
+# dynamically, so the runtime stage must install matching vips libraries
+# (below) and cannot be scratch or distroless.
 FROM golang:1.26-alpine AS build
 ARG SITE
 # build-base: gcc + musl-dev for cgo. vips-dev: libvips headers + .so to link.

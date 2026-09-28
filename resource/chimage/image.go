@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/h2non/bimg"
 	"github.com/rohanthewiz/church/util/stringops"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/serr"
@@ -46,7 +45,9 @@ func ProcessInlineImages(field string) (out string, err error) {
 				height = 400
 			}
 			logger.LogAsync("Info", "Resizing", "height", strconv.Itoa(height))
-			resized, err := bimg.Resize(dUrl.Data, bimg.Options{Height: height})
+			// resizeToHeight is backed by libvips (bimg) in cgo builds and by a
+			// pure-Go resampler otherwise; see resize_vips.go / resize_purego.go.
+			resized, err := resizeToHeight(dUrl.Data, height)
 			if err != nil {
 				logger.LogErr(err, "Could not resize image")
 				return

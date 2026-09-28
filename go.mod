@@ -27,6 +27,7 @@ require (
 	github.com/vattle/sqlboiler v2.5.0+incompatible
 	github.com/vincent-petithory/dataurl v0.0.0-20160330182126-9a301d65acbb
 	golang.org/x/crypto v0.53.0
+	golang.org/x/image v0.40.0
 	gopkg.in/nullbio/null.v6 v6.0.0-20161116030900-40264a2e6b79
 	gopkg.in/yaml.v2 v2.4.0
 )
