@@ -5,7 +5,8 @@
 //   - multi-column sorting (click a header; shift-click adds secondary sorts)
 //   - per-column filters and a quick "search all columns" box
 //   - client-side pagination with a page-size selector
-//   - collapsible year grouping keyed on a date column
+//   - collapsible year grouping keyed on a date column, optionally nested
+//     into month sub-groups
 //   - delete links with a confirm dialog, and click-to-popup cells
 //
 // Design choice: all rows for the current server page are rendered into the
@@ -44,7 +45,11 @@ type Column struct {
 	NoFilter bool   // exclude from the per-column filter row
 	Popup    bool   // clicking a cell in this column pops up its full content
 	GroupBy  bool   // offer "Group by Year" on this column (should be ColDate)
-	Shrink   bool   // keep the column as narrow as its content (ids, actions)
+	// GroupByMonth nests month sub-groups inside each year group. Only
+	// meaningful alongside GroupBy; it is opt-in because low-volume lists
+	// (a handful of rows per year) read better with the flat year grouping.
+	GroupByMonth bool
+	Shrink       bool // keep the column as narrow as its content (ids, actions)
 }
 
 // Cell is one table cell. Text is HTML-escaped on render; HTML is trusted raw
@@ -104,6 +109,13 @@ type Grid struct {
 // parsing) keeps us tolerant of any display format that contains a year.
 var yearRe = regexp.MustCompile(`(19|20)\d\d`)
 
+// yearMonthRe extracts "yyyy-mm" for month sub-grouping. Unlike the year,
+// a month can't be pulled from an arbitrary format without ambiguity
+// (01/02/2026 is Jan or Feb depending on locale), so only the ISO prefix
+// used by config.DisplayDateFormat is recognized. Rows that don't match
+// still group by year; the JS files them under an "Other" month.
+var yearMonthRe = regexp.MustCompile(`\b((?:19|20)\d\d)-(0[1-9]|1[0-2])\b`)
+
 // groupColIndex returns the index of the column marked GroupBy, or -1.
 func (g Grid) groupColIndex() int {
 	for i, col := range g.Columns {
@@ -114,14 +126,21 @@ func (g Grid) groupColIndex() int {
 	return -1
 }
 
+// groupByMonth reports whether the grouping column also asks for month
+// sub-groups.
+func (g Grid) groupByMonth(groupCol int) bool {
+	return groupCol >= 0 && groupCol < len(g.Columns) && g.Columns[groupCol].GroupByMonth
+}
+
 // Render writes the grid. Structure (classes are what the JS/CSS key off):
 //
-//	div.ch-grid [data-page-size] [data-group-col]
+//	div.ch-grid [data-page-size] [data-group-col] [data-group-month]
 //	├── div.ch-grid-toolbar (.ch-grid-jsonly — hidden until JS initializes)
 //	│     input.ch-grid-search | button.ch-grid-groupbtn? | span.ch-grid-count
 //	├── div.ch-grid-scroll > table.ch-grid-table
 //	│     thead: header row (th.ch-grid-sortable) + filter row (.ch-grid-jsonly)
-//	│     tbody: one tr per row [data-year on the group column's year]
+//	│     tbody: one tr per row [data-year, data-month ("yyyy-mm") when
+//	│            month grouping is on]
 //	├── div.ch-grid-pager (.ch-grid-jsonly — populated by JS)
 //	└── div.ch-grid-serverpager (plain links; works without JS)
 func (g Grid) Render(b *element.Builder) (x any) {
@@ -130,6 +149,9 @@ func (g Grid) Render(b *element.Builder) (x any) {
 	wrapAttrs := []string{"data-page-size", strconv.Itoa(g.PageSize)}
 	if groupCol >= 0 {
 		wrapAttrs = append(wrapAttrs, "data-group-col", strconv.Itoa(groupCol))
+		if g.groupByMonth(groupCol) {
+			wrapAttrs = append(wrapAttrs, "data-group-month", "1")
+		}
 	}
 	if g.CSRFToken != "" {
 		wrapAttrs = append(wrapAttrs, "data-csrf", esc(g.CSRFToken))
@@ -173,7 +195,11 @@ func (g Grid) renderToolbar(b *element.Builder, groupCol int) (x any) {
 		b.Input("class", "ch-grid-search", "type", "search", "placeholder", "Search..."),
 		b.Wrap(func() {
 			if groupCol >= 0 {
-				b.Button("class", "ch-grid-groupbtn", "type", "button").T("Group by Year")
+				label := "Group by Year"
+				if g.groupByMonth(groupCol) {
+					label = "Group by Month"
+				}
+				b.Button("class", "ch-grid-groupbtn", "type", "button").T(label)
 			}
 		}),
 		b.SpanClass("ch-grid-count").F("%d rows", len(g.Rows)),
@@ -239,6 +265,7 @@ func (g Grid) renderHead(b *element.Builder) (x any) {
 }
 
 func (g Grid) renderBody(b *element.Builder, groupCol int) (x any) {
+	byMonth := g.groupByMonth(groupCol)
 	b.TBody().R(
 		b.Wrap(func() {
 			if len(g.Rows) == 0 {
@@ -262,6 +289,11 @@ func (g Grid) renderBody(b *element.Builder, groupCol int) (x any) {
 					}
 					if year := yearRe.FindString(dateVal); year != "" {
 						trAttrs = append(trAttrs, "data-year", year)
+					}
+					if byMonth {
+						if ym := yearMonthRe.FindString(dateVal); ym != "" {
+							trAttrs = append(trAttrs, "data-month", ym)
+						}
 					}
 				}
 				b.Tr(trAttrs...).R(

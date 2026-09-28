@@ -30,7 +30,7 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 - Open and Roadmap are kept in ID order. Sorted views (by age or value) come
   from `/next-list`.
 
-**Next ID: N-057**
+**Next ID: N-058**
 
 ## Open
 
@@ -100,6 +100,12 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   2026-09-21: a session's `rm` of `cema/cfg/random_seeds.txt` was refused by
   the permission gate; nothing reads it (only a comment names it), so the
   owner can delete it by hand.
+- **N-057** · raised `2026-0928-0100-sermons-group-by-month` · value low
+  Optional: turn on month sub-grouping for the events list too
+  (`GroupByMonth: true` on the "Event Date" column in
+  `resource/event/module_events_list.go`). Sermons have it; events still
+  group by year only. Only worth it if a site's event volume makes year
+  groups long.
 ## Roadmap
 
 Wanted, but not now. These are things we mean to do once the immediate work in

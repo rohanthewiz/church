@@ -1,7 +1,7 @@
 // Preview harness for the grid package: renders a sample sermons-style grid
 // (multi-year dates, links, edit/delete, popup and HTML cells) into a
 // standalone HTML file so the client-side behavior (sorting, filtering,
-// pagination, year grouping) can be exercised in a browser without the app's
+// pagination, year/month grouping) can be exercised in a browser without the app's
 // Postgres stack.
 package main
 
@@ -27,7 +27,7 @@ func main() {
 	}
 	g.Columns = []grid.Column{
 		{Header: "Id", Type: grid.ColNum, Shrink: true},
-		{Header: "Date Preached", Type: grid.ColDate, Width: 120, GroupBy: true},
+		{Header: "Date Preached", Type: grid.ColDate, Width: 120, GroupBy: true, GroupByMonth: true},
 		{Header: "Title"},
 		{Header: "Scripture Refs."},
 		{Header: "Categories", Popup: true},

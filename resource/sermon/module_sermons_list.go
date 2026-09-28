@@ -82,7 +82,9 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 	actor := authz.FromParams(params)
 
 	// Grid setup — columns mirror the former AG Grid defs; the date column
-	// drives the year-grouping toggle. Column and row ordering must agree.
+	// drives the year/month-grouping toggle (sermons are weekly, so a year
+	// group alone is ~50 rows; months break that into scannable chunks).
+	// Column and row ordering must agree.
 	g := grid.Grid{
 		Class:        "sermons-list-grid",
 		EmptyMessage: "No sermons found",
@@ -94,7 +96,7 @@ func (m *ModuleSermonsList) Render(params map[string]map[string]string, loggedIn
 		g.Columns = append(g.Columns, grid.Column{Header: "Id", Type: grid.ColNum, Shrink: true})
 	}
 	g.Columns = append(g.Columns,
-		grid.Column{Header: "Date Preached", Type: grid.ColDate, Width: 120, GroupBy: true},
+		grid.Column{Header: "Date Preached", Type: grid.ColDate, Width: 120, GroupBy: true, GroupByMonth: true},
 		grid.Column{Header: "Title"},
 		grid.Column{Header: "Scripture Refs."},
 		grid.Column{Header: "Categories", Popup: true},

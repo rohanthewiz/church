@@ -135,6 +135,9 @@ const CSS = `
   cursor: pointer; user-select: none; font-weight: 700; color: var(--chg-accent);
   background: var(--chg-accent-soft); border-bottom: 1px solid var(--chg-border);
 }
+/* Month sub-group rows nest under a year row: same tint (so they still read
+   as headers, not data), but indented and lighter so the year dominates. */
+.ch-grid tr.ch-grid-month-row td { padding-left: 1.6rem; font-weight: 600; }
 .ch-grid .ch-grid-caret { display: inline-block; font-size: 0.75em; transition: transform 0.15s ease; }
 .ch-grid tr.ch-grid-year-row:not(.ch-grid-collapsed) .ch-grid-caret { transform: rotate(90deg); }
 .ch-grid .ch-grid-year-count {
@@ -177,6 +180,7 @@ const CSS = `
   .ch-grid .ch-grid-groupbtn { padding: 0.55rem 1rem; min-height: 44px; }
   .ch-grid .ch-grid-pager select { min-height: 44px; padding: 0.3rem 0.4rem; }
   .ch-grid tr.ch-grid-year-row td { padding: 0.7rem 0.6rem; }
+  .ch-grid tr.ch-grid-month-row td { padding-left: 1.4rem; }
   /* Row action links (Edit/Delete) get a real tap area on touch screens */
   .ch-grid .ch-grid-table td a { display: inline-block; padding: 0.5rem 0.45rem; margin: -0.35rem 0; }
 }
@@ -202,6 +206,9 @@ function chGridInit(root) {
     return !tr.classList.contains('ch-grid-empty-row');
   });
   var groupCol = root.hasAttribute('data-group-col') ? parseInt(root.getAttribute('data-group-col'), 10) : -1;
+  // Month sub-groups nest inside each year group when the server stamped
+  // data-month ("yyyy-mm") on the rows.
+  var groupMonth = root.hasAttribute('data-group-month');
   // Server paging active: the client pager is suppressed (it would page just
   // this server slice next to the working server pager) and counts are
   // labeled per-page so "20 rows" can't read as "20 records total".
@@ -215,7 +222,8 @@ function chGridInit(root) {
     pageSize: parseInt(root.getAttribute('data-page-size'), 10) > 0
       ? parseInt(root.getAttribute('data-page-size'), 10) : 25,
     grouped: false,
-    collapsed: {}       // year -> explicit collapsed state once the user toggles
+    collapsed: {}       // group key -> explicit collapsed state once the user toggles;
+                        // year keys ("2026") and month keys ("2026-09") can't collide
   };
 
   function cellVal(tr, idx) {
@@ -263,10 +271,51 @@ function chGridInit(root) {
     return sorted;
   }
 
-  function isCollapsed(year, groupIndex) {
+  function isCollapsed(key, groupIndex) {
     // First group open by default (matches the sermon-cleanup convention);
-    // a user toggle overrides the default from then on.
-    return state.collapsed.hasOwnProperty(year) ? state.collapsed[year] : groupIndex > 0;
+    // a user toggle overrides the default from then on. Applied per level, so
+    // the first month of each open year starts open too.
+    return state.collapsed.hasOwnProperty(key) ? state.collapsed[key] : groupIndex > 0;
+  }
+
+  var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December'];
+
+  // Month keys are "yyyy-mm", or "<year>-other" for rows whose date didn't
+  // yield a month server-side.
+  function monthLabel(key) {
+    var m = /-(\d\d)$/.exec(key);
+    return m ? MONTHS[parseInt(m[1], 10) - 1] : 'Other';
+  }
+
+  // bucket splits rows by keyFn, keeping groups in first-appearance order so
+  // the group sequence follows whatever sort is active.
+  function bucket(rows, keyFn) {
+    var groups = {}, order = [];
+    rows.forEach(function(tr) {
+      var k = keyFn(tr);
+      if (!groups[k]) { groups[k] = []; order.push(k); }
+      groups[k].push(tr);
+    });
+    return { groups: groups, order: order };
+  }
+
+  // groupHeader builds a clickable collapse/expand row. Month rows carry both
+  // classes so they inherit the year-row look (and caret rotation) and only
+  // override what differs.
+  function groupHeader(key, text, count, collapsed, cls) {
+    var hdr = document.createElement('tr');
+    hdr.className = cls + (collapsed ? ' ch-grid-collapsed' : '');
+    var td = document.createElement('td');
+    td.colSpan = headerCells.length;
+    td.innerHTML = '<span class="ch-grid-caret">▶</span> ' + text +
+      '<span class="ch-grid-year-count">' + count + '</span>';
+    hdr.appendChild(td);
+    hdr.addEventListener('click', function() {
+      state.collapsed[key] = !collapsed;
+      render();
+    });
+    return hdr;
   }
 
   function render() {
@@ -275,29 +324,31 @@ function chGridInit(root) {
     var label;
 
     if (state.grouped && groupCol >= 0) {
-      var groups = {}, order = [];
-      rows.forEach(function(tr) {
-        var y = tr.getAttribute('data-year') || 'Other';
-        if (!groups[y]) { groups[y] = []; order.push(y); }
-        groups[y].push(tr);
-      });
-      order.forEach(function(y, gi) {
-        var collapsed = isCollapsed(y, gi);
-        var hdr = document.createElement('tr');
-        hdr.className = 'ch-grid-year-row' + (collapsed ? ' ch-grid-collapsed' : '');
-        var td = document.createElement('td');
-        td.colSpan = headerCells.length;
-        td.innerHTML = '<span class="ch-grid-caret">▶</span> ' + y +
-          '<span class="ch-grid-year-count">' + groups[y].length + '</span>';
-        hdr.appendChild(td);
-        hdr.addEventListener('click', function() {
-          state.collapsed[y] = !isCollapsed(y, gi);
-          render();
+      // Layout when month grouping is on (collapsed groups omit their body):
+      //   ▶ 2026 (12)                 ch-grid-year-row
+      //       ▶ September (4)         ch-grid-year-row ch-grid-month-row
+      //           row, row, ...
+      //       ▶ August (5)
+      //   ▶ 2025 (48)
+      var appendRow = function(tr) { frag.appendChild(tr); };
+      var years = bucket(rows, function(tr) { return tr.getAttribute('data-year') || 'Other'; });
+      years.order.forEach(function(y, gi) {
+        var yRows = years.groups[y];
+        var yCollapsed = isCollapsed(y, gi);
+        frag.appendChild(groupHeader(y, y, yRows.length, yCollapsed, 'ch-grid-year-row'));
+        if (yCollapsed) return;
+        if (!groupMonth) { yRows.forEach(appendRow); return; }
+
+        var months = bucket(yRows, function(tr) { return tr.getAttribute('data-month') || (y + '-other'); });
+        months.order.forEach(function(m, mi) {
+          var mRows = months.groups[m];
+          var mCollapsed = isCollapsed(m, mi);
+          frag.appendChild(groupHeader(m, monthLabel(m), mRows.length, mCollapsed,
+            'ch-grid-year-row ch-grid-month-row'));
+          if (!mCollapsed) mRows.forEach(appendRow);
         });
-        frag.appendChild(hdr);
-        if (!collapsed) groups[y].forEach(function(tr) { frag.appendChild(tr); });
       });
-      label = rows.length + ' rows in ' + order.length + ' year group(s)';
+      label = rows.length + ' rows in ' + years.order.length + ' year group(s)';
     } else if (serverPaged) {
       rows.forEach(function(tr) { frag.appendChild(tr); });
       label = rows.length + ' rows on this page';
@@ -428,7 +479,7 @@ function chGridInit(root) {
     });
   }
 
-  // --- year grouping toggle
+  // --- year (and month) grouping toggle
   var groupBtn = root.querySelector('.ch-grid-groupbtn');
   if (groupBtn && groupCol >= 0) {
     groupBtn.addEventListener('click', function() {

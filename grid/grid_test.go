@@ -112,3 +112,27 @@ func TestHTMLCellRawAndPopup(t *testing.T) {
 		t.Errorf("popup column should mark its cells:\n%s", out)
 	}
 }
+
+// Month sub-grouping is opt-in: without GroupByMonth no month attrs appear;
+// with it the wrapper is flagged and each row carries its "yyyy-mm" key.
+func TestRenderMonthGrouping(t *testing.T) {
+	g := testGrid()
+	out := g.RenderString()
+	if strings.Contains(out, "data-group-month") || strings.Contains(out, "data-month") {
+		t.Errorf("month grouping attrs rendered without GroupByMonth:\n%s", out)
+	}
+
+	g.Columns[1].GroupByMonth = true
+	out = g.RenderString()
+	for _, want := range []string{
+		`data-group-month="1"`,
+		`data-month="2026-07"`,
+		`data-month="2025-01"`,
+		`data-year="2026"`, // year grouping still stamped alongside
+		">Group by Month<",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("rendered grid missing %q\n%s", want, out)
+		}
+	}
+}
