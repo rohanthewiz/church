@@ -83,6 +83,41 @@ func OpenBytDB(t testing.TB) {
 // database, or skips the test when EnvPostgresDSN is unset.
 func OpenPostgres(t testing.TB) {
 	t.Helper()
+	pg := throwawayPostgres(t, "church_smoke")
+	applyMigrations(t, pg.URL)
+
+	if err := db.InitDB(db.DBOpts{DBType: db.DBTypes.Postgres, Host: pg.Host, Port: pg.Port,
+		User: pg.User, Word: pg.Word, Database: pg.Database}); err != nil {
+		t.Fatalf("InitDB postgres: %v", err)
+	}
+	t.Cleanup(db.CloseDB)
+	t.Logf("postgres test database: %s", pg.Database)
+}
+
+// PG locates a throwaway Postgres database. The parts mirror the site
+// config's pg / pg2 blocks (db.InitDB and db.InitDB2 take the connection in
+// parts and build a key=value string with sslmode=disable, as the site
+// config does); URL is the same database as a postgres:// DSN for sql.Open.
+type PG struct {
+	Host, Port, User, Word, Database string
+	URL                              string
+}
+
+// EmptyPostgres creates a throwaway Postgres database with no schema at all,
+// dropped when the test ends, or skips the test when EnvPostgresDSN is unset.
+// It is for tests that need a database other than the site's own, such as
+// the legacy source that sermon.Import reads through the pg2 config, where
+// the test creates exactly the tables it needs.
+func EmptyPostgres(t testing.TB) PG {
+	t.Helper()
+	return throwawayPostgres(t, "church_empty")
+}
+
+// throwawayPostgres creates database <prefix>_<nanos> on the EnvPostgresDSN
+// server and registers its DROP, skipping (or failing, under
+// EnvPostgresRequired) when the DSN is unset.
+func throwawayPostgres(t testing.TB, prefix string) PG {
+	t.Helper()
 	dsn := os.Getenv(EnvPostgresDSN)
 	if dsn == "" {
 		if os.Getenv(EnvPostgresRequired) != "" {
@@ -103,14 +138,15 @@ func OpenPostgres(t testing.TB) {
 
 	// The name is generated here, never taken from input, so quoting it into
 	// DDL (which takes no bind parameters) is safe.
-	name := fmt.Sprintf("church_smoke_%d", time.Now().UnixNano())
+	name := fmt.Sprintf("%s_%d", prefix, time.Now().UnixNano())
 	if _, err := admin.Exec(`CREATE DATABASE ` + name); err != nil {
 		t.Fatalf("create throwaway database: %v", err)
 	}
 	// Registered before anything else can fail, so a failed migration still
-	// drops the database. Cleanups run last-in first-out: db.CloseDB (below)
-	// releases the site's connections before this DROP runs, and FORCE ends
-	// any a failed test left open.
+	// drops the database. Cleanups run last-in first-out: anything the caller
+	// registers afterwards (db.CloseDB in OpenPostgres) releases its
+	// connections before this DROP runs, and FORCE ends any a failed test
+	// left open.
 	t.Cleanup(func() {
 		if _, err := admin.Exec(`DROP DATABASE IF EXISTS ` + name + ` WITH (FORCE)`); err != nil {
 			t.Errorf("drop throwaway database %s: %v", name, err)
@@ -119,21 +155,13 @@ func OpenPostgres(t testing.TB) {
 
 	target := *u
 	target.Path = "/" + name
-	applyMigrations(t, target.String())
-
-	// db.InitDB takes the connection in parts (it builds a key=value string
-	// with sslmode=disable, as the site config does).
 	pass, _ := u.User.Password()
 	port := u.Port()
 	if port == "" {
 		port = "5432"
 	}
-	if err := db.InitDB(db.DBOpts{DBType: db.DBTypes.Postgres, Host: u.Hostname(), Port: port,
-		User: u.User.Username(), Word: pass, Database: name}); err != nil {
-		t.Fatalf("InitDB postgres: %v", err)
-	}
-	t.Cleanup(db.CloseDB)
-	t.Logf("postgres test database: %s", name)
+	return PG{Host: u.Hostname(), Port: port, User: u.User.Username(), Word: pass,
+		Database: name, URL: target.String()}
 }
 
 // migrationsDir locates db/migrate from this file's own path, so tests in

@@ -30,7 +30,7 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 - Open and Roadmap are kept in ID order. Sorted views (by age or value) come
   from `/next-list`.
 
-**Next ID: N-059**
+**Next ID: N-060**
 
 ## Open
 
@@ -54,17 +54,6 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   site's cutover on the same live duplicates; the recorder would also need a
   unique-violation → update fallback. Reopen if a site ever runs >1 app
   process against one Postgres. Awaiting the owner's decision.
-- **N-009** · raised `2026-0912-1655` · value low
-  Postgres coverage still missing (Postgres is the default). Narrowed
-  2026-09-21 (`4f59179`): `internal/testdb` runs the DB-backed tests on a
-  throwaway Postgres database when `CHURCH_TEST_PG_DSN` is set, which now
-  covers sermon create + audio (with the failed-save path), the giving report
-  with data, charge recording + history, and the `bytdb_wire_check` checks.
-  `/chat/stream` and image upload never touch the database, so they need no
-  Postgres run. Left, both needing something outside the repo:
-  - sermon import (`sermon.Import` reads a legacy `PG2` database)
-  - the Stripe webhook → `finalizePayment` round trip (re-fetches the intent
-    from Stripe, so it needs test-mode keys)
 - **N-010** · raised `2026-0912-1655` · value medium
   Run the roles and `event_locations` migrations (`dbc migrate up`) on any
   Postgres site before deploying current church to it. The dev DB has both.
@@ -115,6 +104,15 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   doesn't match `:valid` yet, so the label doesn't float). Pre-existing, same
   before and after the N-005 slimming. Likely fix: also float the label on
   `input:-webkit-autofill` / `:autofill` in the sites' `_material_form.styl`.
+- **N-059** · raised `2026-0928-2351-n009-postgres-import-webhook-tests` · value low
+  `sermon.Import` (legacy PG2 import) is not safe to re-run or to fail:
+  - a second run fails on the first already-imported sermon, since
+    `sermons.slug` is unique and Import always takes the create path;
+  - a row scan error (e.g. a NULL legacy column scanned into a string)
+    `break`s the loop, yet Import still answers `"success": true` with the
+    partial count.
+  Only matters if an import is ever run again; `TestImportFromLegacyDB` is
+  the harness for a fix.
 
 ## Roadmap
 
@@ -231,6 +229,11 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-009** · raised `2026-0912-1655` · closed 2026-09-28, `2026-0928-2351-n009-postgres-import-webhook-tests` — Neither
+  gap needed anything outside the repo: `TestImportFromLegacyDB` builds the
+  legacy source in a second throwaway Postgres (`testdb.EmptyPostgres`), and
+  `TestWebhookRoundTripOnDB` fakes the Stripe API with httptest. Both run on
+  both backends; the import test caught imports dropping the sermon body.
 - **N-005** · raised `2026-0801-0956` · closed 2026-09-28, `2026-0928-2347-n005-theme-vars-material-form` — In
   cema and ccswm: each theme sets `theme-ui-accent` (its link color; Cobalt
   `null`, so the live sites are unchanged) and `_styl/_framework_vars.styl`

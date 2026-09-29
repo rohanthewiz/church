@@ -8,14 +8,19 @@ package payment_controller
 //
 // No test here gives a charge an email through recordPaymentIntent, because
 // a first recording then sends a receipt through Gmail. History rows are
-// inserted directly instead.
+// inserted directly instead. TestWebhookRoundTripOnDB drives the same
+// recorder through the HTTP handler and a fake Stripe API.
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/rohanthewiz/church/config"
 	"github.com/rohanthewiz/church/db"
 	"github.com/rohanthewiz/church/internal/testdb"
 	"github.com/rohanthewiz/church/models"
@@ -131,6 +136,142 @@ func TestRecentChargesByEmailOnDB(t *testing.T) {
 		}
 		if len(got) != 1 || got[0].PaymentToken != "pi_hist_0" || got[0].AmountPaid.Int64 != 100 {
 			t.Fatalf("second page = %v", tokens(got))
+		}
+	})
+}
+
+// The full webhook round trip on both backends: signed event → StripeWebhook
+// → finalizePayment → Stripe API → recordPaymentIntent → charges row. The
+// Stripe API is a local httptest server (as in webhook_test.go), so no
+// test-mode keys or network are needed. It serves the intent's CURRENT state,
+// which the test changes between deliveries the way Stripe's would change:
+//
+//	delivery                         fake API serves        expect
+//	payment_intent.succeeded         succeeded, no refund   200, row inserted
+//	payment_intent.succeeded (again) same                   200, still 1 row
+//	charge.refunded                  refunded 1500          200, row updated
+//	payment_intent.succeeded (pi_2)  requires_payment_...   500, no row
+//
+// The event bodies carry deliberately wrong amounts: the handler takes only
+// the intent id from them, so a recorded payload value would show up as a
+// wrong amount here. No email is set anywhere, so no receipt is sent.
+func TestWebhookRoundTripOnDB(t *testing.T) {
+	testdb.Each(t, func(t *testing.T) {
+		withStripeConfig(t, testSigningSecret)
+		config.Options.Stripe.PrivKey = "sk_test_fake" // finalizePayment installs it as stripe.Key
+		prevKey := stripe.Key
+		t.Cleanup(func() { stripe.Key = prevKey })
+		dbH, err := db.Db()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Current Stripe-side state per intent id, as the API would return it
+		// with latest_charge expanded. Guarded because the handler's Stripe
+		// call runs on the request path while the test mutates between calls.
+		var (
+			mu    sync.Mutex
+			state = map[string]string{}
+			hits  = map[string]int{}
+		)
+		const piPath = "/v1/payment_intents/"
+		fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			defer mu.Unlock()
+			id := strings.TrimPrefix(r.URL.Path, piPath)
+			body, ok := state[id]
+			w.Header().Set("Content-Type", "application/json")
+			if !strings.HasPrefix(r.URL.Path, piPath) || !ok {
+				w.WriteHeader(http.StatusNotFound)
+				_, _ = w.Write([]byte(`{"error":{"type":"invalid_request_error","message":"no such intent"}}`))
+				return
+			}
+			hits[id]++
+			_, _ = w.Write([]byte(body))
+		}))
+		defer fake.Close()
+		prevBackend := stripe.GetBackend(stripe.APIBackend)
+		stripe.SetBackend(stripe.APIBackend, stripe.GetBackendWithConfig(stripe.APIBackend,
+			&stripe.BackendConfig{URL: stripe.String(fake.URL), MaxNetworkRetries: stripe.Int64(0)}))
+		t.Cleanup(func() { stripe.SetBackend(stripe.APIBackend, prevBackend) })
+
+		intent := func(id, status string, refunded bool, amtRefunded int64) string {
+			return fmt.Sprintf(`{"id":%q,"object":"payment_intent","status":%q,"amount_received":5000,
+				"description":"Offering","metadata":{"customer_name":"Ana Ruiz","comment":"building fund"},
+				"latest_charge":{"id":"ch_%s","object":"charge","captured":true,"paid":true,
+				"refunded":%t,"amount_refunded":%d,"receipt_number":"RT-1",
+				"receipt_url":"https://pay.stripe.com/receipts/rt"}}`,
+				id, status, id, refunded, amtRefunded)
+		}
+		setState := func(id, body string) { mu.Lock(); state[id] = body; mu.Unlock() }
+		deliver := func(typ, obj string, wantStatus int) {
+			t.Helper()
+			resp := postSigned(signedEvent(typ, obj))
+			if resp.Status() != wantStatus {
+				t.Fatalf("%s: status = %d, want %d (body: %s)", typ, resp.Status(), wantStatus, resp.Body())
+			}
+		}
+		type row struct {
+			n                   int
+			name, comment, meta string
+			amt, amtRefunded    int64
+			paid, refunded      bool
+		}
+		read := func(id string) (r row) {
+			t.Helper()
+			if err := dbH.QueryRow(`SELECT count(*) FROM charges WHERE payment_token = $1`, id).Scan(&r.n); err != nil {
+				t.Fatal(err)
+			}
+			if r.n == 0 {
+				return r
+			}
+			err := dbH.QueryRow(`SELECT customer_name, comment, meta, amount_paid, amount_refunded, paid, refunded
+				FROM charges WHERE payment_token = $1`, id).
+				Scan(&r.name, &r.comment, &r.meta, &r.amt, &r.amtRefunded, &r.paid, &r.refunded)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return r
+		}
+
+		// 1. First delivery inserts from the API's values, not the payload's.
+		setState("pi_rt_1", intent("pi_rt_1", "succeeded", false, 0))
+		succeeded := `{"id":"pi_rt_1","object":"payment_intent","status":"succeeded","amount_received":999999}`
+		deliver("payment_intent.succeeded", succeeded, http.StatusOK)
+		r := read("pi_rt_1")
+		if r.n != 1 || r.name != "Ana Ruiz" || r.comment != "building fund" || r.amt != 5000 ||
+			!r.paid || r.refunded || r.meta != `{"stripe_charge_id":"ch_pi_rt_1"}` {
+			t.Fatalf("after first delivery: %+v", r)
+		}
+
+		// 2. Stripe redelivers (at-least-once): still one row.
+		deliver("payment_intent.succeeded", succeeded, http.StatusOK)
+		if r = read("pi_rt_1"); r.n != 1 {
+			t.Fatalf("after redelivery: %d rows, want 1", r.n)
+		}
+
+		// 3. A dashboard refund: the event's amount_refunded is wrong on
+		// purpose; the row must take the API's 1500.
+		setState("pi_rt_1", intent("pi_rt_1", "succeeded", false, 1500))
+		deliver("charge.refunded",
+			`{"id":"ch_pi_rt_1","object":"charge","amount_refunded":1,"payment_intent":"pi_rt_1"}`, http.StatusOK)
+		if r = read("pi_rt_1"); r.n != 1 || r.amtRefunded != 1500 || r.amt != 5000 {
+			t.Fatalf("after refund: %+v", r)
+		}
+
+		// 4. An intent that is not money in motion gets no row, and a 500 so
+		// Stripe retries in case the state is about to change.
+		setState("pi_rt_2", intent("pi_rt_2", "requires_payment_method", false, 0))
+		deliver("payment_intent.succeeded", `{"id":"pi_rt_2","object":"payment_intent"}`,
+			http.StatusInternalServerError)
+		if r = read("pi_rt_2"); r.n != 0 {
+			t.Fatalf("incomplete intent was recorded: %+v", r)
+		}
+
+		mu.Lock()
+		defer mu.Unlock()
+		if hits["pi_rt_1"] != 3 || hits["pi_rt_2"] != 1 {
+			t.Errorf("Stripe fetches = %v, want one per delivery", hits)
 		}
 	})
 }

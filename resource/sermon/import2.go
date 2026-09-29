@@ -87,6 +87,10 @@ func Import() (byts []byte) {
 		pres := Presenter{}
 		pres.Title = ir.Name
 		pres.Summary = ir.Summary
+		// The body was length-checked above but never copied, so every
+		// imported sermon arrived without its text (found by
+		// TestImportFromLegacyDB).
+		pres.Body = ir.Body
 		pres.ScriptureRefs = stringops.StringSplitAndTrim(ir.ScriptureRefs, ",")
 		if len(pres.ScriptureRefs) < 1 {
 			pres.ScriptureRefs = []string{""}

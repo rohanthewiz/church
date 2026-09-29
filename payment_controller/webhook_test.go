@@ -8,8 +8,9 @@ package payment_controller
 //
 // The payment_intent.succeeded happy path is NOT driven through the HTTP
 // handler here: it re-retrieves the intent from Stripe's API (by design — the
-// handler never trusts the webhook body), which cannot run offline. The
-// recording logic behind it is covered directly via recordPaymentIntent.
+// handler never trusts the webhook body), and a mock DB can't show the row
+// that results. TestWebhookRoundTripOnDB (record_db_test.go) drives it end to
+// end against real databases, with the Stripe API faked by a local server.
 
 import (
 	"net/http"
