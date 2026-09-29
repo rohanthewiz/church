@@ -30,7 +30,7 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 - Open and Roadmap are kept in ID order. Sorted views (by age or value) come
   from `/next-list`.
 
-**Next ID: N-058**
+**Next ID: N-059**
 
 ## Open
 
@@ -54,12 +54,6 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   site's cutover on the same live duplicates; the recorder would also need a
   unique-violation → update fallback. Reopen if a site ever runs >1 app
   process against one Postgres. Awaiting the owner's decision.
-- **N-005** · raised `2026-0801-0956` · value low
-  Site theme stylus tidy-up:
-  - add `--af-*` / `--chg-*` overrides to the sites' theme files (none exist)
-  - slim the old material-form classes; `page/login_form.go` is their only user
-
-  Lapsed after `2026-0801-0956`; recovered 2026-09-19.
 - **N-009** · raised `2026-0912-1655` · value low
   Postgres coverage still missing (Postgres is the default). Narrowed
   2026-09-21 (`4f59179`): `internal/testdb` runs the DB-backed tests on a
@@ -115,6 +109,13 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   `resource/event/module_events_list.go`). Sermons have it; events still
   group by year only. Only worth it if a site's event volume makes year
   groups long.
+- **N-058** · raised `2026-0928-2347-n005-theme-vars-material-form` · value low
+  Login form: when Chrome autofills the password before any interaction, the
+  "Password" label stays over the dots until the page is clicked (autofill
+  doesn't match `:valid` yet, so the label doesn't float). Pre-existing, same
+  before and after the N-005 slimming. Likely fix: also float the label on
+  `input:-webkit-autofill` / `:autofill` in the sites' `_material_form.styl`.
+
 ## Roadmap
 
 Wanted, but not now. These are things we mean to do once the immediate work in
@@ -230,6 +231,12 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-005** · raised `2026-0801-0956` · closed 2026-09-28, `2026-0928-2347-n005-theme-vars-material-form` — In
+  cema and ccswm: each theme sets `theme-ui-accent` (its link color; Cobalt
+  `null`, so the live sites are unchanged) and `_styl/_framework_vars.styl`
+  maps it to `--af-*` / `--chg-*` on `body .af-scope` / `body .ch-grid`.
+  `_material_form.styl` slimmed from 501 lines to the login form's rules, all
+  scoped under `.wrapper-material-form` (half the old rules leaked globally).
 - **N-020** · raised `2026-0913-1820` · closed 2026-09-27 — Both local and
   `origin/feature/site-themes` deleted from cema; the branch was fully merged
   into `master` and no longer needed.
