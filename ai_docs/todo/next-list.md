@@ -45,6 +45,15 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   file would never get the index, because `ensureBytDBSchema` only creates
   missing tables. `TestRecordPaymentIntentOnDB` now proves the mutex under 8
   concurrent deliveries on both backends.
+  Re-checked 2026-09-28 (`2026-0928-2339-n004-unique-index-recommendation`):
+  recommend closing as won't-do. Every deployment is one process per
+  database (bytdb is single-writer; k8s pins `replicas: 1` + `Recreate`), so
+  the process-wide `recordMu` already covers every writer. Extra cost found:
+  `pg_to_bytdb` bootstraps through the production schema and aborts on any
+  failed insert, so an index in the bytdb `charges` tableDef would block a
+  site's cutover on the same live duplicates; the recorder would also need a
+  unique-violation → update fallback. Reopen if a site ever runs >1 app
+  process against one Postgres. Awaiting the owner's decision.
 - **N-005** · raised `2026-0801-0956` · value low
   Site theme stylus tidy-up:
   - add `--af-*` / `--chg-*` overrides to the sites' theme files (none exist)
