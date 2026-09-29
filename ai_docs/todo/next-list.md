@@ -74,10 +74,6 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 - **N-019** · raised `2026-0913-1747` · value low
   Recurring: after each church push a site depends on, re-pin ccswm and cema.
   Site CI warns when a pin lags.
-- **N-021** · raised `2026-0913-1820` · value low
-  Mobile moderation UI for a permission-only moderator: check that the
-  controls appear once the server sends `can_moderate: true`. The app is on
-  grmob now; this belongs in church_mobile's docs.
 - **N-022** · raised `2026-0913-1820` · value low
   Optional: add `chat.moderate` by hand to Publisher and Editor on sites whose
   default roles were seeded before it existed. Legacy roles moderate either
@@ -229,6 +225,12 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-021** · raised `2026-0913-1820` · closed 2026-09-28, `2026-0928-2354-n021-mobile-can-moderate` — The
+  check failed: `8a71947` had ported `can_moderate` to the Flutter model only,
+  so the grmob app's `api.User.CanModerate()` stayed role-only and a
+  permission-only moderator got no controls. Fixed in church_mobile
+  (`ServerCanModerate *bool`, preferred over the role rule) with model and
+  session tests; not yet walked on a device (church_mobile N-001).
 - **N-009** · raised `2026-0912-1655` · closed 2026-09-28, `2026-0928-2351-n009-postgres-import-webhook-tests` — Neither
   gap needed anything outside the repo: `TestImportFromLegacyDB` builds the
   legacy source in a second throwaway Postgres (`testdb.EmptyPostgres`), and
