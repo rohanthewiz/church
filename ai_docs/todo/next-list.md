@@ -84,12 +84,6 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   2026-09-21: a session's `rm` of `cema/cfg/random_seeds.txt` was refused by
   the permission gate; nothing reads it (only a comment names it), so the
   owner can delete it by hand.
-- **N-057** · raised `2026-0928-0100-sermons-group-by-month` · value low
-  Optional: turn on month sub-grouping for the events list too
-  (`GroupByMonth: true` on the "Event Date" column in
-  `resource/event/module_events_list.go`). Sermons have it; events still
-  group by year only. Only worth it if a site's event volume makes year
-  groups long.
 - **N-058** · raised `2026-0928-2347-n005-theme-vars-material-form` · value low
   Login form: when Chrome autofills the password before any interaction, the
   "Password" label stays over the dots until the page is clicked (autofill
@@ -215,6 +209,12 @@ dropped; an item can move back to Open if its reason stops holding.
 - **N-045** · declined `2026-0801-0956` — Making the web form token
   single-use. Resubmits after failed validation would break. (Lapsed from the
   lists after `2026-0801-0956`; recovered 2026-09-19.)
+- **N-057** · declined `2026-0928-2356-n057-events-month-grouping-declined` —
+  Month sub-grouping on the events list. The grid opens the first month of the
+  first year, and events sort newest first, so the open month would be the
+  furthest-future one with this month's events collapsed; and there is no
+  evidence of year groups long enough to need it (the list pages server-side).
+  Revisit only after the grid opens the month containing today.
 
 ## Closed
 
