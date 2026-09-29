@@ -74,10 +74,6 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 - **N-019** · raised `2026-0913-1747` · value low
   Recurring: after each church push a site depends on, re-pin ccswm and cema.
   Site CI warns when a pin lags.
-- **N-022** · raised `2026-0913-1820` · value low
-  Optional: add `chat.moderate` by hand to Publisher and Editor on sites whose
-  default roles were seeded before it existed. Legacy roles moderate either
-  way.
 - **N-050** · raised `2026-0920-2035-roadmap-section-and-v0.11.0-release` · value low
   Delete the stale `cfg/random_seeds.txt` on each host and checkout once it
   runs a build at or past church `v0.11.0`; nothing reads it any more. Carried
@@ -225,6 +221,12 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-022** · raised `2026-0913-1820` · closed 2026-09-28, `2026-0928-2355-n022-chat-moderate-seed-check` — Nothing
+  to do: default roles lacked `chat.moderate` only between `0298241` and
+  `de76881` (~2h on 2026-09-13, no tag between), both local Postgres DBs
+  seeded after it and have it on Publisher/Editor, and no bytdb site file
+  exists yet. Reopen only if a site turns up seeded from an untagged build in
+  that window.
 - **N-021** · raised `2026-0913-1820` · closed 2026-09-28, `2026-0928-2354-n021-mobile-can-moderate` — The
   check failed: `8a71947` had ported `can_moderate` to the Flutter model only,
   so the grmob app's `api.User.CanModerate()` stayed role-only and a
