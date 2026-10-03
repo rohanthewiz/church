@@ -64,12 +64,6 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   2026-09-21: a session's `rm` of `cema/cfg/random_seeds.txt` was refused by
   the permission gate; nothing reads it (only a comment names it), so the
   owner can delete it by hand.
-- **N-058** · raised `2026-0928-2347-n005-theme-vars-material-form` · value low
-  Login form: when Chrome autofills the password before any interaction, the
-  "Password" label stays over the dots until the page is clicked (autofill
-  doesn't match `:valid` yet, so the label doesn't float). Pre-existing, same
-  before and after the N-005 slimming. Likely fix: also float the label on
-  `input:-webkit-autofill` / `:autofill` in the sites' `_material_form.styl`.
 - **N-059** · raised `2026-0928-2351-n009-postgres-import-webhook-tests` · value low
   `sermon.Import` (legacy PG2 import) is not safe to re-run or to fail:
   - a second run fails on the first already-imported sermon, since
@@ -209,6 +203,12 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-058** · raised `2026-0928-2347-n005-theme-vars-material-form` · closed 2026-10-03 — Fixed
+  in both sites' `_material_form.styl` (cema and ccswm, CSS rebuilt): the
+  label also floats on `input:-webkit-autofill` and on `input:autofill`, one
+  rule each so a browser that lacks one spelling still applies the other.
+  Not yet seen in a real autofill (needs a saved login); reopen if the
+  Password label still sits over the dots at page load.
 - **N-022** · raised `2026-0913-1820` · closed 2026-09-28, `2026-0928-2355-n022-chat-moderate-seed-check` — Nothing
   to do: default roles lacked `chat.moderate` only between `0298241` and
   `de76881` (~2h on 2026-09-13, no tag between), both local Postgres DBs
