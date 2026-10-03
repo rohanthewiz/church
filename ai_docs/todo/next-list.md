@@ -34,26 +34,6 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 
 ## Open
 
-- **N-004** · raised `2026-0801-0956` · value low
-  Consider a `UNIQUE INDEX on charges(payment_token)` as a DB-level backstop to
-  the recording mutex (only if bytdb supports unique indexes). Lapsed after
-  `2026-0801-0956`; recovered 2026-09-19.
-  Checked 2026-09-21: bytdb v0.11.0 does support `CREATE UNIQUE INDEX`, so
-  the premise holds. What remains is the owner's call: a Postgres migration
-  fails on any live site holding duplicate or repeated empty tokens (the dev
-  DB has no charges, so this can't be checked locally), and an existing bytdb
-  file would never get the index, because `ensureBytDBSchema` only creates
-  missing tables. `TestRecordPaymentIntentOnDB` now proves the mutex under 8
-  concurrent deliveries on both backends.
-  Re-checked 2026-09-28 (`2026-0928-2339-n004-unique-index-recommendation`):
-  recommend closing as won't-do. Every deployment is one process per
-  database (bytdb is single-writer; k8s pins `replicas: 1` + `Recreate`), so
-  the process-wide `recordMu` already covers every writer. Extra cost found:
-  `pg_to_bytdb` bootstraps through the production schema and aborts on any
-  failed insert, so an index in the bytdb `charges` tableDef would block a
-  site's cutover on the same live duplicates; the recorder would also need a
-  unique-violation → update fallback. Reopen if a site ever runs >1 app
-  process against one Postgres. Awaiting the owner's decision.
 - **N-010** · raised `2026-0912-1655` · value medium
   Run the roles and `event_locations` migrations (`dbc migrate up`) on any
   Postgres site before deploying current church to it. The dev DB has both.
@@ -209,6 +189,14 @@ dropped; an item can move back to Open if its reason stops holding.
 - **N-045** · declined `2026-0801-0956` — Making the web form token
   single-use. Resubmits after failed validation would break. (Lapsed from the
   lists after `2026-0801-0956`; recovered 2026-09-19.)
+- **N-004** · declined 2026-10-03, `2026-0928-2339-n004-unique-index-recommendation`
+  — A `UNIQUE INDEX on charges(payment_token)` as a DB-level backstop to
+  `recordMu`. Every deployment is one process per database (bytdb is
+  single-writer; k8s pins `replicas: 1` + `Recreate`), so the process-wide
+  mutex already covers every writer. The index would also break a Postgres
+  migration or a `pg_to_bytdb` cutover on any site with duplicate or repeated
+  empty tokens, and would never reach existing bytdb files. Reopen if a site
+  ever runs more than one app process against one Postgres.
 - **N-057** · declined `2026-0928-2356-n057-events-month-grouping-declined` —
   Month sub-grouping on the events list. The grid opens the first month of the
   first year, and events sort newest first, so the open month would be the
