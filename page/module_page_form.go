@@ -230,7 +230,8 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 					),
 				),
 				b.PClass("af-help", "id", "pf_empty").T("No modules yet — a page renders its modules, so add at least one."),
-				b.Div("id", "pf_modules").R(),
+				// data-af-sort: drag-to-reorder by each card's grip (template/admin_script.go)
+				b.Div("id", "pf_modules", "data-af-sort", "").R(),
 			),
 
 			b.DivClass("af-footer").R(

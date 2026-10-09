@@ -55,8 +55,10 @@ func Page(buffer *bytes.Buffer, page *page.Page, flsh *flash.Flash, params map[s
 
 	// Admin pages carry the framework's own admin stylesheet (see admin_css.go)
 	// so every admin screen looks the same on every site with no stylus rebuild.
+	// AdminJS (admin_script.go) adds drag-to-reorder to admin repeater lists.
 	if page.IsAdmin {
 		b.Style().T(AdminCSS)
+		b.Script("type", "text/javascript").T(AdminJS)
 	}
 
 	b.T(`</head><body class="theme-` + config.Options.Theme + `">`)

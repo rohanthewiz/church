@@ -29,6 +29,7 @@ package template
 //	.af-switch                   checkbox drawn as an on/off switch
 //	.af-footer / .af-submit      form footer bar with primary action
 //	.af-btn / --danger / --ghost small action buttons (module/menu-item rows)
+//	.af-drag-handle / .af-dragging  drag-to-reorder grip ([data-af-sort] lists)
 //	.af-dash*                    admin home dashboard cards
 //	.af-toolbar / .af-yearnav    report toolbar with year navigation
 //	.af-actions                  a wrapping row of toolbar buttons
@@ -140,6 +141,24 @@ const AdminCSS = `
 .af-btn--primary:hover { background: var(--af-accent-hover); color: #fff; }
 .af-btn--danger:hover { border-color: var(--af-danger); color: var(--af-danger); }
 .af-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+/* Drag-to-reorder (behavior in admin_script.go). The grip is a 2x3 dot pattern
+   painted with currentColor so it follows the button colors; touch-action:none
+   stops a touch drag on it from scrolling the page instead. */
+[data-af-sort] { position: relative; }
+.af-drag-handle { display: inline-flex; align-items: center; justify-content: center;
+	flex: none; align-self: stretch; min-width: 1.9rem; color: var(--af-text-faint);
+	border: 1px solid transparent; border-radius: 5px; cursor: grab;
+	touch-action: none; user-select: none; -webkit-user-select: none;
+	transition: color 0.15s ease, border-color 0.15s ease; }
+.af-drag-handle::before { content: ''; width: 10px; height: 16px;
+	background-image: radial-gradient(circle, currentColor 1.6px, transparent 1.9px);
+	background-size: 5px 5.33px; }
+.af-drag-handle:hover { color: var(--af-accent); border-color: var(--af-input-border); }
+.af-dragging { position: relative; z-index: 2; border-color: var(--af-accent) !important;
+	box-shadow: 0 6px 18px rgba(0,0,0,0.18); }
+.af-dragging .af-drag-handle { color: var(--af-accent); }
+body.af-drag-active, body.af-drag-active * { cursor: grabbing !important;
+	user-select: none !important; -webkit-user-select: none !important; }
 /* Editors (Summernote lives in its scoped-bootstrap island); label spacing only */
 .af-editor { margin-bottom: 1rem; }
 .af-editor label { display: block; font-size: 0.82rem; font-weight: 600;

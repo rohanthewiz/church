@@ -94,6 +94,11 @@ var modules, moduleTypes, contentBys;
 		var delBtn = btn('×', 'Remove module', 'af-btn--danger');
 		tools.appendChild(upBtn); tools.appendChild(downBtn);
 		tools.appendChild(togBtn); tools.appendChild(delBtn);
+		// Drag grip, far right. The drag itself is the shared admin behavior
+		// (template/admin_script.go) keyed off #pf_modules[data-af-sort]; ↑/↓ stay
+		// as the keyboard / screen-reader path, so the grip is aria-hidden.
+		tools.appendChild(el('span', 'af-drag-handle',
+			{ title: 'Drag to reorder', 'aria-hidden': 'true' }));
 		head.appendChild(summary); head.appendChild(tools);
 		card.appendChild(head);
 

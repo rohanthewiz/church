@@ -111,6 +111,11 @@ const menuFormJS = `
 		var down = btn('↓', 'Move down');
 		var del = btn('×', 'Remove menu item', 'af-btn--danger');
 		tools.appendChild(up); tools.appendChild(down); tools.appendChild(del);
+		// Drag grip, far right. The drag itself is the shared admin behavior
+		// (template/admin_script.go) keyed off #mf_items[data-af-sort]; ↑/↓ stay
+		// as the keyboard / screen-reader path, so the grip is aria-hidden.
+		tools.appendChild(el('span', 'af-drag-handle',
+			{ title: 'Drag to reorder', 'aria-hidden': 'true' }));
 		row.appendChild(tools);
 
 		up.addEventListener('click', function () {
@@ -290,7 +295,8 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 				b.PClass("af-help").T(`Each item links to a URL like "/pages/page-slug". `+
 					`To make an item open a submenu, set its URL to "#" and put the other menu's slug in Submenu Slug.`),
 				b.PClass("af-help", "id", "mf_empty").T("No items yet — use \"+ Add Item\" to build this menu."),
-				b.Div("id", "mf_items").R(),
+				// data-af-sort: drag-to-reorder by each row's grip (template/admin_script.go)
+				b.Div("id", "mf_items", "data-af-sort", "").R(),
 			),
 
 			b.DivClass("af-footer").R(

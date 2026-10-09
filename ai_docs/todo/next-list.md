@@ -30,7 +30,7 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 - Open and Roadmap are kept in ID order. Sorted views (by age or value) come
   from `/next-list`.
 
-**Next ID: N-060**
+**Next ID: N-061**
 
 ## Open
 
@@ -64,15 +64,12 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   2026-09-21: a session's `rm` of `cema/cfg/random_seeds.txt` was refused by
   the permission gate; nothing reads it (only a comment names it), so the
   owner can delete it by hand.
-- **N-059** · raised `2026-0928-2351-n009-postgres-import-webhook-tests` · value low
-  `sermon.Import` (legacy PG2 import) is not safe to re-run or to fail:
-  - a second run fails on the first already-imported sermon, since
-    `sermons.slug` is unique and Import always takes the create path;
-  - a row scan error (e.g. a NULL legacy column scanned into a string)
-    `break`s the loop, yet Import still answers `"success": true` with the
-    partial count.
-  Only matters if an import is ever run again; `TestImportFromLegacyDB` is
-  the harness for a fix.
+- **N-060** · raised `2026-1009-0744-admin-drag-reorder` · value low
+  Try the new admin drag-to-reorder grips (menu form items, page form module
+  cards) in a running cema: one real mouse drag + save, and one touch drag on
+  a phone. Verified only in a harness of the real form renders with
+  synthetic pointer events (no local admin password at hand); touch relies on
+  `touch-action: none` on `.af-drag-handle` (`template/admin_script.go`).
 
 ## Roadmap
 
@@ -142,6 +139,20 @@ current hosts meanwhile, so nothing in Open waits on these.
   Optional: move `core/s3ops` (media bucket) off aws-sdk-go-v2 onto
   `replicate/s3`. Needs a HEAD/exists call (`ObjectInfo`), which the replicate
   client lacks.
+
+**Sermon import track** — the one-off legacy PG2 import, deferred 2026-10-03.
+Its items matter only if an import is run again; nothing in Open waits on
+them.
+
+- **N-059** · raised `2026-0928-2351-n009-postgres-import-webhook-tests` · value low
+  `sermon.Import` (legacy PG2 import) is not safe to re-run or to fail:
+  - a second run fails on the first already-imported sermon, since
+    `sermons.slug` is unique and Import always takes the create path;
+  - a row scan error (e.g. a NULL legacy column scanned into a string)
+    `break`s the loop, yet Import still answers `"success": true` with the
+    partial count.
+  Only matters if an import is ever run again; `TestImportFromLegacyDB` is
+  the harness for a fix.
 
 ## Non-goals
 
