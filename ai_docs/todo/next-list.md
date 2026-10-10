@@ -19,16 +19,19 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   blocks one named thing, or it is a visible problem nobody routes around yet.
   **low**: nobody has hit it, or it is contingent on something that does not
   exist.
-- **Three places an unfinished item can live.** **Open** is what we intend to
-  pick up next. **Roadmap** is what we want to do in the future, but not
-  immediately. **Non-goals** is what we are likely not to do. An item moves
-  between them freely as plans change, keeping its ID.
-- **Nothing leaves Open without a line in Roadmap, Closed or Non-goals**, and
-  nothing leaves Roadmap without a line in Open, Closed or Non-goals. A silent
-  deletion is the leak this file exists to prevent; `/next-list` checks for it
-  in git history.
-- Open and Roadmap are kept in ID order. Sorted views (by age or value) come
-  from `/next-list`.
+- **Four places an unfinished item can live.** **Open** is the build work we
+  intend to pick up next. **Validate** is the testing we intend to do next:
+  run, look, hear or measure, or write or repair a test, with no product
+  change planned unless the check finds a defect. **Roadmap** is what we want
+  to do in the future, but not immediately. **Non-goals** is what we are
+  likely not to do. An item moves between them freely as plans change,
+  keeping its ID.
+- **Nothing leaves Open, Validate or Roadmap without a line in another
+  section.** A move among those three is not a leak; a silent deletion is the
+  leak this file exists to prevent, and `/next-list` checks for it in git
+  history.
+- Open, Validate and Roadmap are kept in ID order. Sorted views (by age or
+  value) come from `/next-list`.
 
 **Next ID: N-061**
 
@@ -51,9 +54,18 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   Refunds issued before then still show as `refunded` mismatches. Re-save
   each one from Stripe (resend the event from the dashboard) or fix it by
   hand.
-- **N-019** · raised `2026-0913-1747` · value low
+  2026-10-10: the `charge.refunded` handling shipped in `v0.12.1`. cema pins
+  `v0.12.1`; ccswm still pins `v0.12.0` (and has a Stripe/giving config), so
+  ccswm records no dashboard refunds until it is re-pinned (N-019).
+- **N-019** · raised `2026-0913-1747` · value medium
   Recurring: after each church push a site depends on, re-pin ccswm and cema.
   Site CI warns when a pin lags.
+  2026-10-10: a re-pin is due now. ccswm pins `v0.12.0`, so it lacks
+  `v0.12.1`'s refund webhook (N-017) and pure-Go image resize; cema pins
+  `v0.12.1`. Master is 10 commits past `v0.12.1` with untagged product changes
+  (sermons list grouped by month `66e6ccf`, admin drag grips `792f9d6`), so
+  tag `v0.12.2` first, then re-pin both. Value raised from low: it now blocks
+  refund recording on ccswm.
 - **N-050** · raised `2026-0920-2035-roadmap-section-and-v0.11.0-release` · value low
   Delete the stale `cfg/random_seeds.txt` on each host and checkout once it
   runs a build at or past church `v0.11.0`; nothing reads it any more. Carried
@@ -64,12 +76,31 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   2026-09-21: a session's `rm` of `cema/cfg/random_seeds.txt` was refused by
   the permission gate; nothing reads it (only a comment names it), so the
   owner can delete it by hand.
+  2026-10-10: the local checkout is done. `cema/cfg/random_seeds.txt` was
+  moved to the macOS Trash (`~/.Trash/cema-random_seeds.txt`), since `rm` is
+  still refused by the permission gate; nothing read it (the only mention is a
+  history comment in `resource/auth/random.go`). ccswm has no local copy.
+  What remains is the live hosts, after each deploys a build at or past
+  `v0.11.0`. Not in scope but worth knowing: the sibling site `ccgrand` pins a
+  pre-`v0.11.0` church (`8076c91`), so it still reads its own
+  `cfg/random_seeds.txt`; that file only goes stale once ccgrand moves past
+  `v0.11.0`.
+
+## Validate
+
+Testing we intend to do next: the remaining work is to run, look, hear or
+measure, or to write or repair a test. No product change is planned unless the
+check finds a defect; a defect found becomes a new Open item, named here.
+
 - **N-060** · raised `2026-1009-0744-admin-drag-reorder` · value low
   Try the new admin drag-to-reorder grips (menu form items, page form module
   cards) in a running cema: one real mouse drag + save, and one touch drag on
   a phone. Verified only in a harness of the real form renders with
   synthetic pointer events (no local admin password at hand); touch relies on
-  `touch-action: none` on `.af-drag-handle` (`template/admin_script.go`).
+  `touch-action: none` on `.af-drag-handle` (`template/admin_css.go`; the
+  pointer handlers are in `template/admin_script.go`). The grips are untagged
+  (past `v0.12.1`), so the cema under test must be a workspace build until
+  N-019's `v0.12.2` re-pin lands. Moved from Open 2026-10-10: pure check.
 
 ## Roadmap
 
@@ -102,6 +133,9 @@ current hosts meanwhile, so nothing in Open waits on these.
   unproven in Docker (Alpine); CI proves it only on Ubuntu. If bimg/libvips
   8.15 causes trouble, pin an older Alpine or use a pure-Go resizer. Blocks
   N-001.
+  2026-10-10: the pure-Go fallback now exists (`27c624f`, `v0.12.1`):
+  `CGO_ENABLED=0` builds resize with `x/image/draw`, so a libvips failure in
+  Alpine can be sidestepped without code work. The image is still unbuilt.
 - **N-007** · raised `2026-0801-1935` · value medium
   Create `ccswm/cfg/options.yml` from the sample, with a real `pg:` block (or
   `db.type: bytdb`), a real `time_zone` and an `idrive` block. Then copy
