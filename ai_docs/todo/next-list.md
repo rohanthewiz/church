@@ -62,10 +62,10 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   Site CI warns when a pin lags.
   2026-10-10: a re-pin is due now. ccswm pins `v0.12.0`, so it lacks
   `v0.12.1`'s refund webhook (N-017) and pure-Go image resize; cema pins
-  `v0.12.1`. Master is 10 commits past `v0.12.1` with untagged product changes
-  (sermons list grouped by month `66e6ccf`, admin drag grips `792f9d6`), so
-  tag `v0.12.2` first, then re-pin both. Value raised from low: it now blocks
-  refund recording on ccswm.
+  `v0.12.1`. Master is past `v0.12.1` (`git log v0.12.1..HEAD`) with
+  untagged product changes (sermons list grouped by month `66e6ccf`, admin
+  drag grips `792f9d6`), so tag `v0.12.2` first, then re-pin both. Value
+  raised from low: it now blocks refund recording on ccswm.
 - **N-050** · raised `2026-0920-2035-roadmap-section-and-v0.11.0-release` · value low
   Delete the stale `cfg/random_seeds.txt` on each host and checkout once it
   runs a build at or past church `v0.11.0`; nothing reads it any more. Carried
