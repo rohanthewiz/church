@@ -37,9 +37,6 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 
 ## Open
 
-- **N-010** · raised `2026-0912-1655` · value medium
-  Run the roles and `event_locations` migrations (`dbc migrate up`) on any
-  Postgres site before deploying current church to it. The dev DB has both.
 - **N-017** · raised `2026-0913-1725` · value medium
   Check the giving report and the summary CSV against real charge data on
   Postgres, and against Stripe for one month, with `time_zone` set.
@@ -248,6 +245,11 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
+- **N-010** · raised `2026-0912-1655` · closed 2026-10-11 — Done on the
+  live cema site (calvaryeastmetro.org): the owner ran `dbc migrate up` there,
+  which applied the roles and `event_locations` migrations (cema's N-001,
+  closed 2026-10-04). ccswm also defaults to Postgres; any ccswm or new
+  Postgres site still needs `dbc migrate up` before it gets current church.
 - **N-058** · raised `2026-0928-2347-n005-theme-vars-material-form` · closed 2026-10-03 — Fixed
   in both sites' `_material_form.styl` (cema and ccswm, CSS rebuilt): the
   label also floats on `input:-webkit-autofill` and on `input:autofill`, one
