@@ -245,7 +245,7 @@ dropped; an item can move back to Open if its reason stops holding.
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
 
-- **N-010** · raised `2026-0912-1655` · closed 2026-10-11 — Done on the
+- **N-010** · raised `2026-0912-1655` · closed 2026-10-11, `2026-1011-1451-close-n010-live-cema-migrations` — Done on the
   live cema site (calvaryeastmetro.org): the owner ran `dbc migrate up` there,
   which applied the roles and `event_locations` migrations (cema's N-001,
   closed 2026-10-04). ccswm also defaults to Postgres; any ccswm or new
