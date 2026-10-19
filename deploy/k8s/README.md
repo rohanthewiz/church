@@ -77,6 +77,15 @@ under `images/`, and `/assets/img/<name>` falls back to that object (caching it
 locally) when the local file is missing. So on a site with IDrive enabled,
 `dist/img/` is only a cache: a fresh container refetches images on demand.
 
+That cache sits in the container's writable layer, so without eviction it grows
+until the pod is replaced. Set `idrive.auto_cleanup: true` in the site's
+options: the same hourly sweep that trims cached sermons then deletes images
+not requested within `idrive.cache_idle_ttl` (default 4h). Access is tracked
+in the `image_cache_access` table, and an image is deleted only after its
+`images/<name>` object is confirmed on e2. Postgres sites need
+`dbc migrate up` for that table (bytdb creates it on boot). Until it exists,
+image serving still works, but each access logs a tracking error.
+
 - **cema** (IDrive enabled) has no uploads mount.
 - **ccswm** keeps the `uploads` subdirectory mount of its data volume until its
   `options.yml` enables IDrive and its existing images have been copied up.

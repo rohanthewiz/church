@@ -47,7 +47,8 @@ func Serve() {
 
 	idrive.InitClient()
 
-	// Background LRU eviction of locally-cached sermons downloaded from IDrive e2.
+	// Background LRU eviction of locally-cached media from IDrive e2: sermons,
+	// and article images in dist/img/ (see core/idrive/image_cache.go).
 	// Scans hourly and deletes copies idle > 4h, but only after confirming the
 	// object still exists on IDrive e2. Opt-in: only runs when idrive.auto_cleanup
 	// is true. The admin Sermon Cleanup tool works regardless of this flag.

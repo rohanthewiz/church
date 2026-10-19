@@ -1,22 +1,30 @@
 package idrive
 
-// sermon_cache.go implements an LRU-style eviction strategy for sermon files that
-// have been downloaded from IDrive e2 and cached on the local disk.
+// sermon_cache.go implements an LRU-style eviction strategy for media files that
+// have been downloaded from IDrive e2 and cached on the local disk. It began with
+// sermons and now also covers editor-uploaded article images (image_cache.go);
+// each kind of media is a cacheIndex with its own tracking table.
 //
 // Lifecycle:
-//  1. GetSermon serves a sermon (either a fresh download or a local cache hit) and
-//     calls TrackSermonAccess, which upserts a row in `sermon_cache_access` and
-//     bumps last_accessed_at to now.
-//  2. StartCacheCleanup launches a background ticker (hourly). Each pass selects
-//     rows whose last_accessed_at is older than the idle window (4h) and, for each,
-//     verifies the object still exists on IDrive e2 before deleting the local copy.
+//  1. A media read path serves a file (either a fresh download or a local cache
+//     hit) and calls its Track*Access function, which upserts a row in the kind's
+//     tracking table (`sermon_cache_access`, `image_cache_access`) and bumps
+//     last_accessed_at to now.
+//  2. StartCacheCleanup launches a background ticker (hourly). Each pass, for each
+//     cacheIndex, selects rows whose last_accessed_at is older than the idle window
+//     (4h) and, for each, verifies the object still exists on IDrive e2 before
+//     deleting the local copy.
 //
 // Design notes:
 //   - We use raw database/sql via db.Db() rather than a SQLBoiler model so that
-//     adding this table does not require regenerating the ORM models.
+//     adding these tables does not require regenerating the ORM models.
 //   - The cloud-existence check is a hard precondition for deletion: if we cannot
 //     confirm the object exists on IDrive e2 (missing, or an indeterminate error),
 //     we keep the local copy. The local file may be the only surviving copy.
+//   - One table per media kind, rather than one shared table, keeps the admin
+//     Sermon Cleanup listing (LastAccessedByRelSpec) sermon-only, and lets a kind
+//     be dropped or retuned without touching the other's rows. The tables have
+//     identical shape, so the SQL is shared and only the table name varies.
 
 import (
 	"os"
@@ -65,6 +73,25 @@ func resolveDuration(raw string, def time.Duration, field string) time.Duration 
 	return d
 }
 
+// cacheIndex identifies one kind of locally-cached IDrive media: the table that
+// tracks its access times, and a label for log lines. Table names are compile-time
+// constants (never user input), which is what makes formatting them into SQL safe.
+type cacheIndex struct {
+	table string // tracking table: id, created_at, last_accessed_at, rel_file_spec (unique), local_file_spec
+	label string // "sermon", "image": used in log messages
+}
+
+var sermonCache = cacheIndex{table: "sermon_cache_access", label: "sermon"}
+
+// objectExists is the IDrive e2 existence check eviction depends on. A package
+// variable rather than a direct call so tests can stand in for e2: the s3ops
+// client is a process-wide singleton built on first use, which a test cannot
+// point at a fake endpoint and then reset.
+var objectExists = s3ops.ObjectExists
+
+// cacheIndexes are the kinds the background eviction loop sweeps, in order.
+var cacheIndexes = []cacheIndex{sermonCache, imageCache}
+
 // TrackSermonAccess records (or refreshes) the access time of a locally-cached
 // sermon. It is safe to call on every serve; an upsert keeps a single row per
 // object and pushes last_accessed_at forward so hot files are never evicted.
@@ -73,24 +100,29 @@ func resolveDuration(raw string, def time.Duration, field string) time.Duration 
 // never interfere with serving the sermon to the user. Callers typically invoke
 // this in a goroutine.
 func TrackSermonAccess(relFileSpec, localFileSpec string) {
+	sermonCache.trackAccess(relFileSpec, localFileSpec)
+}
+
+// trackAccess upserts the access row for one cached object in this index's table.
+func (ci cacheIndex) trackAccess(relFileSpec, localFileSpec string) {
 	dbh, err := db.Db()
 	if err != nil {
-		logger.LogErr(serr.Wrap(err, "cache-track: could not obtain DB handle"))
+		logger.LogErr(serr.Wrap(err, "cache-track: could not obtain DB handle", "kind", ci.label))
 		return
 	}
 
 	now := time.Now()
 	// ON CONFLICT on the unique rel_file_spec turns this into an upsert:
 	// insert on first download, refresh last_accessed_at on subsequent accesses.
-	const q = `
-		INSERT INTO sermon_cache_access (created_at, last_accessed_at, rel_file_spec, local_file_spec)
+	q := `
+		INSERT INTO ` + ci.table + ` (created_at, last_accessed_at, rel_file_spec, local_file_spec)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (rel_file_spec)
 		DO UPDATE SET last_accessed_at = EXCLUDED.last_accessed_at,
 		              local_file_spec  = EXCLUDED.local_file_spec`
 	if _, err = dbh.Exec(q, now, now, relFileSpec, localFileSpec); err != nil {
-		logger.LogErr(serr.Wrap(err, "cache-track: failed to upsert sermon access record",
-			"relFileSpec", relFileSpec))
+		logger.LogErr(serr.Wrap(err, "cache-track: failed to upsert access record",
+			"kind", ci.label, "relFileSpec", relFileSpec))
 	}
 }
 
@@ -102,14 +134,14 @@ func StartCacheCleanup() {
 	cleanupInterval = resolveDuration(config.Options.IDrive.CacheCleanupInterval, defaultCacheCleanupInterval, "idrive.cache_cleanup_interval")
 	cacheIdleTTL = resolveDuration(config.Options.IDrive.CacheIdleTTL, defaultCacheIdleTTL, "idrive.cache_idle_ttl")
 
-	logger.Info("Starting sermon cache cleanup",
+	logger.Info("Starting media cache cleanup (sermons, images)",
 		"interval", cleanupInterval.String(), "idleTTL", cacheIdleTTL.String())
 
 	go func() {
 		// Recover so a panic in a cleanup pass can never take down the process.
 		defer func() {
 			if r := recover(); r != nil {
-				logger.Info("Recovered from panic in sermon cache cleanup loop",
+				logger.Info("Recovered from panic in media cache cleanup loop",
 					"panic", r)
 			}
 		}()
@@ -120,42 +152,53 @@ func StartCacheCleanup() {
 		// Run an initial pass shortly after startup rather than waiting a full
 		// interval, so a process that restarts often still gets a chance to clean up.
 		time.Sleep(time.Minute)
-		runCacheCleanupPass()
+		runCacheCleanupPasses()
 
 		for range ticker.C {
-			runCacheCleanupPass()
+			runCacheCleanupPasses()
 		}
 	}()
 }
 
-// cachedSermon is an in-memory view of a sermon_cache_access row needed for eviction.
-type cachedSermon struct {
+// runCacheCleanupPasses sweeps every cacheIndex once. The kinds run one after
+// another, not in parallel: a pass is a handful of HEAD requests and deletes, and
+// keeping them sequential bounds the load on the IDrive endpoint.
+func runCacheCleanupPasses() {
+	for _, ci := range cacheIndexes {
+		ci.runCleanupPass()
+	}
+}
+
+// cachedFile is an in-memory view of a tracking row (any cacheIndex table) needed
+// for eviction.
+type cachedFile struct {
 	id            int64
 	relFileSpec   string
 	localFileSpec string
 }
 
-// runCacheCleanupPass performs a single eviction sweep: find idle cached sermons,
-// confirm each exists on IDrive e2, then delete the local copy and its tracking row.
-func runCacheCleanupPass() {
+// runCleanupPass performs a single eviction sweep of one cacheIndex: find idle
+// cached objects, confirm each exists on IDrive e2, then delete the local copy and
+// its tracking row.
+func (ci cacheIndex) runCleanupPass() {
 	dbh, err := db.Db()
 	if err != nil {
-		logger.LogErr(serr.Wrap(err, "cache-cleanup: could not obtain DB handle"))
+		logger.LogErr(serr.Wrap(err, "cache-cleanup: could not obtain DB handle", "kind", ci.label))
 		return
 	}
 
 	cutoff := time.Now().Add(-cacheIdleTTL)
 
-	candidates, err := selectIdleCachedSermons(dbh, cutoff)
+	candidates, err := ci.selectIdle(dbh, cutoff)
 	if err != nil {
-		logger.LogErr(serr.Wrap(err, "cache-cleanup: failed to query idle cached sermons"))
+		logger.LogErr(serr.Wrap(err, "cache-cleanup: failed to query idle cached files", "kind", ci.label))
 		return
 	}
 	if len(candidates) == 0 {
 		return
 	}
 
-	logger.Info("Sermon cache cleanup pass", "candidates", len(candidates),
+	logger.Info("Media cache cleanup pass", "kind", ci.label, "candidates", len(candidates),
 		"idleSince", cutoff.Format(time.RFC3339))
 
 	var evicted int
@@ -163,47 +206,49 @@ func runCacheCleanupPass() {
 		// Hard precondition: never delete the local copy unless the cloud copy is
 		// confirmed present. ObjectExists returns (false, nil) only for a definitive
 		// "not found"; any indeterminate error comes back as (false, err) and we skip.
-		exists, err := s3ops.ObjectExists(c.relFileSpec)
+		exists, err := objectExists(c.relFileSpec)
 		if err != nil {
 			logger.LogErr(serr.Wrap(err, "cache-cleanup: could not verify IDrive copy; keeping local file",
-				"relFileSpec", c.relFileSpec))
+				"kind", ci.label, "relFileSpec", c.relFileSpec))
 			continue
 		}
 		if !exists {
 			logger.Info("cache-cleanup: IDrive copy missing; keeping local file (possibly only copy)",
-				"relFileSpec", c.relFileSpec)
+				"kind", ci.label, "relFileSpec", c.relFileSpec)
 			continue
 		}
 
 		// Remove the local cached file. A not-exist error is benign (file already
 		// gone) and we still want to clear the stale tracking row below.
 		if err = os.Remove(c.localFileSpec); err != nil && !os.IsNotExist(err) {
-			logger.LogErr(serr.Wrap(err, "cache-cleanup: failed to delete local sermon copy",
-				"localFileSpec", c.localFileSpec))
+			logger.LogErr(serr.Wrap(err, "cache-cleanup: failed to delete local copy",
+				"kind", ci.label, "localFileSpec", c.localFileSpec))
 			continue
 		}
 
-		// Drop the tracking row; if the sermon is requested again it will be
+		// Drop the tracking row; if the file is requested again it will be
 		// re-downloaded and re-tracked from scratch.
-		if err = deleteCachedSermonRow(dbh, c.id); err != nil {
+		if err = ci.deleteRow(dbh, c.id); err != nil {
 			logger.LogErr(serr.Wrap(err, "cache-cleanup: deleted local file but failed to remove tracking row",
-				"id", strconv.FormatInt(c.id, 10), "relFileSpec", c.relFileSpec))
+				"kind", ci.label, "id", strconv.FormatInt(c.id, 10), "relFileSpec", c.relFileSpec))
 			continue
 		}
 
 		evicted++
-		logger.Info("cache-cleanup: evicted local sermon copy", "relFileSpec", c.relFileSpec,
+		logger.Info("cache-cleanup: evicted local copy", "kind", ci.label, "relFileSpec", c.relFileSpec,
 			"localFileSpec", c.localFileSpec)
 	}
 
-	logger.Info("Sermon cache cleanup pass complete", "candidates", len(candidates), "evicted", evicted)
+	logger.Info("Media cache cleanup pass complete", "kind", ci.label, "candidates", len(candidates),
+		"evicted", evicted)
 }
 
-// selectIdleCachedSermons returns cached sermons not accessed since the cutoff.
-func selectIdleCachedSermons(exec db.Executor, cutoff time.Time) (sermons []cachedSermon, err error) {
-	const q = `
+// selectIdle returns this index's cached objects not accessed since the cutoff,
+// least recently used first.
+func (ci cacheIndex) selectIdle(exec db.Executor, cutoff time.Time) (files []cachedFile, err error) {
+	q := `
 		SELECT id, rel_file_spec, local_file_spec
-		FROM sermon_cache_access
+		FROM ` + ci.table + `
 		WHERE last_accessed_at < $1
 		ORDER BY last_accessed_at ASC`
 
@@ -214,21 +259,21 @@ func selectIdleCachedSermons(exec db.Executor, cutoff time.Time) (sermons []cach
 	defer rows.Close()
 
 	for rows.Next() {
-		var c cachedSermon
+		var c cachedFile
 		if err = rows.Scan(&c.id, &c.relFileSpec, &c.localFileSpec); err != nil {
 			return nil, serr.Wrap(err)
 		}
-		sermons = append(sermons, c)
+		files = append(files, c)
 	}
 	if err = rows.Err(); err != nil {
 		return nil, serr.Wrap(err)
 	}
-	return sermons, nil
+	return files, nil
 }
 
-// deleteCachedSermonRow removes a single tracking row by primary key.
-func deleteCachedSermonRow(exec db.Executor, id int64) error {
-	_, err := exec.Exec(`DELETE FROM sermon_cache_access WHERE id = $1`, id)
+// deleteRow removes a single tracking row of this index by primary key.
+func (ci cacheIndex) deleteRow(exec db.Executor, id int64) error {
+	_, err := exec.Exec(`DELETE FROM `+ci.table+` WHERE id = $1`, id)
 	if err != nil {
 		return serr.Wrap(err)
 	}

@@ -4,8 +4,11 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/db"
+	"github.com/rohanthewiz/church/internal/testdb"
 	"github.com/rohanthewiz/rweb"
 )
 
@@ -99,4 +102,73 @@ func TestStoreAndServeLocal(t *testing.T) {
 	if r.Status() != 404 {
 		t.Errorf("hidden name: status %d, want 404", r.Status())
 	}
+}
+
+// TestLocalHitTracksAccess checks the hookup into the media cache eviction:
+// with IDrive enabled, serving a cached image records its access (so the sweep
+// can later evict it), repeat hits inside trackRefreshInterval skip the
+// database, and a forced track (a fresh write) always records. Files are put
+// in place directly, since storeImage and a cache miss would talk to e2.
+func TestLocalHitTracksAccess(t *testing.T) {
+	testdb.Each(t, func(t *testing.T) {
+		inTempDir(t)
+		config.Options.IDrive.Enabled = true
+		lastTracked.Clear()
+		t.Cleanup(lastTracked.Clear)
+		dbH, err := db.Db()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		const name = "pic.png.ab12.png"
+		if err := writeFileAtomic(filepath.Join(LocalDir, name), []byte("img")); err != nil {
+			t.Fatal(err)
+		}
+		// lastAccess returns the tracked time once a row exists, waiting out
+		// the background upsert; ok is false when none appears in time.
+		lastAccess := func() (at time.Time, ok bool) {
+			t.Helper()
+			for deadline := time.Now().Add(2 * time.Second); time.Now().Before(deadline); time.Sleep(10 * time.Millisecond) {
+				err := dbH.QueryRow(`SELECT last_accessed_at FROM image_cache_access WHERE rel_file_spec = $1`,
+					ObjectKey(name)).Scan(&at)
+				if err == nil {
+					return at, true
+				}
+			}
+			return at, false
+		}
+
+		if _, found, err := loadImage(name); err != nil || !found {
+			t.Fatalf("loadImage: found %v, err %v", found, err)
+		}
+		if _, ok := lastAccess(); !ok {
+			t.Fatal("a local hit recorded no image_cache_access row")
+		}
+
+		// Age the row, then hit again inside the refresh interval: the row
+		// must keep its aged timestamp.
+		aged := time.Now().Add(-time.Hour).Truncate(time.Second)
+		if _, err := dbH.Exec(`UPDATE image_cache_access SET last_accessed_at = $1 WHERE rel_file_spec = $2`,
+			aged, ObjectKey(name)); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := loadImage(name); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(100 * time.Millisecond) // a write, if one were (wrongly) made, lands by now
+		if at, _ := lastAccess(); !at.Equal(aged) {
+			t.Errorf("a repeat hit inside the refresh interval rewrote last_accessed_at: %v, want %v", at, aged)
+		}
+
+		// A forced track (what a fresh upload or e2 fetch does) always writes.
+		trackImage(name, filepath.Join(LocalDir, name), true)
+		for deadline := time.Now().Add(2 * time.Second); ; time.Sleep(10 * time.Millisecond) {
+			if at, _ := lastAccess(); at.After(aged) {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatal("a forced track did not refresh last_accessed_at")
+			}
+		}
+	})
 }

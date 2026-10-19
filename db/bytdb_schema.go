@@ -213,6 +213,17 @@ var bytdbTables = []tableDef{
 		`CREATE UNIQUE INDEX idx_sermon_cache_access_rel_file_spec ON sermon_cache_access (rel_file_spec)`,
 		`CREATE INDEX idx_sermon_cache_access_last_accessed_at ON sermon_cache_access (last_accessed_at)`,
 	}},
+	{name: "image_cache_access", ddl: []string{
+		`CREATE TABLE image_cache_access (
+			id bigserial PRIMARY KEY,
+			created_at timestamptz,
+			last_accessed_at timestamptz NOT NULL,
+			rel_file_spec text NOT NULL,
+			local_file_spec text NOT NULL
+		)`,
+		`CREATE UNIQUE INDEX idx_image_cache_access_rel_file_spec ON image_cache_access (rel_file_spec)`,
+		`CREATE INDEX idx_image_cache_access_last_accessed_at ON image_cache_access (last_accessed_at)`,
+	}},
 	{name: "event_recurrences", ddl: []string{
 		`CREATE TABLE event_recurrences (
 			event_id bigint PRIMARY KEY REFERENCES events (id) ON DELETE CASCADE,

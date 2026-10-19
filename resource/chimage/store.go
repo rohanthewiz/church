@@ -17,6 +17,13 @@ package chimage
 //	                            ├─ IDrive enabled ─► GET images/<name> ─► cache locally ─► serve
 //	                            └─ otherwise 404
 //
+// Like the sermon cache, the local copy is evictable. With IDrive enabled,
+// every path that leaves an image in dist/img/ (an upload that reached e2, a
+// fetch from e2, a local hit) records its access in image_cache_access via
+// idrive.TrackImageAccess. The media cache sweep (core/idrive, gated by
+// idrive.auto_cleanup) deletes copies idle past idrive.cache_idle_ttl, but only
+// after confirming the e2 object exists. A later request refetches the image.
+//
 // URLs are unchanged (/assets/img/<name>), so stored article HTML needs no
 // rewrite. The /assets/img/:filename route is more specific than the static
 // /assets/*path route, so the router picks it regardless of order.
@@ -36,8 +43,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/rohanthewiz/church/config"
+	"github.com/rohanthewiz/church/core/idrive"
 	"github.com/rohanthewiz/church/core/s3ops"
 	"github.com/rohanthewiz/logger"
 	"github.com/rohanthewiz/rweb"
@@ -80,7 +90,12 @@ func storeImage(name string, data []byte) error {
 		go func() {
 			if err := s3ops.PutFileToS3(ObjectPrefix, localSpec); err != nil {
 				logger.LogErr(err, "Could not copy image to IDrive e2; it is served locally only", "file", localSpec)
+				return
 			}
+			// Track only once the e2 copy exists. An untracked local file is
+			// never evicted, which is right for one whose upload failed: it
+			// may be the only copy. (Eviction re-checks e2 anyway.)
+			trackImage(name, localSpec, true)
 		}()
 	}
 	return nil
@@ -124,6 +139,7 @@ func loadImage(name string) (data []byte, found bool, err error) {
 	localSpec := filepath.Join(LocalDir, name)
 	data, err = os.ReadFile(localSpec)
 	if err == nil {
+		trackImage(name, localSpec, false)
 		return data, true, nil
 	}
 	if !os.IsNotExist(err) {
@@ -148,8 +164,45 @@ func loadImage(name string) (data []byte, found bool, err error) {
 	// the response.
 	if err := writeFileAtomic(localSpec, data); err != nil {
 		logger.LogErr(err, "Could not cache image fetched from IDrive e2", "file", localSpec)
+	} else {
+		trackImage(name, localSpec, true)
 	}
 	return data, true, nil
+}
+
+// trackRefreshInterval is how long after recording an image's access a local
+// hit skips recording it again. One page view requests every image on the page,
+// and a crawler requests a lot of pages, so tracking each hit would mean a
+// database write per image request, for a timestamp only compared against an
+// idle window of hours (4h by default). A few minutes of slack is nothing at
+// that scale.
+const trackRefreshInterval = 5 * time.Minute
+
+// lastTracked maps image name -> time.Time of the last access row write by this
+// process. It holds one entry per image served since startup, which is bounded
+// by the site's image count.
+var lastTracked sync.Map
+
+// trackImage records an access to a cached image, in the background, when
+// IDrive is enabled. With IDrive off, dist/img/ is the only copy of each image
+// and nothing is evicted, so there is nothing to track.
+//
+// force bypasses the refresh interval. Callers pass true whenever the local file
+// has just been written (uploaded, or fetched from e2): eviction may have
+// deleted the tracking row inside the interval, and a file cached without a
+// row would never be evicted again.
+func trackImage(name, localSpec string, force bool) {
+	if config.Options == nil || !config.Options.IDrive.Enabled {
+		return
+	}
+	now := time.Now()
+	if !force {
+		if at, ok := lastTracked.Load(name); ok && now.Sub(at.(time.Time)) < trackRefreshInterval {
+			return
+		}
+	}
+	lastTracked.Store(name, now)
+	go idrive.TrackImageAccess(ObjectKey(name), localSpec)
 }
 
 // imageTypes are the extensions served inline, by content type.
