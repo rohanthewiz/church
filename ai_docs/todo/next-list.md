@@ -85,12 +85,17 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   pre-`v0.11.0` church (`8076c91`), so it still reads its own
   `cfg/random_seeds.txt`; that file only goes stale once ccgrand moves past
   `v0.11.0`.
+  2026-10-23: the live cema host (calvaryeastmetro.org) is now past
+  `v0.11.0`: cema's N-001 (closed 2026-10-04) deployed cema pinned to church
+  `v0.12.x` and ran its migrations, so the file on that host can be deleted
+  now. ccswm's host still waits on a deploy at or past `v0.11.0`.
 - **N-061** · raised `2026-1018-2211-image-cache-eviction` · value medium
   Run `dbc migrate up` on each Postgres site (cema live, and dev) for
   `20261018120000_CreateImageCacheAccessTable.sql`, before or with the first
   deploy of a build carrying image cache eviction. Without the table, images
   still serve, but every image access logs a tracking error. bytdb sites
   create the table on boot.
+  2026-10-23: still `pending` on dev (`dbc migrate status` in church).
 - **N-062** · raised `2026-1018-2211-image-cache-eviction` · value low
   Set `idrive.auto_cleanup: true` in cema's `options.yml` (the k8s Secret, and
   the current host if its `dist/img/` should stay bounded), and document in
