@@ -54,6 +54,8 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   2026-10-10: the `charge.refunded` handling shipped in `v0.12.1`. cema pins
   `v0.12.1`; ccswm still pins `v0.12.0` (and has a Stripe/giving config), so
   ccswm records no dashboard refunds until it is re-pinned (N-019).
+  2026-10-26: ccswm re-pinned to `v0.12.2` (ccswm `64b232e`), so it records
+  refunds once that build is deployed (ccswm N-005).
 - **N-050** · raised `2026-0920-2035-roadmap-section-and-v0.11.0-release` · value low
   Delete the stale `cfg/random_seeds.txt` on each host and checkout once it
   runs a build at or past church `v0.11.0`; nothing reads it any more. Carried
@@ -84,6 +86,9 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   still serve, but every image access logs a tracking error. bytdb sites
   create the table on boot.
   2026-10-23: still `pending` on dev (`dbc migrate status` in church).
+  2026-10-26: shipped in `v0.12.2`, which ccswm and cema now pin, so ccswm
+  live joins the list (ccswm N-005). Local `ccswm_development` already has
+  the table.
 - **N-062** · raised `2026-1018-2211-image-cache-eviction` · value low
   Set `idrive.auto_cleanup: true` in cema's `options.yml` (the k8s Secret, and
   the current host if its `dist/img/` should stay bounded), and document in
@@ -113,6 +118,8 @@ check finds a defect; a defect found becomes a new Open item, named here.
   pointer handlers are in `template/admin_script.go`). The grips are untagged
   (past `v0.12.1`), so the cema under test must be a workspace build until
   N-019's `v0.12.2` re-pin lands. Moved from Open 2026-10-10: pure check.
+  2026-10-26: the `v0.12.2` re-pin landed (cema `6df2db4`), so a plain cema
+  build now carries the grips.
 - **N-064** · raised `2026-1018-2211-image-cache-eviction` · value low
   Watch image cache eviction against real IDrive e2 on a site with
   `auto_cleanup` on (N-062): an image served, left idle past
@@ -190,6 +197,9 @@ current hosts meanwhile, so nothing in Open waits on these.
   2026-10-18: also untagged now: image cache eviction (`image_cache_access`
   migration, see N-061), so a re-pin past it needs that migration on each
   Postgres site.
+  2026-10-26: tagged `v0.12.2` (`d1f7e67`, adds the page/menu editor JSON
+  fix `bfcf3d4`) and re-pinned both: ccswm `64b232e` (from `v0.12.0`), cema
+  `6df2db4` (from `v0.12.1`). Nothing is due until the next church push.
 
 - **N-023** · raised `2026-0917-0259` · value medium
   Before cema's k8s cutover, run
