@@ -54,18 +54,6 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   2026-10-10: the `charge.refunded` handling shipped in `v0.12.1`. cema pins
   `v0.12.1`; ccswm still pins `v0.12.0` (and has a Stripe/giving config), so
   ccswm records no dashboard refunds until it is re-pinned (N-019).
-- **N-019** · raised `2026-0913-1747` · value medium
-  Recurring: after each church push a site depends on, re-pin ccswm and cema.
-  Site CI warns when a pin lags.
-  2026-10-10: a re-pin is due now. ccswm pins `v0.12.0`, so it lacks
-  `v0.12.1`'s refund webhook (N-017) and pure-Go image resize; cema pins
-  `v0.12.1`. Master is past `v0.12.1` (`git log v0.12.1..HEAD`) with
-  untagged product changes (sermons list grouped by month `66e6ccf`, admin
-  drag grips `792f9d6`), so tag `v0.12.2` first, then re-pin both. Value
-  raised from low: it now blocks refund recording on ccswm.
-  2026-10-18: also untagged now: image cache eviction (`image_cache_access`
-  migration, see N-061), so a re-pin past it needs that migration on each
-  Postgres site.
 - **N-050** · raised `2026-0920-2035-roadmap-section-and-v0.11.0-release` · value low
   Delete the stale `cfg/random_seeds.txt` on each host and checkout once it
   runs a build at or past church `v0.11.0`; nothing reads it any more. Carried
@@ -190,6 +178,19 @@ current hosts meanwhile, so nothing in Open waits on these.
   Document the `db:` block (`type: postgres|bytdb`, `file`, `listen`) in the
   cema and ccswm `cfg/options-sample.yml`. Missing from both (checked
   2026-09-19).
+- **N-019** · raised `2026-0913-1747` · value medium
+  Recurring: after each church push a site depends on, re-pin ccswm and cema.
+  Site CI warns when a pin lags.
+  2026-10-10: a re-pin is due now. ccswm pins `v0.12.0`, so it lacks
+  `v0.12.1`'s refund webhook (N-017) and pure-Go image resize; cema pins
+  `v0.12.1`. Master is past `v0.12.1` (`git log v0.12.1..HEAD`) with
+  untagged product changes (sermons list grouped by month `66e6ccf`, admin
+  drag grips `792f9d6`), so tag `v0.12.2` first, then re-pin both. Value
+  raised from low: it now blocks refund recording on ccswm.
+  2026-10-18: also untagged now: image cache eviction (`image_cache_access`
+  migration, see N-061), so a re-pin past it needs that migration on each
+  Postgres site.
+
 - **N-023** · raised `2026-0917-0259` · value medium
   Before cema's k8s cutover, run
   `APP_ENV=production go run github.com/rohanthewiz/church/test_scripts/images_to_e2`
