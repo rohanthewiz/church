@@ -239,10 +239,18 @@ func (m *ModulePageForm) Render(params map[string]map[string]string, loggedIn bo
 				b.Input("type", "submit", "class", "af-submit", "value", operation),
 			),
 		),
+		// The JSON is emitted as a plain JS literal rather than wrapped in
+		// JSON.parse(`...`). Inside a template literal, JS processes escapes
+		// before JSON.parse ever runs, so a marshaled `\"` (e.g. a module
+		// title holding <a href="...">) collapses to a bare `"` and corrupts
+		// the JSON; a backtick or `${` in content would break it too.
+		// JSON is a valid JS expression, and encoding/json already escapes
+		// <, >, & and U+2028/U+2029, so the bytes can't close the <script>
+		// element or end the statement early.
 		b.Script("type", "text/javascript").T(
-			"var modules = JSON.parse(`"+string(moduleByts)+"`);"+
-				"var moduleTypes = JSON.parse(`"+string(moduleTypesByts)+"`);"+
-				"var contentBys = JSON.parse(`"+string(moduleContentBys)+"`);"+
+			"var modules = "+string(moduleByts)+";"+
+				"var moduleTypes = "+string(moduleTypesByts)+";"+
+				"var contentBys = "+string(moduleContentBys)+";"+
 				packed.ModulePageForm_js),
 	)
 

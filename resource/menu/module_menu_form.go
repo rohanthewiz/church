@@ -304,8 +304,11 @@ func (m *ModuleMenuForm) Render(params map[string]map[string]string, loggedIn bo
 				b.Input("type", "submit", "class", "af-submit", "value", operation),
 			),
 		),
+		// Plain JS literal, not JSON.parse(`...`): template-literal escape
+		// processing would turn a marshaled `\"` into `"` and corrupt the
+		// JSON. See the same note in page/module_page_form.go.
 		b.Script("type", "text/javascript").T(
-			"window.menuItems = JSON.parse(`"+string(byts)+"`);"+menuFormJS),
+			"window.menuItems = "+string(byts)+";"+menuFormJS),
 	)
 
 	return b.String()
