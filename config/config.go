@@ -89,6 +89,14 @@ type EnvConfig struct {
 		// Where autocert persists issued certs across restarts
 		// (default "certs/autocert"). Keep this out of version control.
 		AutoCertCacheDir string `yaml:"auto_cert_cache_dir"`
+		// ACMEWebroot is the directory certbot was told to use with
+		// --webroot (its renewal conf's webroot_path). The plain-HTTP
+		// listener on `port` serves <webroot>/.well-known/acme-challenge/*
+		// from it, so `certbot renew` (on certbot's own timer) succeeds while
+		// the site keeps running — no standalone challenge server, no
+		// stopping the redirector. Only used in cert-file mode; autocert
+		// answers its own challenges.
+		ACMEWebroot string `yaml:"acme_webroot"`
 	} `yaml:"server"`
 	Log struct {
 		Level     string `yaml:"level"`

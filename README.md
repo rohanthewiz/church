@@ -193,6 +193,17 @@ Requires ports 80/443 to be reachable from the internet (Let's Encrypt validates
 
 **Managed cert files** — set `auto_cert: false` (or omit) and provide `cert_file`/`key_file`. The server hot-reloads the pair whenever the cert file changes, so an external renewer (e.g. certbot cron) just replaces the files — no restart needed.
 
+With certbot in `--webroot` mode, set `acme_webroot` to certbot's `webroot_path` and renewal is fully unattended. The site's own port-80 listener serves the challenge files and redirects everything else to HTTPS, so there is no separate redirector or challenge server to stop and start, and certbot's systemd timer runs `certbot renew` with the site up:
+```yaml
+server:
+  port: "80"        # serves /.well-known/acme-challenge/* from acme_webroot, redirects the rest
+  use_tls: true
+  cert_file: "/etc/letsencrypt/live/example.org/fullchain.pem"  # fullchain, not cert.pem
+  key_file: "/etc/letsencrypt/live/example.org/privkey.pem"
+  acme_webroot: "/var/www/acme"   # = webroot_path in /etc/letsencrypt/renewal/example.org.conf
+```
+Only valid challenge tokens are served from the webroot; nothing else in it is reachable. If port 80 is busy at startup (e.g. an old forwarder still running), the listener retries every 30s and takes the port when it frees up. A daily check logs the cert's remaining validity and warns once fewer than 21 days are left (certbot renews at 30), so a broken renewal shows in the log weeks before browsers notice.
+
 #### Random seeds file (no longer needed)
 - Earlier versions required a `cfg/random_seeds.txt` pool. Session keys, form tokens and the SuperAdmin
   bootstrap token now come straight from the OS CSPRNG (`crypto/rand`, see `resource/auth/random.go`),
