@@ -33,7 +33,7 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 - Open, Validate and Roadmap are kept in ID order. Sorted views (by age or
   value) come from `/next-list`.
 
-**Next ID: N-065**
+**Next ID: N-066**
 
 ## Open
 
@@ -200,6 +200,9 @@ current hosts meanwhile, so nothing in Open waits on these.
   2026-10-26: tagged `v0.12.2` (`d1f7e67`, adds the page/menu editor JSON
   fix `bfcf3d4`) and re-pinned both: ccswm `64b232e` (from `v0.12.0`), cema
   `6df2db4` (from `v0.12.1`). Nothing is due until the next church push.
+  2026-10-28: due again once N-065's webhook fix is committed. Tag `v0.12.3`,
+  then re-pin both sites. Until then, a site's webhook accepts only events
+  at a `*.dahlia` API version.
 
 - **N-023** · raised `2026-0917-0259` · value medium
   Before cema's k8s cutover, run
@@ -288,6 +291,25 @@ dropped; an item can move back to Open if its reason stops holding.
 
 Newest first. Items closed before this file existed (2026-09-19) are recorded
 in the session docs' bodies.
+
+- **N-065** · raised `2026-1028-2237-stripe-webhook-api-version-v0.12.3` (from ccswm N-008) · closed 2026-10-28, `2026-1028-2237-stripe-webhook-api-version-v0.12.3` — `/webhooks/stripe`
+  answered 400 to every event not on stripe-go v86's release train
+  (`dahlia`), found by ccswm's N-007 test-mode run. The CCSWM account
+  default (2018-11-08) and `stripe listen --latest` (2026-09-30.endive)
+  both failed, so refunds and closed-tab gifts would never have been
+  recorded unless the endpoint was pinned to a `*.dahlia` version, and each
+  stripe-go train upgrade would have broken webhooks again. Fixed in
+  `payment_controller/payment_webhook.go`: `ConstructEventWithOptions` with
+  `IgnoreAPIVersionMismatch` (the signature and 300s tolerance checks still
+  run), and the body is decoded into `eventIDs` (`id`, `payment_intent`)
+  instead of full `stripe.PaymentIntent`/`stripe.Charge`, so fields that
+  change shape between versions are never read. New tests in
+  `webhook_test.go` cover both foreign versions, a forged signature at a
+  foreign version, and a 2018-shaped refund body. They fail on the old
+  handler with the same 400. Verified on ccswm with real `stripe listen`
+  deliveries at 2018-11-08: `payment_intent.succeeded` 200, and a partial
+  then full refund set the row to 177 and then 777/`refunded`. Needs the
+  `v0.12.3` tag and re-pins (N-019).
 
 - **N-010** · raised `2026-0912-1655` · closed 2026-10-11, `2026-1011-1451-close-n010-live-cema-migrations` — Done on the
   live cema site (calvaryeastmetro.org): the owner ran `dbc migrate up` there,

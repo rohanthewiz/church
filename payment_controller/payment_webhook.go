@@ -11,6 +11,19 @@ import (
 	"github.com/stripe/stripe-go/v86/webhook"
 )
 
+// eventIDs is all the handler reads from an event's data.object: the
+// object's own id, plus, on a charge, the id of its PaymentIntent. Decoding
+// only these, rather than a full stripe.PaymentIntent or stripe.Charge,
+// keeps the handler independent of the event's API version (see the
+// ConstructEvent call): an id is an id at every version, whereas other
+// fields change shape between versions and could mis-decode or fail.
+type eventIDs struct {
+	ID string `json:"id"`
+	// Set on charge objects. *stripe.PaymentIntent decodes the bare
+	// "pi_..." string that webhooks send for an unexpanded field.
+	PaymentIntent *stripe.PaymentIntent `json:"payment_intent"`
+}
+
 // StripeWebhook handles Stripe event notifications: payment_intent.succeeded
 // and charge.refunded. (The endpoint's dashboard config must subscribe to
 // both.) payment_intent.succeeded is the safety net behind the receipt-page redirect:
@@ -33,8 +46,22 @@ func StripeWebhook(ctx rweb.Context) error {
 			"error": "webhook not configured"})
 	}
 
-	event, err := webhook.ConstructEvent(
-		ctx.Request().Body(), ctx.Request().Header("Stripe-Signature"), signingSecret)
+	// The API-version gate is off on purpose. By default ConstructEvent rejects
+	// any event whose api_version is not on stripe-go's release train
+	// (v86: *.dahlia). Stripe renders each event at the endpoint's pinned
+	// version, else the account default (CCSWM's is 2018-11-08), so with the
+	// gate on, every delivery answered 400 unless the endpoint was pinned to
+	// exactly this train, and each stripe-go upgrade to a new train would
+	// silently break webhooks again until the endpoint was re-pinned.
+	// Ignoring the mismatch is safe here because the handler reads nothing
+	// version-sensitive from the body: it decodes only ids (eventIDs below),
+	// and finalizePayment re-fetches the intent through the API, which
+	// stripe-go always calls at its own pinned version. The signature check
+	// still runs in full, and the zero Tolerance keeps the default 300s
+	// replay window.
+	event, err := webhook.ConstructEventWithOptions(
+		ctx.Request().Body(), ctx.Request().Header("Stripe-Signature"), signingSecret,
+		webhook.ConstructEventOptions{IgnoreAPIVersionMismatch: true})
 	if err != nil {
 		// Bad or missing signature - not a genuine Stripe call (or wrong secret).
 		// 400 tells Stripe the payload was rejected.
@@ -45,7 +72,7 @@ func StripeWebhook(ctx rweb.Context) error {
 
 	switch event.Type {
 	case stripe.EventTypePaymentIntentSucceeded:
-		var pi stripe.PaymentIntent
+		var pi eventIDs
 		if err = json.Unmarshal(event.Data.Raw, &pi); err != nil {
 			logger.LogErr(err, "Stripe webhook: unable to unmarshal payment intent",
 				"event_id", event.ID)
@@ -92,7 +119,7 @@ func StripeWebhook(ctx rweb.Context) error {
 		//     email; its receipt link shows the refund.
 		// latest_charge is the refunded charge: a PaymentIntent succeeds through
 		// at most one charge, and only a succeeded charge can be refunded.
-		var chg stripe.Charge
+		var chg eventIDs
 		if err = json.Unmarshal(event.Data.Raw, &chg); err != nil {
 			logger.LogErr(err, "Stripe webhook: unable to unmarshal charge",
 				"event_id", event.ID)

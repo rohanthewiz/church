@@ -73,8 +73,8 @@ func TestWebhookAcksUnhandledEventTypes(t *testing.T) {
 	withStripeConfig(t, testSigningSecret)
 	apitest.MockDB(t) // no expectations: unhandled events must never touch the DB
 
-	// ConstructEvent rejects events whose api_version doesn't match the
-	// stripe-go binding, so the test event must claim the library's version.
+	// The binding's own version, the common case; other versions are covered
+	// by TestWebhookAcceptsOtherAPIVersions.
 	signed := webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{
 		Payload: []byte(`{"id":"evt_test_1","object":"event","api_version":"` + stripe.APIVersion +
 			`","type":"customer.created","data":{"object":{}}}`),
@@ -94,14 +94,53 @@ func TestWebhookAcksUnhandledEventTypes(t *testing.T) {
 }
 
 // signedEvent builds a Stripe-signed request body for event type typ with
-// data.object obj, claiming the binding's API version (ConstructEvent rejects
-// any other).
+// data.object obj, claiming the binding's API version.
 func signedEvent(typ, obj string) *webhook.SignedPayload {
+	return signedEventAt(stripe.APIVersion, typ, obj)
+}
+
+// signedEventAt is signedEvent at an explicit API version, for events
+// rendered at a version other than stripe-go's.
+func signedEventAt(apiVersion, typ, obj string) *webhook.SignedPayload {
 	return webhook.GenerateTestSignedPayload(&webhook.UnsignedPayload{
-		Payload: []byte(`{"id":"evt_test_r","object":"event","api_version":"` + stripe.APIVersion +
+		Payload: []byte(`{"id":"evt_test_r","object":"event","api_version":"` + apiVersion +
 			`","type":"` + typ + `","data":{"object":` + obj + `}}`),
 		Secret: testSigningSecret,
 	})
+}
+
+// Versions Stripe actually sent this handler in the ccswm N-007 smoke test,
+// none on stripe-go v86's dahlia train: the CCSWM account default (an
+// endpoint without a pinned version gets this) and stripe listen --latest.
+// Before the handler ignored the mismatch, both answered 400.
+var foreignAPIVersions = []string{"2018-11-08", "2026-09-30.endive"}
+
+func TestWebhookAcceptsOtherAPIVersions(t *testing.T) {
+	withStripeConfig(t, testSigningSecret)
+	apitest.MockDB(t) // no expectations: an unhandled type must not touch the DB
+
+	for _, v := range foreignAPIVersions {
+		resp := postSigned(signedEventAt(v, "customer.created", `{}`))
+		if resp.Status() != http.StatusOK {
+			t.Errorf("api_version %s: status = %d, want 200 (body: %s)", v, resp.Status(), resp.Body())
+		}
+	}
+}
+
+// Turning the version gate off must not weaken the signature gate: a
+// foreign-version event with a forged signature is still refused.
+func TestWebhookOtherAPIVersionStillNeedsSignature(t *testing.T) {
+	withStripeConfig(t, testSigningSecret)
+	apitest.MockDB(t)
+
+	signed := signedEventAt(foreignAPIVersions[0], "charge.refunded",
+		`{"id":"ch_x","object":"charge","payment_intent":"pi_x"}`)
+	resp := newWebhookServer().Request("POST", "/webhooks/stripe",
+		[]rweb.Header{{Key: "Stripe-Signature", Value: "t=1,v1=deadbeef"}},
+		strings.NewReader(string(signed.Payload)))
+	if resp.Status() != http.StatusBadRequest {
+		t.Errorf("forged signature: status = %d, want 400 (body: %s)", resp.Status(), resp.Body())
+	}
 }
 
 func postSigned(signed *webhook.SignedPayload) rweb.Response {
@@ -133,32 +172,66 @@ func TestWebhookRefundWithoutPaymentIntentIsAcked(t *testing.T) {
 func TestWebhookRefundReRetrievesAndRetriesOnFailure(t *testing.T) {
 	withStripeConfig(t, testSigningSecret)
 	apitest.MockDB(t) // no expectations: the payload must not be written as-is
-
-	var gotPath, gotQuery string
-	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath, gotQuery = r.URL.Path, r.URL.RawQuery
-		w.Header().Set("Content-Type", "application/json")
-		// 400, not 5xx: stripe-go retries 5xx, which would only slow the test.
-		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"error":{"type":"invalid_request_error","message":"test"}}`))
-	}))
-	defer fake.Close()
-	prevBackend := stripe.GetBackend(stripe.APIBackend)
-	stripe.SetBackend(stripe.APIBackend, stripe.GetBackendWithConfig(stripe.APIBackend,
-		&stripe.BackendConfig{URL: stripe.String(fake.URL), MaxNetworkRetries: stripe.Int64(0)}))
-	t.Cleanup(func() { stripe.SetBackend(stripe.APIBackend, prevBackend) })
+	gotPath, gotQuery := refusingStripeAPI(t)
 
 	resp := postSigned(signedEvent("charge.refunded",
 		`{"id":"ch_test_1","object":"charge","amount_refunded":500,"refunded":false,"payment_intent":"pi_test_refund"}`))
 	if resp.Status() != http.StatusInternalServerError {
 		t.Errorf("status = %d, want 500 (body: %s)", resp.Status(), resp.Body())
 	}
-	if gotPath != "/v1/payment_intents/pi_test_refund" {
-		t.Errorf("Stripe request path = %q, want the charge's payment intent", gotPath)
+	if *gotPath != "/v1/payment_intents/pi_test_refund" {
+		t.Errorf("Stripe request path = %q, want the charge's payment intent", *gotPath)
 	}
-	if q, _ := url.QueryUnescape(gotQuery); !strings.Contains(q, "expand[0]=latest_charge") {
+	if q, _ := url.QueryUnescape(*gotQuery); !strings.Contains(q, "expand[0]=latest_charge") {
 		t.Errorf("Stripe request query = %q, want latest_charge expanded", q)
 	}
+}
+
+// At a foreign API version, the refund must still map the charge to its
+// intent and re-retrieve it. The 2018-11-08 body below carries fields that
+// are shaped differently or gone at dahlia (a "refunds" list, a card
+// "source"), and none of them may get in the way, since only the ids are
+// decoded.
+func TestWebhookRefundAtOtherAPIVersionReRetrieves(t *testing.T) {
+	withStripeConfig(t, testSigningSecret)
+	apitest.MockDB(t)
+
+	for _, v := range foreignAPIVersions {
+		gotPath, _ := refusingStripeAPI(t)
+		resp := postSigned(signedEventAt(v, "charge.refunded",
+			`{"id":"ch_test_2","object":"charge","amount_refunded":234,"refunded":false,`+
+				`"payment_intent":"pi_test_old","refunds":{"object":"list","data":[{"id":"re_1","amount":234}]},`+
+				`"source":{"id":"card_1","object":"card","brand":"Visa","last4":"4242"}}`))
+		// 500 here is the refusing fake API, i.e. the handler got as far as
+		// re-retrieving the intent; a decode or version failure would be 400.
+		if resp.Status() != http.StatusInternalServerError {
+			t.Errorf("api_version %s: status = %d, want 500 (body: %s)", v, resp.Status(), resp.Body())
+		}
+		if *gotPath != "/v1/payment_intents/pi_test_old" {
+			t.Errorf("api_version %s: Stripe request path = %q, want the charge's payment intent", v, *gotPath)
+		}
+	}
+}
+
+// refusingStripeAPI points stripe-go at a local server that records the
+// request it gets and refuses it, restoring the real backend at cleanup.
+// The returned pointers hold the last request's path and raw query.
+func refusingStripeAPI(t *testing.T) (gotPath, gotQuery *string) {
+	t.Helper()
+	gotPath, gotQuery = new(string), new(string)
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*gotPath, *gotQuery = r.URL.Path, r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		// 400, not 5xx: stripe-go retries 5xx, which would only slow the test.
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":{"type":"invalid_request_error","message":"test"}}`))
+	}))
+	t.Cleanup(fake.Close)
+	prevBackend := stripe.GetBackend(stripe.APIBackend)
+	stripe.SetBackend(stripe.APIBackend, stripe.GetBackendWithConfig(stripe.APIBackend,
+		&stripe.BackendConfig{URL: stripe.String(fake.URL), MaxNetworkRetries: stripe.Int64(0)}))
+	t.Cleanup(func() { stripe.SetBackend(stripe.APIBackend, prevBackend) })
+	return gotPath, gotQuery
 }
 
 // The recorder must be idempotent by PaymentIntent id: the receipt-page
