@@ -60,7 +60,9 @@ a new train would have broken it again.
 
 ## Release
 
-Tagged `v0.12.3` and re-pinned ccswm and cema (N-019).
+Committed as `e6d31a4`, tagged `v0.12.3` and pushed. Re-pinned (N-019):
+ccswm `74d75b4` and cema `2bd004a`, both from `v0.12.2`. Each builds with
+`GOWORK=off` against the downloaded module, which carries the fix.
 
 ## Next
 

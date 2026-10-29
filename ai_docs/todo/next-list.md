@@ -200,9 +200,9 @@ current hosts meanwhile, so nothing in Open waits on these.
   2026-10-26: tagged `v0.12.2` (`d1f7e67`, adds the page/menu editor JSON
   fix `bfcf3d4`) and re-pinned both: ccswm `64b232e` (from `v0.12.0`), cema
   `6df2db4` (from `v0.12.1`). Nothing is due until the next church push.
-  2026-10-28: due again once N-065's webhook fix is committed. Tag `v0.12.3`,
-  then re-pin both sites. Until then, a site's webhook accepts only events
-  at a `*.dahlia` API version.
+  2026-10-28: tagged `v0.12.3` (`e6d31a4`, N-065's webhook API version fix)
+  and re-pinned both: ccswm `74d75b4`, cema `2bd004a` (both from `v0.12.2`,
+  built with `GOWORK=off`). Nothing is due until the next church push.
 
 - **N-023** · raised `2026-0917-0259` · value medium
   Before cema's k8s cutover, run
