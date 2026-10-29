@@ -33,7 +33,7 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
 - Open, Validate and Roadmap are kept in ID order. Sorted views (by age or
   value) come from `/next-list`.
 
-**Next ID: N-066**
+**Next ID: N-067**
 
 ## Open
 
@@ -102,6 +102,16 @@ next list (`church_mobile/ai_docs/todo/next-list.md`) and grmob's session docs.
   copy dies with the pod). A synchronous PUT closes the gap at the cost of
   save latency; keeping the image inline (data URL) when the PUT fails is the
   matching fallback.
+- **N-066** · raised `2026-1028-2311-letsencrypt-unattended-renewal-v0.12.4` (ccswm) · value low
+  Move the plain-HTTP redirect + ACME webroot handler (`httpsRedirect`,
+  `acmeWebrootHandler`, `validACMEToken` in `tls.go`) into rweb, so any
+  rweb site gets "port 80: answer challenges, 301 the rest", and rebase
+  rweb's `RunWithHttpsRedirect` on it (it redirects to `r.Host` as-is, so it
+  keeps an explicit `:80` and can't target a non-443 TLS port). Kept in
+  church for `v0.12.4` because church pins rweb `9c2144b` (July), 31 commits
+  behind rweb `master`; using a new rweb symbol would have pulled that whole
+  upgrade (405s, lazy multipart, Host validation, streaming statics) into a
+  cert change. Do it alongside the next rweb bump.
 
 ## Validate
 
@@ -203,6 +213,11 @@ current hosts meanwhile, so nothing in Open waits on these.
   2026-10-28: tagged `v0.12.3` (`e6d31a4`, N-065's webhook API version fix)
   and re-pinned both: ccswm `74d75b4`, cema `2bd004a` (both from `v0.12.2`,
   built with `GOWORK=off`). Nothing is due until the next church push.
+  2026-10-28: tagged `v0.12.4` (`cb451d2`, unattended certbot renewal: ACME
+  webroot on the HTTP listener, bind retry, expiry warning) and re-pinned
+  ccswm `67ee272` (from `v0.12.3`, built with `GOWORK=off`). cema is still
+  on `v0.12.3`, so its re-pin is due; it is not urgent unless cema moves to
+  certbot webroot renewal too.
 
 - **N-023** · raised `2026-0917-0259` · value medium
   Before cema's k8s cutover, run
